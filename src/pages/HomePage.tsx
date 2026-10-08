@@ -9,12 +9,18 @@ import { getPublishedGallery, type GalleryPhoto } from "@/features/gallery/data"
 import { useAsync } from "@/lib/useAsync";
 
 /**
- * Médias du hero, à déposer dans public/media/ (servis tels quels à la racine du site).
- * TODO média : vidéo MP4 H.264, 720p vertical, boucle de 6 s max, ~1,5 Mo, et son poster.
- * Exemple : { videoSrc: "/media/hero.mp4", posterSrc: "/media/hero-poster.jpg" }.
- * Tant qu'ils sont absents, le hero affiche un fond provisoire.
+ * Médias du hero, dans public/media/ (servis tels quels par notre domaine, aucun tiers).
+ * Boucle de 14,6 s tirée du reel (media-source/, hors git), 360×640, 30 fps, sans son.
+ * WebM AV1 d'abord (0,7 Mo) ; le MP4 H.264 (1,1 Mo) sert aux navigateurs sans AV1
+ * (la plupart des iPhone). Détails et commandes ffmpeg : docs/DESIGN.md.
  */
-const HERO_MEDIA: { videoSrc?: string; posterSrc?: string } = {};
+const HERO_MEDIA = {
+  sources: [
+    { src: "/media/hero.webm", type: 'video/webm; codecs="av01.0.01M.08"' },
+    { src: "/media/hero.mp4", type: 'video/mp4; codecs="avc1.64001F"' },
+  ],
+  posterSrc: "/media/hero-poster.jpg",
+} as const;
 
 const BOOKING_STEPS = [
   "Choisis une prestation.",

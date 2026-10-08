@@ -37,7 +37,7 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 - [x] `/direction-artistique` : 3 propositions, choix B + C, docs/DESIGN.md + ADR 0003
 - [x] Couleurs, typographies, composants de base
       _(tokens, Archivo, Button, Field, Section, Card, hero ; restent : style des champs à
-      valider, vidéo et poster du hero, logo HD)_
+      valider, logo HD ; vidéo et poster du hero faits, 360×640 en attendant une source HD)_
 
 ## Phase 4 — Vitrine
 

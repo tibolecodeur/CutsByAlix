@@ -95,6 +95,10 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
   espace admin (connexion, tableau de bord, RDV, disponibilités, galerie, mot de passe,
   déconnexion) avec un faux état connecté réservé au développement, absent du build de
   production (test sur un vrai build).
+- Vidéo du hero : boucle de 14,6 s tirée du reel, 360×640, sans son (`public/media/`) : WebM
+  AV1 (0,71 Mo) puis MP4 H.264 (1,13 Mo), poster JPEG (20 Ko). Pause quand l'onglet est caché,
+  poster seul si aucune source ne se lit. Tests : attributs de la vidéo, absence de piste audio
+  et poids des fichiers, aucune requête vers un autre domaine.
 
 ### Modifié
 
