@@ -121,6 +121,8 @@ test("le lien d'évitement mène au contenu", async ({ page, browserName }) => {
   // Safari ne donne pas le focus aux liens avec Tab par défaut (réglage système).
   test.skip(browserName === "webkit", "Tab ne parcourt pas les liens dans WebKit par défaut");
   await page.goto("/reserver");
+  // Page rendue d'abord : un Tab envoyé avant le rendu de React ne trouve pas encore le lien.
+  await expect(page.getByRole("heading", { level: 1, name: "Réserver" })).toBeVisible();
 
   await page.keyboard.press("Tab");
   const lienEvitement = page.getByRole("link", { name: "Aller au contenu" });

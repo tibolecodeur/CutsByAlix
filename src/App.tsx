@@ -6,6 +6,7 @@ import { AdminBookingsPage } from "@/pages/admin/AdminBookingsPage";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminGalleryPage } from "@/pages/admin/AdminGalleryPage";
 import { AdminLayout } from "@/pages/admin/AdminLayout";
+import { AdminLoginPage } from "@/pages/admin/AdminLoginPage";
 import { BookingPage } from "@/pages/BookingPage";
 import { CancelPage } from "@/pages/CancelPage";
 import { HomePage } from "@/pages/HomePage";
@@ -19,8 +20,8 @@ import { PrivacyPolicyPage } from "@/pages/PrivacyPolicyPage";
  * Prestations et galerie ne sont pas des routes : ce sont des sections de l'accueil.
  * `path="*"` est la route attrape-tout (404) : elle ne joue que si aucune autre ne correspond.
  *
- * L'admin a son propre gabarit (connexion, navigation en bas d'écran), sans en-tête ni pied
- * de page publics.
+ * L'admin a son propre gabarit (garde de session, navigation en bas d'écran), sans en-tête ni
+ * pied de page publics. La connexion est hors du gabarit : elle reste accessible sans session.
  */
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="politique-confidentialite" element={<PrivacyPolicyPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
+      <Route path="admin/connexion" element={<AdminLoginPage />} />
       <Route path="admin" element={<AdminLayout />}>
         <Route index element={<AdminDashboardPage />} />
         <Route path="rendez-vous" element={<AdminBookingsPage />} />

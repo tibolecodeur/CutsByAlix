@@ -1,23 +1,25 @@
 import { useState, type SubmitEvent } from "react";
-import { useNavigate } from "react-router";
 import { Button } from "@/components/Button";
-import { Field } from "@/components/Field";
 import { PageMeta } from "@/components/PageMeta";
+import { PasswordField } from "@/components/PasswordField";
 import { Section } from "@/components/Section";
 import { ErrorMessage, SuccessMessage } from "@/components/StatusMessage";
-import { AdminError, changePassword, MIN_PASSWORD_LENGTH } from "@/features/admin/data";
+import {
+  AdminAuthError,
+  changePassword,
+  MIN_PASSWORD_LENGTH,
+  type AdminAuthErrorCode,
+} from "@/features/admin/auth";
 import { useAdmin } from "@/pages/admin/useAdmin";
 
 /** Mon compte : changer de mot de passe, se déconnecter. */
 export function AdminAccountPage() {
   const { session, onSignOut } = useAdmin();
-  const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
 
   async function handleSignOut() {
     setSigningOut(true);
     await onSignOut();
-    navigate("/admin");
   }
 
   return (
@@ -32,7 +34,10 @@ export function AdminAccountPage() {
       </Section>
       <Section variant="blush">
         <h2>Se déconnecter</h2>
-        <p>Pense à te déconnecter sur un téléphone ou un ordinateur partagé.</p>
+        <p>
+          Tu restes connectée sur ce téléphone, même après avoir fermé le navigateur. Déconnecte-toi
+          sur un téléphone ou un ordinateur partagé.
+        </p>
         <p>
           <Button
             variant="secondary"
@@ -48,38 +53,65 @@ export function AdminAccountPage() {
   );
 }
 
+type FormErrors = { current?: string; password?: string; confirmation?: string };
+
+/** Erreurs du serveur affichées sous le formulaire (les autres vont sous leur champ). */
+const SERVER_ERRORS: Partial<Record<AdminAuthErrorCode, string>> = {
+  weak_password: "Mot de passe refusé : choisis-en un plus long ou moins courant.",
+  same_password: "Le nouveau mot de passe doit être différent de l'actuel.",
+  too_many_attempts: "Trop de tentatives. Réessaie dans quelques minutes.",
+  not_signed_in: "Ta session a expiré : déconnecte-toi, puis reconnecte-toi.",
+};
+const DEFAULT_ERROR =
+  "Le mot de passe n'a pas pu être changé. Vérifie ta connexion, puis réessaie.";
+
+/**
+ * Changement de mot de passe : l'ancien est redemandé (on vérifie que c'est bien Alix qui
+ * tient le téléphone), 12 caractères minimum, aucune autre règle. Pas de réinitialisation par
+ * e-mail : en cas d'oubli, voir docs/ADMIN-COMPTE.md.
+ */
 function PasswordForm({ email }: { email: string }) {
+  const [current, setCurrent] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
-  const [errors, setErrors] = useState<{ password?: string; confirmation?: string }>({});
+  const [errors, setErrors] = useState<FormErrors>({});
   const [error, setError] = useState<string>();
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting) return;
     setError(undefined);
-    setSuccess(false);
-    const found: typeof errors = {};
+    setSuccess(undefined);
+    const found: FormErrors = {};
+    if (current === "") found.current = "Indique ton mot de passe actuel.";
     if (password.length < MIN_PASSWORD_LENGTH) {
       found.password = `${MIN_PASSWORD_LENGTH} caractères minimum.`;
     }
     if (confirmation !== password) found.confirmation = "Les deux mots de passe sont différents.";
     setErrors(found);
-    if (found.password || found.confirmation) return;
+    if (found.current || found.password || found.confirmation) return;
 
     setSubmitting(true);
     try {
-      await changePassword(password);
-      setSuccess(true);
+      const { otherDevicesSignedOut } = await changePassword(current, password);
+      setSuccess(
+        otherDevicesSignedOut
+          ? "Mot de passe modifié. Tes autres appareils ont été déconnectés."
+          : "Mot de passe modifié. Tes autres appareils n'ont pas pu être déconnectés pour le moment.",
+      );
+      setCurrent("");
       setPassword("");
       setConfirmation("");
     } catch (caught) {
-      setError(
-        caught instanceof AdminError && caught.code === "weak_password"
-          ? "Mot de passe trop faible : choisis-en un plus long."
-          : "Le mot de passe n'a pas pu être changé. Vérifie ta connexion, puis réessaie.",
-      );
+      const code = caught instanceof AdminAuthError ? caught.code : "unknown";
+      if (code === "wrong_current_password") {
+        setErrors({ current: "Mot de passe actuel incorrect." });
+        setCurrent("");
+      } else {
+        setError(SERVER_ERRORS[code] ?? DEFAULT_ERROR);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -96,21 +128,28 @@ function PasswordForm({ email }: { email: string }) {
       {/* Identifiant invisible : aide le gestionnaire de mots de passe à enregistrer le nouveau
           mot de passe pour le bon compte. */}
       <input type="hidden" name="username" autoComplete="username" value={email} readOnly />
-      <Field
+      <PasswordField
+        id="current-password"
+        name="current-password"
+        autoComplete="current-password"
+        label="Mot de passe actuel"
+        value={current}
+        onChange={(e) => setCurrent(e.target.value)}
+        error={errors.current}
+      />
+      <PasswordField
         id="new-password"
         name="new-password"
-        type="password"
         autoComplete="new-password"
         label="Nouveau mot de passe"
-        hint={`${MIN_PASSWORD_LENGTH} caractères minimum.`}
+        hint={`${MIN_PASSWORD_LENGTH} caractères minimum. Une phrase de plusieurs mots convient très bien.`}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         error={errors.password}
       />
-      <Field
+      <PasswordField
         id="confirm-password"
         name="confirm-password"
-        type="password"
         autoComplete="new-password"
         label="Confirme le nouveau mot de passe"
         value={confirmation}
@@ -118,7 +157,7 @@ function PasswordForm({ email }: { email: string }) {
         error={errors.confirmation}
       />
       {error && <ErrorMessage>{error}</ErrorMessage>}
-      {success && <SuccessMessage>Mot de passe modifié.</SuccessMessage>}
+      {success && <SuccessMessage>{success}</SuccessMessage>}
       <Button
         type="submit"
         disabled={submitting}

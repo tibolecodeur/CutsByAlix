@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { Link, NavLink, Outlet } from "react-router";
-import { LoadingMessage } from "@/components/StatusMessage";
+import { useEffect, useState } from "react";
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { ErrorMessage, LoadingMessage } from "@/components/StatusMessage";
 import { useScrollToHash } from "@/components/useScrollToHash";
-import { getSession, signOut, type AdminSession } from "@/features/admin/data";
+import { getAdminSession, onAdminSignedOut, signOut } from "@/features/admin/auth";
 import { useAsync } from "@/lib/useAsync";
-import { AdminLoginPage } from "@/pages/admin/AdminLoginPage";
+import { AdminHead } from "@/pages/admin/AdminHead";
 import type { AdminContext } from "@/pages/admin/useAdmin";
 
 const NAV_LINKS = [
@@ -19,10 +19,11 @@ const NAV_LINKS = [
  * Gabarit de l'espace admin (`/admin/*`), distinct de celui du site public : aucun lien
  * vers lui depuis le site.
  *
- * Il joue le rôle du pare-feu de Symfony : sans session, il affiche la connexion À LA
- * PLACE de la page demandée ; avec session, il affiche la page dans son `<Outlet />`.
- * Ce n'est qu'un confort d'affichage : la vraie protection des données, c'est la RLS de
- * Supabase (un visiteur non admin ne lit rien, même en appelant l'API à la main).
+ * Il joue le rôle du pare-feu de Symfony (`access_control`) : tant que la session n'est pas
+ * vérifiée (session gardée ET ligne dans `admins`), AUCUNE page admin n'est montée, donc
+ * aucune donnée n'est chargée. Sans session valide : redirection vers `/admin/connexion`, en
+ * retenant la page demandée. Ce n'est qu'un confort d'affichage : la vraie protection des
+ * données, c'est la RLS de Supabase (un non-admin ne lit rien, même en appelant l'API à la main).
  *
  * Mobile : barre de navigation fixée en bas, à portée de pouce, au-dessus de la barre
  * d'accueil iOS (`env(safe-area-inset-bottom)`). Desktop : dans l'en-tête.
@@ -30,31 +31,53 @@ const NAV_LINKS = [
 export function AdminLayout() {
   // Comme le site public : retour en haut de page à chaque navigation.
   useScrollToHash();
-  const initial = useAsync("admin-session", getSession);
-  // Après une connexion ou une déconnexion, on remplace la session lue au chargement.
-  const [override, setOverride] = useState<{ session: AdminSession | null } | null>(null);
-  const session = override ? override.session : initial.status === "success" ? initial.data : null;
+  const location = useLocation();
+  const navigate = useNavigate();
+  const sessionState = useAsync("admin-session", getAdminSession);
+  const [signedOut, setSignedOut] = useState(false);
+
+  // Session perdue pendant l'utilisation (jeton révoqué, déconnexion dans un autre onglet) :
+  // `useEffect` s'abonne au montage et se désabonne au démontage (la fonction renvoyée).
+  useEffect(() => onAdminSignedOut(() => setSignedOut(true)), []);
 
   async function handleSignOut() {
     await signOut();
-    setOverride({ session: null });
+    navigate("/admin/connexion", { replace: true });
   }
 
-  if (override === null && initial.status === "loading") {
+  if (signedOut) return <Navigate to="/admin/connexion" replace />;
+
+  if (sessionState.status === "loading" || sessionState.status === "idle") {
     return (
       <main className="flex min-h-dvh items-center justify-center px-safe">
+        <AdminHead />
         <LoadingMessage>Chargement…</LoadingMessage>
       </main>
     );
   }
 
+  if (sessionState.status === "error") {
+    // Réseau coupé : on ne déconnecte pas, on propose de réessayer.
+    return (
+      <main className="flex min-h-dvh items-center justify-center px-safe">
+        <AdminHead />
+        <ErrorMessage onRetry={sessionState.reload}>
+          Impossible de vérifier ta connexion pour le moment. Vérifie ta connexion internet, puis
+          réessaie.
+        </ErrorMessage>
+      </main>
+    );
+  }
+
+  const session = sessionState.data;
   if (session === null) {
-    return <AdminLoginPage onSignedIn={(signedIn) => setOverride({ session: signedIn })} />;
+    return <Navigate to="/admin/connexion" replace state={{ from: location.pathname }} />;
   }
 
   const context: AdminContext = { session, onSignOut: handleSignOut };
   return (
     <div className="flex min-h-dvh flex-col">
+      <AdminHead />
       <a
         href="#contenu"
         className="sr-only z-50 bg-surface px-4 font-semibold text-ink focus:not-sr-only focus:fixed focus:top-[env(safe-area-inset-top)] focus:left-2 focus:inline-flex focus:min-h-tap focus:items-center"

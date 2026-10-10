@@ -140,15 +140,16 @@ une base qui n'est pas une base locale neuve (compte, RDV, lieu ou adresse incon
 
 Squelette en place : structure et textes provisoires, sans style ni appel à la base.
 
-| Route                        | Page                                                                                 |
-| ---------------------------- | ------------------------------------------------------------------------------------ |
-| `/`                          | Accueil, une seule longue page : `#accueil`, `#prestations`, `#galerie`, `#reserver` |
-| `/reserver`                  | Parcours de réservation (prestation, jour, créneau, coordonnées, consentement)       |
-| `/annuler`                   | Annulation via le lien personnel (`#<jeton>`)                                        |
-| `/admin`                     | Connexion de l'espace admin                                                          |
-| `/mentions-legales`          | Mentions légales                                                                     |
-| `/politique-confidentialite` | Politique de confidentialité                                                         |
-| toute autre URL              | Page 404                                                                             |
+| Route                        | Page                                                                                    |
+| ---------------------------- | --------------------------------------------------------------------------------------- |
+| `/`                          | Accueil, une seule longue page : `#accueil`, `#prestations`, `#galerie`, `#reserver`    |
+| `/reserver`                  | Parcours de réservation (prestation, jour, créneau, coordonnées, consentement)          |
+| `/annuler`                   | Annulation via le lien personnel (`#<jeton>`)                                           |
+| `/admin/connexion`           | Connexion de l'espace admin (compte créé à la main : `docs/ADMIN-COMPTE.md`)            |
+| `/admin/…`                   | Espace admin : redirige vers la connexion sans session admin, PWA (`admin.webmanifest`) |
+| `/mentions-legales`          | Mentions légales                                                                        |
+| `/politique-confidentialite` | Politique de confidentialité                                                            |
+| toute autre URL              | Page 404                                                                                |
 
 Prestations et galerie ne sont pas des routes : ce sont des sections de l'accueil, accessibles
 par les ancres du menu (`/#prestations`, `/#galerie`). L'espace admin n'apparaît pas dans le menu
@@ -163,12 +164,13 @@ src/
 │   └── ui/           composants shadcn/ui (code copié, modifiable)
 ├── features/         logique métier, par fonctionnalité
 │   ├── booking/      créneaux, réservation, annulation (data.ts, validation.ts)
-│   ├── admin/        connexion, disponibilités, rendez-vous (data.ts)
+│   ├── admin/        connexion et mot de passe (auth.ts), disponibilités, rendez-vous (data.ts)
 │   └── gallery/      affichage public des créations
 ├── lib/
 │   ├── supabase.ts   client Supabase public (getSupabase, sans session)
+│   ├── supabaseAdmin.ts  client Supabase admin (getSupabaseAdmin, session persistante)
 │   ├── database.types.ts  types des tables, écrits à la main d'après les migrations
-│   ├── fakeDb.ts     fausse base en mémoire (créneaux, réservation, admin : pas encore branchés)
+│   ├── fakeDb.ts     fausse base en mémoire (données admin et galerie : pas encore branchées)
 │   ├── dates.ts      dates : stockées en ISO, affichées en heure de Paris
 │   └── schemas.ts    schémas Zod partagés
 └── test/setup.ts     configuration des tests

@@ -4,10 +4,10 @@ import { build, type Rolldown } from "vite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
- * Preuve que le faux état connecté est IMPOSSIBLE à activer en production : on fait un vrai
- * build de production (en mémoire, sans écrire dist/) et on cherche dans le JavaScript livré
- * la clé de stockage de la fausse session. Si elle n'y est pas, le code qui la lit ou l'écrit
- * a été supprimé par Vite : aucune manipulation du navigateur ne peut le réveiller.
+ * Preuve que l'ancien faux état connecté (développement) ne revient JAMAIS en production : on
+ * fait un vrai build de production (en mémoire, sans écrire dist/) et on cherche dans le
+ * JavaScript livré sa clé de stockage et son texte d'aide. Le faux login a été supprimé avec la
+ * vraie connexion Supabase (consigne 17) ; ce test garde la porte fermée.
  */
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
@@ -35,6 +35,8 @@ describe("build de production", () => {
 
     // Garde-fou : on inspecte bien l'application (sinon le test passerait à vide).
     expect(code).toContain("Espace admin");
+    // La vraie connexion est bien là (clé de stockage de la session admin).
+    expect(code).toContain("cutsbyalix-admin-auth");
     expect(code).not.toContain("cutsbyalix:dev-admin-session");
     // Ni l'aide « connexion factice » affichée sous le formulaire de connexion.
     expect(code).not.toContain("connexion factice");

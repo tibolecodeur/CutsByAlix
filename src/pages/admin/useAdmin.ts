@@ -1,9 +1,10 @@
 import { useOutletContext } from "react-router";
-import type { AdminSession } from "@/features/admin/data";
+import type { AdminSession } from "@/features/admin/auth";
 
 /** Ce que le gabarit admin transmet à ses pages, via `<Outlet context={…} />`. */
 export type AdminContext = {
   session: AdminSession;
+  /** Déconnecte ce navigateur, puis renvoie vers la connexion. */
   onSignOut: () => Promise<void>;
 };
 
