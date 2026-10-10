@@ -26,21 +26,31 @@ export class SupabaseConfigError extends Error {
 let client: SupabaseClient<Database> | null = null;
 
 /**
+ * URL du projet et clé « anon », lues dans les variables d'environnement. Partagées par le
+ * client public (ici) et le client admin (`src/lib/supabaseAdmin.ts`).
+ * Lève une `SupabaseConfigError` si l'une manque.
+ */
+export function readSupabaseConfig(): { url: string; anonKey: string } {
+  const url = import.meta.env.VITE_SUPABASE_URL?.trim();
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+  if (!url || !anonKey) throw new SupabaseConfigError();
+  return { url, anonKey };
+}
+
+/**
  * Le client public, ou une `SupabaseConfigError` si une variable manque.
  * Sans session : il est réservé aux visiteurs, y compris pour /annuler. Les RPC publiques ne sont
- * exécutables que par `anon` ; le futur client admin (avec session) ne doit jamais les appeler.
+ * exécutables que par `anon` ; le client admin (`getSupabaseAdmin`, avec session) ne doit jamais
+ * les appeler, et ce client-ci ne sert jamais à l'admin.
  */
 export function getSupabase(): SupabaseClient<Database> {
   if (client) return client;
 
-  const url = import.meta.env.VITE_SUPABASE_URL?.trim();
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
-  if (!url || !anonKey) throw new SupabaseConfigError();
-
+  const { url, anonKey } = readSupabaseConfig();
   client = createClient<Database>(url, anonKey, {
     // Côté public, personne ne se connecte : aucune session gardée dans le localStorage,
-    // aucun rafraîchissement de jeton, aucune lecture de jeton dans l'URL. L'admin aura son
-    // propre client, avec session, plus tard.
+    // aucun rafraîchissement de jeton, aucune lecture de jeton dans l'URL. L'admin a son propre
+    // client, avec session (src/lib/supabaseAdmin.ts).
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
   return client;

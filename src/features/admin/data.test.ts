@@ -1,15 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AdminError,
-  changePassword,
   createAvailability,
   deleteAvailability,
   getAdminBookings,
   getAvailabilities,
   getLocations,
-  getSession,
-  signIn,
-  signOut,
 } from "@/features/admin/data";
 import { formatTime } from "@/lib/dates";
 import { resetFakeDb } from "@/lib/fakeDb";
@@ -21,7 +17,6 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
   resetFakeDb(NOW);
-  sessionStorage.clear();
 });
 
 afterEach(() => {
@@ -32,29 +27,6 @@ async function expectAdminError(promise: Promise<unknown>, code: string) {
   await expect(promise).rejects.toBeInstanceOf(AdminError);
   await expect(promise).rejects.toMatchObject({ code });
 }
-
-describe("authentification (faux état connecté, développement)", () => {
-  it("connecte, garde la session puis déconnecte", async () => {
-    expect(await getSession()).toBeNull();
-    expect(await signIn(" alix@example.com ", "secret")).toEqual({ email: "alix@example.com" });
-    expect(await getSession()).toEqual({ email: "alix@example.com" });
-
-    await signOut();
-    expect(await getSession()).toBeNull();
-  });
-
-  it("refuse des identifiants vides", async () => {
-    await expectAdminError(signIn("", "secret"), "invalid_credentials");
-    await expectAdminError(signIn("alix@example.com", ""), "invalid_credentials");
-  });
-
-  it("change le mot de passe seulement connecté, 8 caractères minimum", async () => {
-    await expectAdminError(changePassword("motdepasse"), "not_connected");
-    await signIn("alix@example.com", "secret");
-    await expectAdminError(changePassword("court"), "weak_password");
-    await expect(changePassword("motdepasse")).resolves.toBeUndefined();
-  });
-});
 
 describe("getLocations", () => {
   it("donne à l'admin les lieux avec leur adresse privée", async () => {

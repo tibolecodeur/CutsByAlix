@@ -30,6 +30,11 @@ describe("public/_headers", () => {
     ]);
   });
 
+  it("protège /admin* : pas d'indexation, manifeste servi avec son type", () => {
+    expect(headersOf("/admin*")).toEqual(["X-Robots-Tag: noindex"]);
+    expect(headersOf("/admin.webmanifest")).toEqual(["Content-Type: application/manifest+json"]);
+  });
+
   it("ne contient aucun jeton ni aucune adresse réelle", () => {
     expect(headers).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
   });

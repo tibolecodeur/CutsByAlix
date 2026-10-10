@@ -1,9 +1,3 @@
-import {
-  clearDevSession,
-  isDevSessionEnabled,
-  readDevSession,
-  writeDevSession,
-} from "@/features/admin/devSession";
 import { fakeDb, fakeLatency, overlapsRange } from "@/lib/fakeDb";
 import { randomUuid } from "@/lib/uuid";
 
@@ -12,20 +6,13 @@ import { randomUuid } from "@/lib/uuid";
  * Elles suivent les tables de supabase/migrations, lues directement par l'admin connecté
  * (la RLS l'autorise grâce à la table `admins`).
  *
- * TODO: brancher Supabase. Implémentation factice (src/lib/fakeDb.ts) : remplacer chaque
- * corps par `supabase.auth.…` ou `supabase.from(…)`, puis convertir la ligne reçue.
+ * L'authentification est dans `auth.ts` (vraie, Supabase Auth).
+ * TODO: brancher Supabase. Les DONNÉES sont encore factices (src/lib/fakeDb.ts) : remplacer
+ * chaque corps par `getSupabaseAdmin().from(…)`, puis convertir la ligne reçue.
  */
 
-export type AdminSession = { email: string };
-
 export type AdminErrorCode =
-  | "invalid_credentials"
-  | "not_connected"
-  | "weak_password"
-  | "invalid_range"
-  | "availability_overlap"
-  | "availability_has_bookings"
-  | "not_found";
+  "invalid_range" | "availability_overlap" | "availability_has_bookings" | "not_found";
 
 export class AdminError extends Error {
   readonly code: AdminErrorCode;
@@ -35,44 +22,6 @@ export class AdminError extends Error {
     this.name = "AdminError";
     this.code = code;
   }
-}
-
-/** Longueur minimale d'un mot de passe admin. */
-export const MIN_PASSWORD_LENGTH = 8;
-
-// ---------------------------------------------------------------------------------------
-// Authentification (Supabase Auth, compte unique)
-// ---------------------------------------------------------------------------------------
-
-/**
- * Connexion. TODO: brancher Supabase (`auth.signInWithPassword`).
- * En développement : faux état connecté, n'importe quel email et mot de passe non vides.
- * En production, tant que rien n'est branché : refus systématique.
- */
-export async function signIn(email: string, password: string): Promise<AdminSession> {
-  await fakeLatency();
-  if (!isDevSessionEnabled()) throw new AdminError("not_connected");
-  if (email.trim() === "" || password === "") throw new AdminError("invalid_credentials");
-  writeDevSession(email.trim());
-  return { email: email.trim() };
-}
-
-/** TODO: brancher Supabase (`auth.signOut`). */
-export async function signOut(): Promise<void> {
-  clearDevSession();
-}
-
-/** Session en cours, ou null. TODO: brancher Supabase (`auth.getSession`). */
-export async function getSession(): Promise<AdminSession | null> {
-  const email = readDevSession();
-  return email === null ? null : { email };
-}
-
-/** TODO: brancher Supabase (`auth.updateUser({ password })`). */
-export async function changePassword(newPassword: string): Promise<void> {
-  await fakeLatency();
-  if (readDevSession() === null) throw new AdminError("not_connected");
-  if (newPassword.length < MIN_PASSWORD_LENGTH) throw new AdminError("weak_password");
 }
 
 // ---------------------------------------------------------------------------------------

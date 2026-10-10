@@ -4,8 +4,8 @@
  * pouvoir le remplacer plus tard sans toucher au reste.
  *
  * À mettre à jour à chaque migration qui touche une table ou une fonction listée ici. Seules
- * celles réellement utilisées par le front y figurent (pour l'instant : la table `services`,
- * les RPC `get_available_slots`, `create_booking`, `get_booking` et `cancel_booking`).
+ * celles réellement utilisées par le front y figurent (pour l'instant : les tables `services` et
+ * `admins`, les RPC `get_available_slots`, `create_booking`, `get_booking` et `cancel_booking`).
  */
 
 /** Table `public.services` (migration …_tables.sql). */
@@ -110,10 +110,22 @@ type CancelBookingFunction = {
   Returns: boolean;
 };
 
+/**
+ * Table `public.admins` (migration …_socle_securite.sql) : lue par l'admin connecté pour
+ * vérifier SA ligne (la RLS ne montre rien aux autres). Jamais écrite via l'API.
+ */
+type AdminsTable = {
+  Row: { user_id: string; created_at: string };
+  Insert: never;
+  Update: never;
+  Relationships: [];
+};
+
 export type Database = {
   public: {
     Tables: {
       services: ServicesTable;
+      admins: AdminsTable;
     };
     Views: Record<never, never>;
     Functions: {

@@ -9,3 +9,12 @@
 /annuler*
   Referrer-Policy: no-referrer
   X-Robots-Tag: noindex
+
+# Espace admin (et ses fichiers : manifeste, icônes) : jamais dans un moteur de recherche.
+# Aucun lien public n'y mène ; les pages posent aussi <meta name="robots" content="noindex">.
+/admin*
+  X-Robots-Tag: noindex
+
+# Manifeste de la PWA admin, servi avec son type exact.
+/admin.webmanifest
+  Content-Type: application/manifest+json
