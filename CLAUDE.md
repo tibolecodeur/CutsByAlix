@@ -39,6 +39,8 @@ Décisions de design validées : @docs/DESIGN.md
   à vide (`vite.config.ts`) et simule le client (`src/test/fakeSupabase.ts`) ; les specs e2e
   importent `test` / `expect` depuis `e2e/fixtures.ts` (jamais `@playwright/test`), qui
   intercepte et coupe tout appel Supabase.
+- Jamais `supabase test db --linked`, ni aucun test qui écrit sur le projet distant : les tests
+  SQL tournent uniquement sur la base locale (`supabase start`) et en CI.
 
 ## Méthode projet (comme en entreprise)
 

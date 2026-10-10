@@ -134,12 +134,16 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       validation de la réservation par le barber. Depuis la consigne 15, plus aucune RPC ne la
       renvoie : il reste à DÉCIDER et coder la règle de révélation (risque n° 1 de l'ADR 0002).
       **Bloquant pour la mise en ligne.**
-- [ ] **Plafond global de réservations** (revue sécurité de la consigne 15) : un script qui
-      appelle `create_booking` directement (le honeypot ne le gêne pas) avec des numéros
-      inventés peut réserver tous les créneaux des 4 semaines. Piste : `max_bookings_per_hour`
-      dans `private.settings()`, vérifié sous le verrou global de `create_booking_at`, et
-      Turnstile avancé en V1. Couvre aussi le blocage ciblé d'un client (risque n° 4 de l'ADR
-      0002). **Bloquant pour la mise en ligne.**
+- [ ] **Anti-abus des réservations** (revue sécurité de la consigne 15, décision 2026-10-10 :
+      pas maintenant, mais **bloquant pour la mise en ligne**). Deux risques :
+  - **Créneaux saturés** : un script qui appelle `create_booking` directement (le honeypot ne
+    le gêne pas) avec des numéros inventés peut réserver tous les créneaux des 4 semaines.
+  - **Blocage du numéro d'un tiers** : en réservant 2 RDV avec le téléphone ou l'email de
+    quelqu'un d'autre, on l'empêche de réserver ; la réponse `limit_reached` permet aussi de
+    compter ses RDV futurs (risque n° 4 de l'ADR 0002).
+  - Options à choisir : plafond global (`max_bookings_per_hour` dans `private.settings()`,
+    vérifié sous le verrou global de `create_booking_at`) ; annulation d'un RDV côté admin
+    (phase 6, pour nettoyer les fausses réservations) ; Cloudflare Turnstile avancé en V1.
 
 ## Backlog (non planifié)
 
