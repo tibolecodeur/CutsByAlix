@@ -178,6 +178,8 @@ test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation 
   await expect(page.getByText("Choisis un jour, puis un créneau.")).toBeVisible();
   await toucherJour(page, day);
   const creneaux = groupeCreneaux(page);
+  // `evaluateAll` ne patiente pas : on attend d'abord que les créneaux soient chargés.
+  await expect(creneaux.getByRole("radio")).toHaveCount(2);
   const textes = await creneaux
     .getByRole("radio")
     .evaluateAll((els) =>
@@ -212,9 +214,7 @@ test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation 
   await expect(valeurDuRecap(page, "Lieu")).toHaveText("Saint-Christophe-du-Bois");
   await expect(page.locator("dt", { hasText: /^Adresse$/ })).toHaveCount(0);
   await expect(page.getByText(/pas d'e-mail de confirmation/)).toBeVisible();
-  await expect(page.locator("#cancel-link-url")).toHaveText(
-    new RegExp(`/annuler\\?token=${TOKEN}$`),
-  );
+  await expect(page.locator("#cancel-link-url")).toHaveText(new RegExp(`/annuler#${TOKEN}$`));
 
   // Ce que le site a envoyé : le créneau ET le lieu du créneau choisi, honeypot vide.
   expect(envoye).toMatchObject({
@@ -388,6 +388,40 @@ async function simulerPressePapiers(page: Page, { refuse }: { refuse: boolean })
   }, refuse);
 }
 
+test("confirmation : « Ouvrir ma page d'annulation » garde le jeton dans le fragment", async ({
+  page,
+}) => {
+  const lectures: unknown[] = [];
+  await reserverJusquALaConfirmation(page);
+  const [creneau] = slotsFor(firstDayWithSlots());
+  await mockRpc(page, "get_booking", (args) => {
+    lectures.push(args);
+    return {
+      body: [
+        {
+          status: "confirmed",
+          starts_at: creneau!.starts_at,
+          ends_at: creneau!.ends_at,
+          service_name: "Coupe",
+          location_label: creneau!.location_label,
+          first_name: "Zoé",
+          can_cancel: true,
+        },
+      ],
+    };
+  });
+
+  await page.getByRole("link", { name: "Ouvrir ma page d'annulation" }).click();
+
+  await expect(page).toHaveURL(new RegExp(`/annuler#${TOKEN}$`));
+  await expect(page.getByRole("heading", { level: 2, name: "Zoé, ton rendez-vous" })).toBeVisible();
+  // Le jeton est lu dans le fragment et envoyé dans le corps de la requête, jamais dans l'URL.
+  expect(lectures.length).toBeGreaterThanOrEqual(1);
+  expect(
+    lectures.every((args) => JSON.stringify(args) === JSON.stringify({ p_token: TOKEN })),
+  ).toBe(true);
+});
+
 test("confirmation : « Copier le lien » copie le lien d'annulation", async ({ page }) => {
   await simulerPressePapiers(page, { refuse: false });
   await reserverJusquALaConfirmation(page);
@@ -404,7 +438,7 @@ test("confirmation : « Copier le lien » copie le lien d'annulation", async ({ 
   await expect(page.getByRole("button", { name: "Lien copié" })).toBeVisible();
   const lienAffiche = await page.locator("#cancel-link-url").textContent();
   const copie = await page.evaluate(() => (window as unknown as { __copie: string }).__copie);
-  expect(copie).toBe(`http://localhost:5173/annuler?token=${TOKEN}`);
+  expect(copie).toBe(`http://localhost:5173/annuler#${TOKEN}`);
   expect(copie).toBe(lienAffiche?.trim());
 });
 
@@ -441,9 +475,7 @@ test("contexte non sécurisé (http) : prestations, réservation et repli de la 
   await expect(page.getByRole("alert")).toHaveCount(0);
 
   await reserverJusquALaConfirmation(page);
-  await expect(page.locator("#cancel-link-url")).toHaveText(
-    new RegExp(`/annuler\\?token=${TOKEN}$`),
-  );
+  await expect(page.locator("#cancel-link-url")).toHaveText(new RegExp(`/annuler#${TOKEN}$`));
   await page.getByRole("button", { name: "Copier le lien" }).click();
   await expect(page.getByRole("status").filter({ hasText: /Copie impossible/ })).toBeVisible();
   expect(erreurs).toEqual([]);

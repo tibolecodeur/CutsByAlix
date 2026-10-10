@@ -5,7 +5,7 @@
  *
  * À mettre à jour à chaque migration qui touche une table ou une fonction listée ici. Seules
  * celles réellement utilisées par le front y figurent (pour l'instant : la table `services`,
- * les RPC `get_available_slots` et `create_booking`).
+ * les RPC `get_available_slots`, `create_booking`, `get_booking` et `cancel_booking`).
  */
 
 /** Table `public.services` (migration …_tables.sql). */
@@ -82,6 +82,34 @@ type CreateBookingFunction = {
   }[];
 };
 
+/**
+ * RPC `get_booking` (migration …_annulation_testable.sql) : récap pour le porteur du lien.
+ * Aucune ligne si le jeton est inconnu, nul ou si le RDV est terminé (lien « expiré »). Ni
+ * adresse privée, ni téléphone, ni email, ni nom de famille.
+ */
+type GetBookingFunction = {
+  Args: { p_token: string };
+  Returns: {
+    status: "confirmed" | "cancelled";
+    starts_at: string;
+    ends_at: string;
+    service_name: string;
+    location_label: string;
+    first_name: string;
+    /** Confirmé ET à 24 h ou plus du début. */
+    can_cancel: boolean;
+  }[];
+};
+
+/**
+ * RPC `cancel_booking` (migration …_annulation_testable.sql) : `true` annulé ; `false` jeton
+ * inconnu, RDV déjà annulé ou terminé ; exception P0001 `too_late` à moins de 24 h du début.
+ */
+type CancelBookingFunction = {
+  Args: { p_token: string };
+  Returns: boolean;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -91,6 +119,8 @@ export type Database = {
     Functions: {
       get_available_slots: GetAvailableSlotsFunction;
       create_booking: CreateBookingFunction;
+      get_booking: GetBookingFunction;
+      cancel_booking: CancelBookingFunction;
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;

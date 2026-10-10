@@ -17,7 +17,8 @@ type ConfirmationStepProps = {
  * d'annulation. Le jeton n'est affiché qu'ici, jamais écrit dans la console.
  */
 export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProps) {
-  const cancelPath = `/annuler?token=${encodeURIComponent(receipt.cancelToken)}`;
+  // Le jeton est dans le fragment (#) : il ne part jamais vers un serveur ni dans un Referer.
+  const cancelPath = `/annuler#${receipt.cancelToken}`;
   const cancelUrl = `${window.location.origin}${cancelPath}`;
 
   return (

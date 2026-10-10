@@ -25,7 +25,11 @@ export class SupabaseConfigError extends Error {
 
 let client: SupabaseClient<Database> | null = null;
 
-/** Le client public, ou une `SupabaseConfigError` si une variable manque. */
+/**
+ * Le client public, ou une `SupabaseConfigError` si une variable manque.
+ * Sans session : il est réservé aux visiteurs, y compris pour /annuler. Les RPC publiques ne sont
+ * exécutables que par `anon` ; le futur client admin (avec session) ne doit jamais les appeler.
+ */
 export function getSupabase(): SupabaseClient<Database> {
   if (client) return client;
 

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   BookingError,
   cancelBooking,
@@ -9,12 +9,10 @@ import {
   isUuid,
   type NewBooking,
 } from "@/features/booking/data";
-import { FAKE_CANCEL_TOKENS, fakeDb, resetFakeDb } from "@/lib/fakeDb";
 import { getSupabase, SupabaseConfigError } from "@/lib/supabase";
 import { fakeSupabaseClient, SERVICE_ROWS, type FakeQueryResult } from "@/test/fakeSupabase";
 
-// Prestations, créneaux et réservation passent par Supabase : le client est simulé, aucune
-// requête ne part. Consultation et annulation sont encore sur la fausse base (fakeDb).
+// Tout passe par Supabase : le client est simulé, aucune requête ne part.
 vi.mock("@/lib/supabase", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/supabase")>()),
   getSupabase: vi.fn(),
@@ -27,23 +25,9 @@ function mockSupabase(result: FakeQueryResult) {
   return fake.calls;
 }
 
-/** Horloge figée : mardi 13 octobre 2026, 8 h à Paris (pour la fausse base de l'annulation). */
-const NOW = new Date("2026-10-13T06:00:00Z");
-
 const SERVICE_ID = "10000000-0000-4000-8000-000000000001";
 const LOCATION_ID = "20000000-0000-4000-8000-000000000001";
 const TOKEN = "7f1c2a9e-3b4d-4e5f-8a6b-9c0d1e2f3a4b";
-
-beforeEach(() => {
-  // Seul `Date` est simulé : les promesses et les timers restent réels.
-  vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(NOW);
-  resetFakeDb(NOW);
-});
-
-afterEach(() => {
-  vi.useRealTimers();
-});
 
 function bookingInput(overrides: Partial<NewBooking> = {}): NewBooking {
   return {
@@ -96,18 +80,6 @@ describe("getServices", () => {
       throw new SupabaseConfigError();
     });
     await expect(getServices()).rejects.toBeInstanceOf(SupabaseConfigError);
-  });
-
-  it("transmet les prestations lues à la fausse base (pont provisoire de l'annulation)", async () => {
-    const demoIds = fakeDb().services.map((s) => s.id);
-    mockSupabase({ data: SERVICE_ROWS, error: null });
-    await getServices();
-    await getServices(); // relu : mise à jour, pas de doublon
-    expect(fakeDb().services.map((s) => s.id)).toEqual([
-      ...demoIds,
-      SERVICE_ROWS[0]!.id,
-      SERVICE_ROWS[1]!.id,
-    ]);
   });
 });
 
@@ -247,55 +219,117 @@ describe("createBooking", () => {
   });
 });
 
-describe("getBooking (encore factice)", () => {
-  it("donne le détail d'un RDV annulable, sans adresse ni coordonnées", async () => {
-    const details = await getBooking(FAKE_CANCEL_TOKENS.valid);
-    expect(details).toEqual({
+describe("getBooking", () => {
+  const ROW = {
+    status: "confirmed",
+    starts_at: "2026-10-20T12:00:00+00:00",
+    ends_at: "2026-10-20T13:00:00+00:00",
+    service_name: "Coupe",
+    location_label: "Angers",
+    first_name: "Lucas",
+    can_cancel: true,
+  };
+
+  it("envoie le jeton dans le corps de la RPC et convertit la ligne reçue", async () => {
+    const calls = mockSupabase({ data: [ROW], error: null });
+
+    expect(await getBooking(TOKEN)).toEqual({
       status: "confirmed",
-      startsAt: "2026-10-17T08:00:00.000Z",
-      endsAt: "2026-10-17T09:00:00.000Z",
-      serviceName: "Coupe + barbe",
+      startsAt: "2026-10-20T12:00:00+00:00",
+      endsAt: "2026-10-20T13:00:00+00:00",
+      serviceName: "Coupe",
       locationLabel: "Angers",
       firstName: "Lucas",
       canCancel: true,
     });
-    expect(JSON.stringify(details)).not.toMatch(/fictive|@/);
+    expect(calls.map(({ method, args }) => [method, ...args])).toEqual([
+      ["rpc", "get_booking", { p_token: TOKEN }],
+      ["abortSignal", expect.any(AbortSignal)],
+    ]);
   });
 
-  it("indique un RDV annulé, qui ne s'annule plus", async () => {
-    expect(await getBooking(FAKE_CANCEL_TOKENS.cancelled)).toMatchObject({
-      status: "cancelled",
-      canCancel: false,
-    });
+  it("ne renvoie ni adresse, ni téléphone, ni email, ni identifiant", async () => {
+    mockSupabase({ data: [ROW], error: null });
+    expect(Object.keys((await getBooking(TOKEN))!).sort()).toEqual([
+      "canCancel",
+      "endsAt",
+      "firstName",
+      "locationLabel",
+      "serviceName",
+      "startsAt",
+      "status",
+    ]);
   });
 
-  it("n'autorise plus l'annulation à moins de 24 h", async () => {
-    expect(await getBooking(FAKE_CANCEL_TOKENS.tooLate)).toMatchObject({
-      status: "confirmed",
-      canCancel: false,
-    });
+  it("renvoie un RDV annulé tel quel (« déjà annulé »)", async () => {
+    mockSupabase({ data: [{ ...ROW, status: "cancelled", can_cancel: false }], error: null });
+    expect(await getBooking(TOKEN)).toMatchObject({ status: "cancelled", canCancel: false });
   });
 
-  it("renvoie null pour un lien inconnu ou mal formé", async () => {
-    expect(await getBooking("00000000-0000-4000-8000-000000000000")).toBeNull();
+  it("renvoie null quand la base ne renvoie aucune ligne (inconnu ou expiré)", async () => {
+    mockSupabase({ data: [], error: null });
+    expect(await getBooking(TOKEN)).toBeNull();
+  });
+
+  it("renvoie null pour un jeton mal formé, sans interroger la base", async () => {
+    const calls = mockSupabase({ data: [ROW], error: null });
     expect(await getBooking("pas-un-uuid")).toBeNull();
     expect(await getBooking("")).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
+  it("rejette en cas d'erreur réseau, sans recopier le message d'origine ni le jeton", async () => {
+    mockSupabase({ data: null, error: { message: `échec pour ${TOKEN}` } });
+    const error = await getBooking(TOKEN).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe("Lecture du rendez-vous impossible");
+    expect((error as Error).message).not.toContain(TOKEN);
+  });
+
+  it("rejette sans planter si les variables Supabase manquent", async () => {
+    vi.mocked(getSupabase).mockImplementation(() => {
+      throw new SupabaseConfigError();
+    });
+    await expect(getBooking(TOKEN)).rejects.toBeInstanceOf(SupabaseConfigError);
   });
 });
 
-describe("cancelBooking (encore factice)", () => {
-  it("annule une fois, puis renvoie false", async () => {
-    expect(await cancelBooking(FAKE_CANCEL_TOKENS.valid)).toBe(true);
-    expect(await getBooking(FAKE_CANCEL_TOKENS.valid)).toMatchObject({ status: "cancelled" });
-    expect(await cancelBooking(FAKE_CANCEL_TOKENS.valid)).toBe(false);
+describe("cancelBooking", () => {
+  it("envoie le jeton à la RPC, sans délai d'abandon, et renvoie true", async () => {
+    const calls = mockSupabase({ data: true, error: null });
+    expect(await cancelBooking(TOKEN)).toBe(true);
+    expect(calls.map(({ method, args }) => [method, ...args])).toEqual([
+      ["rpc", "cancel_booking", { p_token: TOKEN }],
+    ]);
   });
 
-  it("refuse à moins de 24 h du RDV (too_late)", async () => {
-    await expectBookingError(cancelBooking(FAKE_CANCEL_TOKENS.tooLate), "too_late");
+  it("renvoie false pour un lien inconnu, déjà annulé ou terminé (réponse identique)", async () => {
+    mockSupabase({ data: false, error: null });
+    expect(await cancelBooking(TOKEN)).toBe(false);
   });
 
-  it("renvoie false pour un lien inconnu ou mal formé", async () => {
-    expect(await cancelBooking("00000000-0000-4000-8000-000000000000")).toBe(false);
+  it("renvoie false pour un jeton mal formé, sans interroger la base", async () => {
+    const calls = mockSupabase({ data: true, error: null });
     expect(await cancelBooking("pas-un-uuid")).toBe(false);
+    expect(calls).toEqual([]);
+  });
+
+  it("traduit l'erreur too_late de la base (moins de 24 h avant le RDV)", async () => {
+    mockSupabase({ data: null, error: { code: "P0001", message: "too_late" } });
+    await expectBookingError(cancelBooking(TOKEN), "too_late");
+  });
+
+  it("classe en « unknown » une erreur réseau ou une config manquante, sans le jeton", async () => {
+    mockSupabase({
+      data: null,
+      error: { code: "", message: `TypeError: Failed to fetch ${TOKEN}` },
+    });
+    const error = await cancelBooking(TOKEN).catch((caught: unknown) => caught);
+    expect(error).toMatchObject({ code: "unknown", message: "unknown" });
+
+    vi.mocked(getSupabase).mockImplementation(() => {
+      throw new SupabaseConfigError();
+    });
+    await expectBookingError(cancelBooking(TOKEN), "unknown");
   });
 });

@@ -94,15 +94,12 @@ select is(
   false,
   'get_booking indique qu''il est trop tard pour annuler');
 
--- RDV passé : refus.
-select throws_ok(
-  $$select public.cancel_booking('40000000-0000-4000-8000-000000000003')$$,
-  'P0001', 'too_late',
-  'annulation d''un RDV passé refusée');
-select is(
-  (select can_cancel from public.get_booking('40000000-0000-4000-8000-000000000003')),
-  false,
-  'RDV terminé : plus annulable');
+-- RDV terminé : traité comme un lien inexistant (aucune ligne, false), sans « trop tard ».
+select is(public.cancel_booking('40000000-0000-4000-8000-000000000003'), false,
+  'annulation d''un RDV terminé : false, comme un jeton inconnu');
+select is_empty(
+  $$select * from public.get_booking('40000000-0000-4000-8000-000000000003')$$,
+  'RDV terminé : get_booking ne renvoie aucune ligne');
 
 -- Annulation nominale.
 select is(public.cancel_booking('40000000-0000-4000-8000-000000000001'), true,

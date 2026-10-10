@@ -1,0 +1,11 @@
+# En-têtes HTTP pour Cloudflare Pages (copié dans le build : dist/_headers).
+# Hébergeur retenu : Cloudflare Pages. Rien n'est déployé pour l'instant.
+#
+# /annuler porte le jeton d'annulation dans le FRAGMENT de l'URL (/annuler#<jeton>) : il n'est
+# jamais envoyé au serveur ni recopié dans un Referer. Ces en-têtes sont une protection en plus :
+#   · jamais de Referer vers un autre site ;
+#   · jamais dans un moteur de recherche.
+# La page pose aussi ces consignes dans son HTML (<meta>) : double protection.
+/annuler*
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex

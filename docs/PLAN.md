@@ -68,11 +68,17 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       fixe, 10 concurrence réelle via dblink), Vitest, Playwright (3 projets). Appliqué en
       local seulement. Ordre pour la production : migration (`db push`) PUIS front (le front
       de `main` n'appelle pas ces RPC ; le nouveau exige les nouvelles signatures).
-- [ ] Brancher le reste sur Supabase : consultation et annulation (`get_booking`,
-      `cancel_booking`, encore factices dans `data.ts`, avec TODO), puis supprimer le pont
-      provisoire `syncFakeServices` et `src/lib/fakeDb.ts`. **En attendant, le lien
-      d'annulation d'une VRAIE réservation affiche « lien invalide »** (la page /annuler lit
-      la fausse base) : à brancher avant toute mise en ligne de la réservation.
+- [x] **Annulation par lien réelle** (consigne 16, issue #20) : migration
+      `…_annulation_testable.sql` (`private.get_booking_at` / `cancel_booking_at` avec `p_now`,
+      sans droit ; RPC publiques `anon` seulement ; un RDV terminé se comporte comme un lien
+      inconnu : 0 ligne / `false`, plus de `too_late`). `/annuler` lit les vraies RPC ; 4 états ;
+      « Lien invalide » identique pour absent, mal formé, inconnu et expiré ; double clic sans
+      double annulation ; aucune adresse. pgTAP 11 (24 h pile / 23 h 59, 24 h absolues au
+      changement d'heure, décompte des 2 RDV, fuites, droits), Vitest, Playwright (3 projets).
+      Pont `syncFakeServices` supprimé. Appliqué en local seulement. Ordre pour la production :
+      migration (`db push`) PUIS front.
+- [ ] `src/lib/fakeDb.ts` reste utilisé par l'admin et la galerie (fictifs) : à supprimer avec
+      eux, phase 6.
 - [ ] Poids du bundle : supabase-js ajoute ~56 kB gzip (107 → 163 kB, avertissement Vite
       « chunk > 500 kB »). Piste à valider : charger le client par import dynamique.
 
@@ -97,14 +103,26 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       risque n° 1 de l'ADR 0002).
 - [ ] **Contact Instagram sur l'écran « Trop tard pour annuler en ligne »** de `/annuler`
       (lien vers le compte du barber, zone tactile 44 px) dès que le compte est fourni.
-- [x] Tests Playwright mobile _(parcours /reserver et 4 états de /annuler, sur fausse base)_
-- [ ] **`<meta name="robots" content="noindex">` sur `/admin`, `/annuler` et la 404**
-      (prop à ajouter à `PageMeta`). **À faire avant la mise en ligne de la réservation.**
-- [ ] **`referrer: no-referrer` sur `/annuler`** : l'URL contient le `cancel_token`, il ne doit
-      pas partir vers un autre site via l'en-tête Referer (balise meta et/ou en-tête HTTP de
-      l'hébergeur, Cloudflare Pages : fichier `_headers`). **À faire avant la mise en ligne de la réservation.**
-      Toujours à faire après la consigne 15 : la confirmation affiche désormais un VRAI jeton,
-      et la page /annuler aura bientôt des liens sortants (Instagram).
+- [x] Tests Playwright (3 projets) _(parcours /reserver et 4 états de /annuler, RPC interceptées)_
+- [x] `noindex` sur `/annuler` (prop `noindex` de `PageMeta` + `X-Robots-Tag` dans
+      `public/_headers`).
+- [ ] **`<meta name="robots" content="noindex">` sur `/admin` et la 404** (la prop `noindex` de
+      `PageMeta` existe : il reste à l'utiliser). **À faire avant la mise en ligne.**
+- [x] `referrer: no-referrer` sur `/annuler` : balise `<meta name="referrer">` (prop `noReferrer`
+      de `PageMeta`) + `Referrer-Policy` dans `public/_headers` (Cloudflare Pages), **fichier
+      prêt, rien de déployé**.
+- [x] **Hébergeur : Cloudflare Pages** (décision du 2026-10-10), `public/_headers` conservé, pas
+      de `vercel.json` à compléter. CLAUDE.md et l'ADR 0001 disent encore Vercel : à aligner.
+- [ ] **Déployer le site sur Cloudflare Pages, puis vérifier les en-têtes** :
+      `curl -sI <site>/annuler` doit montrer `referrer-policy: no-referrer` et
+      `x-robots-tag: noindex`.
+- [x] **Jeton dans le fragment de l'URL** (décision du 2026-10-10) : le lien est
+      `/annuler#<jeton>`. Le fragment n'est jamais envoyé au serveur : ni requête, ni Referer, ni
+      journal d'hébergeur. `CancelPage` le lit dans `location.hash` (en mémoire) ; l'ancien format
+      `?token=` est supprimé (rien n'est en ligne) et donne « Lien invalide » sans requête.
+      L'e2e vérifie qu'aucune requête (notre site ou un tiers) ne contient le jeton, ni dans
+      l'URL ni dans le Referer. Raison mesurée : avec `?token=`, même les requêtes vers notre
+      propre site portaient l'adresse complète dans le Referer.
 - [ ] Formulaire : `required` (ou équivalent via Zod / react-hook-form) et zones `aria-live`
       pour les créneaux, les erreurs et la confirmation _(reporté depuis le squelette des pages)_
 - [ ] Accessibilité : déplacer le focus (h1 ou `main`) après un changement de page, pour que
