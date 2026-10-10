@@ -92,11 +92,13 @@ pour qu'il ne dépende ni du changement d'heure ni du fuseau de la session.
 ## Risques acceptés pour l'instant
 
 1. **Spam avec des numéros ou emails inventés.** La limite de 2 RDV futurs est par contact. Un
-   script qui invente des numéros peut donc remplir les créneaux, et aussi obtenir les adresses
-   privées en réservant puis en annulant. Parade prévue : **Cloudflare Turnstile en V2**, plus,
-   au besoin, une limite globale (ex. N réservations par heure) à ajouter dans `settings()`.
-   **Protéger l'adresse privée est bloquant pour la mise en ligne** : il faudra la révéler tard,
-   ou après validation par le barber (case dédiée en phase 8 de `docs/PLAN.md`).
+   script qui invente des numéros peut donc remplir les créneaux. Parade prévue : **Cloudflare
+   Turnstile en V2**, plus, au besoin, une limite globale (ex. N réservations par heure) à
+   ajouter dans `settings()`. Depuis la consigne 15 (migration `…_reservation_reelle.sql`),
+   **aucune RPC ne renvoie plus l'adresse privée** (`create_booking`, `get_booking`) : réserver
+   puis annuler ne la révèle plus. La règle de révélation reste à décider (la révéler tard, ou
+   après validation par le barber) : **bloquant pour la mise en ligne**, case dédiée en phase 8
+   de `docs/PLAN.md`.
 2. **La purge RGPD n'est pas codée.** Les données clients doivent être supprimées 6 mois après le
    RDV, et `private.settings().data_retention` documente cette durée. **La purge DOIT être codée
    avant la mise en ligne** (case dédiée en phase 8 de `docs/PLAN.md`).
@@ -104,9 +106,14 @@ pour qu'il ne dépende ni du changement d'heure ni du fuseau de la session.
    `published = false` masque seulement la ligne. Parades : en phase 6, nommer les fichiers avec
    un uuid aléatoire, et supprimer le fichier, pas seulement la ligne.
 4. **Blocage ciblé d'un client.** En réservant 2 créneaux avec le numéro ou l'email de
-   quelqu'un d'autre, un tiers peut l'empêcher de réserver. `limit_reached` révèle aussi que ce
-   contact a 2 RDV à venir. Parades : Turnstile (V2) et la liste des RDV dans l'admin (phase 6),
-   qui permet au barber de repérer et d'annuler ces réservations.
+   quelqu'un d'autre, un tiers peut l'empêcher de réserver. `limit_reached` révèle aussi qu'un
+   contact a atteint la limite. Depuis la consigne 15, le message affiché est neutre
+   (« Réservation impossible avec ces coordonnées pour le moment… ») et ne dit pas si c'est le
+   téléphone ou l'email. Limite résiduelle assumée : toute réponse « refusé / accepté » à des
+   données valides trahit la limite ; mais la sonder sur le contact d'un tiers **crée un vrai
+   RDV** à son nom tant que la limite n'est pas atteinte, visible du barber. Parades : Turnstile
+   (V2) et la liste des RDV dans l'admin (phase 6), qui permet au barber de repérer et
+   d'annuler ces réservations.
 5. **Le MCP Supabase lit la base distante.** `read_only=true` empêche l'écriture, pas la lecture
    (en contournant la RLS). Une fois de vraies données clients en base, une session de debug
    pourrait faire passer des noms ou des téléphones dans le contexte de l'agent, y compris un

@@ -45,84 +45,85 @@ set local role anon;
 -- Cas nominal : le récap contient le lieu (déduit de la dispo), l'adresse et le token.
 -- ---------------------------------------------------------------------------
 select results_eq(
-  $$select location_label, private_address, ends_at - starts_at, cancel_token is not null
+  $$select location_label, ends_at - starts_at, cancel_token is not null
       from public.create_booking(
         '10000000-0000-4000-8000-000000000001',
         ((now() at time zone 'Europe/Paris')::date + 3 + time '10:00') at time zone 'Europe/Paris',
+        '20000000-0000-4000-8000-000000000001',
         '  Léa ', 'Martin', '06 12 34 56 78', null, null)$$,
-  $$values ('Lieu un'::text, '1 rue Secrète, 00000 Testville'::text, interval '60 minutes', true)$$,
-  'réservation nominale : récap avec lieu, adresse privée, durée et token');
+  $$values ('Lieu un'::text, interval '60 minutes', true)$$,
+  'réservation nominale : récap avec lieu, durée et token (sans adresse privée)');
 
 -- ---------------------------------------------------------------------------
 -- Refus
 -- ---------------------------------------------------------------------------
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '10:00') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '10:00') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Tom', 'Durand', '0698765432')$$,
   'P0001', 'slot_unavailable', 'créneau déjà réservé refusé');
 
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '19:00') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '19:00') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Tom', 'Durand', '0698765432')$$,
   'P0001', 'slot_unavailable', 'réservation hors disponibilité refusée');
 
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '10:30') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '10:30') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Tom', 'Durand', '0698765432')$$,
   'P0001', 'slot_unavailable', 'réservation hors de la grille de 70 min (10 h 30) refusée');
 
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      date_trunc('hour', now()) + interval '1 hour', 'Tom', 'Durand', '0698765432')$$,
+      date_trunc('hour', now()) + interval '1 hour', '20000000-0000-4000-8000-000000000001', 'Tom', 'Durand', '0698765432')$$,
   'P0001', 'too_soon', 'réservation à moins de 48 h refusée');
 
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      date_trunc('hour', now()) + interval '30 days', 'Tom', 'Durand', '0698765432')$$,
+      date_trunc('hour', now()) + interval '30 days', '20000000-0000-4000-8000-000000000001', 'Tom', 'Durand', '0698765432')$$,
   'P0001', 'too_far', 'réservation à plus de 4 semaines refusée');
 
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Robot', 'Spam', '0611111111', null, 'https://spam.example')$$,
   'P0001', 'invalid_input', 'honeypot rempli : refusé');
 
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Tom', 'Durand', null, null)$$,
   'P0001', 'invalid_input', 'ni téléphone ni email : refusé');
 
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Tom', 'Durand', null, 'pas-un-email')$$,
   'P0001', 'invalid_input', 'email invalide : refusé');
 
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       '', 'Durand', '0698765432')$$,
   'P0001', 'invalid_input', 'prénom vide : refusé');
 
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       '<img src=x onerror=alert(1)>', 'Durand', '0698765432')$$,
   'P0001', 'invalid_input', 'prénom contenant du HTML : refusé');
 
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Tom', 'Durand', '+06 98 76 54 32')$$,
   'P0001', 'invalid_input', 'téléphone mal formé (+06…) : refusé, pas de contournement de la limite');
 
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000002',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Tom', 'Durand', '0698765432')$$,
   'P0001', 'invalid_input', 'prestation inactive : refusée');
 
@@ -131,33 +132,33 @@ select throws_ok(
 -- ---------------------------------------------------------------------------
 select lives_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '11:10') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '11:10') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Léa', 'Martin', '+33 6 12 34 56 78')$$,
   '2e RDV futur avec le même téléphone : accepté');
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Léa', 'Martin', '06.12.34.56.78')$$,
   'P0001', 'limit_reached', '3e RDV futur avec le même téléphone : refusé');
 
 select lives_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '13:30') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '13:30') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Zoé', 'Bernard', null, 'zoe@example.test')$$,
   '1er RDV avec un email : accepté');
 select lives_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '14:40') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '14:40') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Zoé', 'Bernard', '0700000001', 'zoe@example.test')$$,
   '2e RDV avec le même email : accepté');
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Zoé', 'Bernard', '0700000002', '  ZOE@Example.TEST ')$$,
   'P0001', 'limit_reached', '3e RDV futur avec le même email (casse différente) : refusé');
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '15:50') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Zoé', 'Bernard', '0700000003', 'zoe+alias@example.test')$$,
   'P0001', 'limit_reached', '3e RDV futur avec un alias « +… » du même email : refusé');
 
@@ -167,32 +168,32 @@ select throws_ok(
 -- ---------------------------------------------------------------------------
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       U&'To\202Em', 'Durand', '0698765432')$$,
   'P0001', 'invalid_input', 'prénom avec inversion de sens (U+202E) : refusé');
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Tom', U&'Du\200Brand', '0698765432')$$,
   'P0001', 'invalid_input', 'nom avec caractère invisible (U+200B) : refusé');
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Tom', 'Durand', null, U&'zoe\200B@example.test')$$,
   'P0001', 'invalid_input', 'email avec caractère invisible : refusé (pas de contournement de la limite)');
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Tom', 'Durand', null, U&'tom\202Etxt.exe@example.test')$$,
   'P0001', 'invalid_input', 'email avec inversion de sens (U+202E) : refusé');
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Tom', 'Durand', '+33 06 98 76 54 32')$$,
   'P0001', 'invalid_input', 'téléphone « +33 0… » : refusé');
 select lives_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris',
+      ((now() at time zone 'Europe/Paris')::date + 3 + time '12:20') at time zone 'Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Ugo', 'Moreau', '0033 7 11 22 33 44')$$,
   'téléphone « 0033 7… » : accepté');
 

@@ -72,15 +72,17 @@ set local role anon;
 -- Bon token.
 -- ---------------------------------------------------------------------------
 select results_eq(
-  $$select status, location_label, private_address, first_name, can_cancel
+  $$select status, location_label, first_name, can_cancel
       from public.get_booking('40000000-0000-4000-8000-000000000001')$$,
-  $$values ('confirmed'::text, 'Lieu un'::text, 'Adresse secrète 42'::text, 'Léa'::text, true)$$,
-  'get_booking avec le bon token : récap complet avec l''adresse privée');
+  $$values ('confirmed'::text, 'Lieu un'::text, 'Léa'::text, true)$$,
+  'get_booking avec le bon token : statut, lieu public, prénom, annulable');
 select is(
   (select count(*) from public.get_booking('40000000-0000-4000-8000-000000000001') g
-    where to_jsonb(g) ?| array['phone', 'email', 'last_name', 'id', 'cancel_token']),
+    where to_jsonb(g) ?| array['private_address', 'phone', 'email', 'last_name', 'id',
+                               'cancel_token']
+       or to_jsonb(g)::text like '%secrète%'),
   0::bigint,
-  'get_booking ne renvoie ni téléphone, ni email, ni nom, ni identifiant');
+  'get_booking ne renvoie ni adresse privée, ni téléphone, ni email, ni nom, ni identifiant');
 
 -- Moins de 24 h avant : refus.
 select throws_ok(
@@ -92,15 +94,15 @@ select is(
   false,
   'get_booking indique qu''il est trop tard pour annuler');
 
--- RDV passé : refus, et l'adresse n'est plus communiquée.
+-- RDV passé : refus.
 select throws_ok(
   $$select public.cancel_booking('40000000-0000-4000-8000-000000000003')$$,
   'P0001', 'too_late',
   'annulation d''un RDV passé refusée');
 select is(
-  (select private_address from public.get_booking('40000000-0000-4000-8000-000000000003')),
-  null,
-  'RDV terminé : l''adresse privée n''est plus renvoyée');
+  (select can_cancel from public.get_booking('40000000-0000-4000-8000-000000000003')),
+  false,
+  'RDV terminé : plus annulable');
 
 -- Annulation nominale.
 select is(public.cancel_booking('40000000-0000-4000-8000-000000000001'), true,
@@ -108,9 +110,9 @@ select is(public.cancel_booking('40000000-0000-4000-8000-000000000001'), true,
 select is(public.cancel_booking('40000000-0000-4000-8000-000000000001'), false,
   'deuxième annulation : false (déjà annulé)');
 select results_eq(
-  $$select status, private_address from public.get_booking('40000000-0000-4000-8000-000000000001')$$,
-  $$values ('cancelled'::text, null::text)$$,
-  'RDV annulé : statut cancelled et adresse privée masquée');
+  $$select status, can_cancel from public.get_booking('40000000-0000-4000-8000-000000000001')$$,
+  $$values ('cancelled'::text, false)$$,
+  'RDV annulé : statut cancelled, plus annulable');
 
 reset role;
 select is(

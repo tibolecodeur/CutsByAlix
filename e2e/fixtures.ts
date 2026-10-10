@@ -69,6 +69,42 @@ export async function mockServices(page: Page, response: ServicesResponse): Prom
   });
 }
 
+/** Réponse simulée d'une RPC : corps JSON (et statut), ou panne réseau. */
+export type RpcResponse = { status?: number; body: unknown } | "network-error";
+
+/** Erreur métier telle que PostgREST la renvoie pour une exception P0001 (`raise exception`). */
+export function rpcError(code: string): RpcResponse {
+  return { status: 400, body: { code: "P0001", message: code, details: null, hint: null } };
+}
+
+/**
+ * Remplace une RPC (`POST /rest/v1/rpc/<nom>`). `respond` reçoit les paramètres envoyés par
+ * le site (corps JSON) : un test peut répondre selon le jour demandé, ou vérifier ce qui part.
+ */
+export async function mockRpc(
+  page: Page,
+  name: string,
+  respond: (args: Record<string, unknown>) => RpcResponse,
+): Promise<void> {
+  await page.route(new RegExp(`/rest/v1/rpc/${name}(\\?|$)`), async (route) => {
+    if (route.request().method() === "OPTIONS") {
+      await route.fulfill({ status: 204, headers: corsHeaders(route) });
+      return;
+    }
+    const response = respond((route.request().postDataJSON() ?? {}) as Record<string, unknown>);
+    if (response === "network-error") {
+      await route.abort("internetdisconnected");
+    } else {
+      await route.fulfill({
+        status: response.status ?? 200,
+        headers: corsHeaders(route),
+        contentType: "application/json",
+        body: JSON.stringify(response.body),
+      });
+    }
+  });
+}
+
 export const test = base.extend<{ supabaseMock: void }>({
   supabaseMock: [
     async ({ page }, use) => {

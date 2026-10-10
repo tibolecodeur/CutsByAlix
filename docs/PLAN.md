@@ -58,9 +58,21 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       (les lieux du seed sont créés inactifs).
 - [x] Revue sécurité : lieux du seed inactifs, `seed-dev.sql` retiré de `config.toml`
       (`npm run db:reset:dev` en local) avec une garde renforcée.
-- [ ] Brancher le reste sur Supabase : créneaux (`get_available_slots`), réservation
-      (`create_booking`), consultation et annulation (`get_booking`, `cancel_booking`), puis
-      supprimer le pont provisoire `syncFakeServices` et `src/lib/fakeDb.ts`.
+- [x] **Créneaux et réservation réels** (consigne 15, issue #18) : migration
+      `…_reservation_reelle.sql` (`get_available_slots` avec `location_id` ; `create_booking`
+      avec `p_location_id`, sans adresse privée, logique dans `private.create_booking_at(p_now…)`,
+      verrou consultatif global + exclusion, bornes des entrées ; `get_booking` sans adresse ;
+      les 4 RPC exécutables par `anon` seulement). Front : `getAvailableSlots` et
+      `createBooking` appellent les RPC, délai de 48 h expliqué, créneau perdu → liste relue,
+      message de limite neutre, confirmation sans adresse. pgTAP (09 règles aux limites à date
+      fixe, 10 concurrence réelle via dblink), Vitest, Playwright (3 projets). Appliqué en
+      local seulement. Ordre pour la production : migration (`db push`) PUIS front (le front
+      de `main` n'appelle pas ces RPC ; le nouveau exige les nouvelles signatures).
+- [ ] Brancher le reste sur Supabase : consultation et annulation (`get_booking`,
+      `cancel_booking`, encore factices dans `data.ts`, avec TODO), puis supprimer le pont
+      provisoire `syncFakeServices` et `src/lib/fakeDb.ts`. **En attendant, le lien
+      d'annulation d'une VRAIE réservation affiche « lien invalide »** (la page /annuler lit
+      la fausse base) : à brancher avant toute mise en ligne de la réservation.
 - [ ] Poids du bundle : supabase-js ajoute ~56 kB gzip (107 → 163 kB, avertissement Vite
       « chunk > 500 kB »). Piste à valider : charger le client par import dynamique.
 
@@ -70,28 +82,19 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       confirmation avec lien d'annulation et bouton « Copier le lien » (aucun e-mail de
       confirmation : la page invite à copier le lien ou à faire une capture d'écran), 4 états de
       /annuler. Reste : branchement Supabase)_
-- [ ] **Branchement SQL des créneaux (règle : le client choisit un créneau, jamais un lieu)** :
-      vérifié dans `…_fonctions_rpc.sql`, les RPC ne collent pas encore au front. Nouvelle
-      migration (sans toucher aux anciennes), tests pgTAP mis à jour :
-  - `get_available_slots` renvoie `starts_at, ends_at, location_label` mais PAS `location_id`
-    (pourtant présent dans `private.compute_slots`) : l'ajouter au `returns table` (changement
-    de type de retour : `drop function` puis `create`, et rejouer REVOKE / GRANT). Toujours
-    jamais `private_address`.
-  - `create_booking` n'a pas de paramètre de lieu : il DÉDUIT le lieu du créneau
-    (`compute_slots … limit 1`, sans ambiguïté puisque deux dispos ne se chevauchent jamais).
-    Ajouter `p_location_id uuid` et refuser (`slot_unavailable`) s'il diffère du lieu déduit :
-    si le barber change le lieu d'une dispo entre l'affichage et la réservation, le client ne
-    réserve pas un lieu qu'il n'a pas vu. Nouvelle signature : `drop` de l'ancienne, REVOKE /
-    GRANT de la nouvelle. Le front (`createBooking`) envoie déjà `locationId`.
-  - pgTAP : `location_id` présent dans les créneaux, mauvais `p_location_id` refusé, l'anonyme
-    ne voit toujours pas l'adresse ni la table `locations`.
+- [x] **Branchement SQL des créneaux (règle : le client choisit un créneau, jamais un lieu)** :
+      fait par la consigne 15 (`location_id` dans les créneaux, `p_location_id` vérifié par
+      `create_booking`, tests pgTAP 09).
 - [x] ~~Fonction des lieux publics (`id` + `public_label`)~~ : **plus nécessaire**, le lieu (id
       et libellé public) arrive avec chaque créneau via `get_available_slots`. Seul cas qui la
       justifierait encore : afficher les lieux hors du parcours (ex. section « Où me trouver »
       de l'accueil), à décider le moment venu.
-- [ ] **Règle de révélation de l'adresse privée à décider AVANT le branchement de la
-      réservation** (aujourd'hui `create_booking` la renvoie tout de suite : voir l'étape
-      « Protéger l'adresse privée » de la phase 8 et le risque n° 1 de l'ADR 0002).
+- [ ] **Règle de révélation de l'adresse privée à décider** (à quel moment, et à qui, le
+      client l'apprend). Depuis la consigne 15, AUCUNE RPC ne la renvoie (`create_booking`,
+      `get_booking`) et l'écran de confirmation ne l'affiche pas (TODO dans
+      `ConfirmationStep.tsx` et `CancelPage.tsx`) : un client qui réserve ne sait donc pas où
+      aller. **À trancher avant d'activer un lieu en production** (voir la phase 8 et le
+      risque n° 1 de l'ADR 0002).
 - [ ] **Contact Instagram sur l'écran « Trop tard pour annuler en ligne »** de `/annuler`
       (lien vers le compte du barber, zone tactile 44 px) dès que le compte est fourni.
 - [x] Tests Playwright mobile _(parcours /reserver et 4 états de /annuler, sur fausse base)_
@@ -100,6 +103,8 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 - [ ] **`referrer: no-referrer` sur `/annuler`** : l'URL contient le `cancel_token`, il ne doit
       pas partir vers un autre site via l'en-tête Referer (balise meta et/ou en-tête HTTP de
       l'hébergeur, Cloudflare Pages : fichier `_headers`). **À faire avant la mise en ligne de la réservation.**
+      Toujours à faire après la consigne 15 : la confirmation affiche désormais un VRAI jeton,
+      et la page /annuler aura bientôt des liens sortants (Instagram).
 - [ ] Formulaire : `required` (ou équivalent via Zod / react-hook-form) et zones `aria-live`
       pour les créneaux, les erreurs et la confirmation _(reporté depuis le squelette des pages)_
 - [ ] Accessibilité : déplacer le focus (h1 ou `main`) après un changement de page, pour que
@@ -126,9 +131,19 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 - [ ] **Purge RGPD codée et planifiée** : suppression des données clients 6 mois après le RDV
       (`private.settings().data_retention`). **Bloquant pour la mise en ligne** (ADR 0002).
 - [ ] **Protéger l'adresse privée** : la révéler tard (ex. quelques heures avant le RDV) ou après
-      validation de la réservation par le barber. Aujourd'hui `create_booking` la renvoie tout de
-      suite : n'importe qui peut l'obtenir en réservant avec un contact inventé puis en annulant
-      (risque n° 1 de l'ADR 0002). **Bloquant pour la mise en ligne.**
+      validation de la réservation par le barber. Depuis la consigne 15, plus aucune RPC ne la
+      renvoie : il reste à DÉCIDER et coder la règle de révélation (risque n° 1 de l'ADR 0002).
+      **Bloquant pour la mise en ligne.**
+- [ ] **Anti-abus des réservations** (revue sécurité de la consigne 15, décision 2026-10-10 :
+      pas maintenant, mais **bloquant pour la mise en ligne**). Deux risques :
+  - **Créneaux saturés** : un script qui appelle `create_booking` directement (le honeypot ne
+    le gêne pas) avec des numéros inventés peut réserver tous les créneaux des 4 semaines.
+  - **Blocage du numéro d'un tiers** : en réservant 2 RDV avec le téléphone ou l'email de
+    quelqu'un d'autre, on l'empêche de réserver ; la réponse `limit_reached` permet aussi de
+    compter ses RDV futurs (risque n° 4 de l'ADR 0002).
+  - Options à choisir : plafond global (`max_bookings_per_hour` dans `private.settings()`,
+    vérifié sous le verrou global de `create_booking_at`) ; annulation d'un RDV côté admin
+    (phase 6, pour nettoyer les fausses réservations) ; Cloudflare Turnstile avancé en V1.
 
 ## Backlog (non planifié)
 

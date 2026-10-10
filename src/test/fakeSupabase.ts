@@ -4,12 +4,12 @@ import type { Database } from "@/lib/database.types";
 /** Réponse d'une requête supabase-js : `{ data, error }`, jamais d'exception. */
 export type FakeQueryResult = {
   data: unknown;
-  error: { message: string } | null;
+  error: { message: string; code?: string } | null;
 };
 
 /**
  * Client Supabase SIMULÉ pour Vitest : aucune requête réseau. Chaque méthode du constructeur
- * de requête (`from`, `select`, `eq`, `order`…) est notée dans `calls` puis renvoie le même
+ * de requête (`from`, `select`, `rpc`, `order`…) est notée dans `calls` puis renvoie le même
  * objet, comme la vraie API chaînable. `await` sur la chaîne renvoie `result`.
  *
  * Astuce JS : `await x` appelle `x.then(...)` si cette méthode existe (« thenable »). C'est ainsi
@@ -21,7 +21,7 @@ export function fakeSupabaseClient(result: FakeQueryResult) {
     then: (resolve: (value: FakeQueryResult) => unknown, reject: (reason: unknown) => unknown) =>
       Promise.resolve(result).then(resolve, reject),
   };
-  for (const method of ["from", "select", "eq", "order", "abortSignal"]) {
+  for (const method of ["from", "select", "eq", "order", "rpc", "abortSignal"]) {
     builder[method] = (...args: unknown[]) => {
       calls.push({ method, args });
       return builder;

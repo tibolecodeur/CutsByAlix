@@ -13,17 +13,27 @@ import { formatLongDay, formatTime } from "@/lib/dates";
 import { BookingSummary } from "@/pages/booking/BookingSummary";
 import { StepActions, StepFrame } from "@/pages/booking/StepFrame";
 
-/** Erreurs qui obligent à choisir un autre créneau : on renvoie à l'étape 3. */
+/**
+ * Erreurs qui obligent à choisir un autre créneau : on renvoie à l'étape 2, dont la liste se
+ * recharge d'elle-même (l'étape est remontée, donc ses créneaux sont relus en base).
+ * « slot_unavailable » couvre aussi un lieu changé ou une dispo retirée : on ne dit pas
+ * « réservé par quelqu'un d'autre ».
+ */
 const SLOT_ERRORS: Partial<Record<BookingErrorCode, string>> = {
-  slot_unavailable: "Ce créneau vient d'être réservé par quelqu'un d'autre. Choisis-en un autre.",
-  too_soon: `Les réservations se font au plus tard ${BOOKING_RULES.minNoticeHours} h avant. Choisis un autre créneau.`,
-  too_far: "Ce créneau est trop loin dans le temps. Choisis-en un autre.",
+  slot_unavailable: "Ce créneau n'est plus disponible. Choisis-en un autre.",
+  too_soon: `On réserve au plus tard ${BOOKING_RULES.minNoticeHours} h avant. Choisis un créneau plus tard.`,
+  too_far: `On réserve au maximum ${BOOKING_RULES.maxAdvanceDays / 7} semaines à l'avance. Choisis un autre créneau.`,
 };
 
+/**
+ * Messages sobres : « limit_reached » ne confirme pas que ce numéro ou cet email a déjà des
+ * rendez-vous (quelqu'un pourrait tester les coordonnées d'un autre).
+ */
 const OTHER_ERRORS: Partial<Record<BookingErrorCode, string>> = {
-  limit_reached: `Tu as déjà ${BOOKING_RULES.maxFutureBookings} rendez-vous à venir avec ce téléphone ou cet email. Annule-en un avant d'en réserver un autre.`,
+  limit_reached:
+    "Réservation impossible avec ces coordonnées pour le moment. Si tu as déjà des rendez-vous à venir, garde ton lien d'annulation à portée de main.",
   invalid_input:
-    "Certaines informations ne sont pas acceptées. Reviens à l'étape précédente pour les vérifier.",
+    "Certaines informations ne sont pas acceptées. Reviens à l'étape précédente pour vérifier tes coordonnées.",
 };
 
 const DEFAULT_ERROR =

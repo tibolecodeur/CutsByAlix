@@ -1,30 +1,16 @@
 import { BOOKING_RULES, HOUR_MS } from "@/lib/bookingRules";
-import { addDaysToKey, formatTime, parisDateTime, parisDayKey, type DayKey } from "@/lib/dates";
-import {
-  fakeDb,
-  fakeLatency,
-  overlapsRange,
-  syncFakeServices,
-  type BookingRow,
-} from "@/lib/fakeDb";
+import type { DayKey } from "@/lib/dates";
+import { fakeDb, fakeLatency, syncFakeServices } from "@/lib/fakeDb";
 import { getSupabase } from "@/lib/supabase";
-import { randomUuid } from "@/lib/uuid";
-import {
-  isValidEmail,
-  isValidName,
-  isValidPhone,
-  normalizeEmail,
-  normalizePhone,
-} from "@/features/booking/validation";
 
 /**
  * Couche données de la réservation : les écrans n'importent QUE ces fonctions.
  * Chaque fonction a la forme de la table ou de la RPC Supabase correspondante
- * (supabase/migrations/…_fonctions_rpc.sql), avec des noms en camelCase.
+ * (supabase/migrations/…_reservation_reelle.sql), avec des noms en camelCase.
  *
- * Branché sur Supabase : `getServices`.
- * TODO: brancher Supabase. Le reste est encore factice (src/lib/fakeDb.ts) : remplacer chaque
- * corps par l'appel `getSupabase().rpc(…)`, puis convertir la ligne reçue.
+ * Branché sur Supabase : `getServices`, `getAvailableSlots`, `createBooking`.
+ * TODO: brancher Supabase. `getBooking` et `cancelBooking` sont encore factices
+ * (src/lib/fakeDb.ts) : remplacer chaque corps par l'appel `getSupabase().rpc(…)`.
  */
 
 /** Table `services`. */
@@ -62,25 +48,26 @@ export type NewBooking = {
   website?: string;
 };
 
-/** Ligne renvoyée par la RPC `create_booking` : le récapitulatif, avec l'adresse privée. */
+/**
+ * Ligne renvoyée par la RPC `create_booking` : le récapitulatif. Pas d'adresse privée : la
+ * règle de révélation reste à décider (docs/PLAN.md).
+ */
 export type BookingReceipt = {
   startsAt: string;
   endsAt: string;
   serviceName: string;
   locationLabel: string;
-  privateAddress: string;
+  /** Seul moyen d'annuler : renvoyé une seule fois, jamais journalisé. */
   cancelToken: string;
 };
 
-/** Ligne renvoyée par la RPC `get_booking`. */
+/** Ligne renvoyée par la RPC `get_booking` (ni adresse, ni téléphone, ni email). */
 export type BookingDetails = {
   status: "confirmed" | "cancelled";
   startsAt: string;
   endsAt: string;
   serviceName: string;
   locationLabel: string;
-  /** Révélée seulement pour un RDV confirmé et pas encore terminé. */
-  privateAddress: string | null;
   firstName: string;
   canCancel: boolean;
 };
@@ -95,6 +82,15 @@ export type BookingErrorCode =
   | "too_late"
   | "unknown";
 
+const RPC_ERROR_CODES: readonly BookingErrorCode[] = [
+  "invalid_input",
+  "slot_unavailable",
+  "too_soon",
+  "too_far",
+  "limit_reached",
+  "too_late",
+];
+
 export class BookingError extends Error {
   readonly code: BookingErrorCode;
 
@@ -103,6 +99,16 @@ export class BookingError extends Error {
     this.name = "BookingError";
     this.code = code;
   }
+}
+
+/**
+ * Traduit l'erreur d'une RPC en `BookingError`. Seules les exceptions métier (code SQL P0001,
+ * message = clé connue) gardent leur clé ; tout le reste (réseau, panne, config) devient
+ * « unknown ». Le message d'origine n'est PAS recopié : il pourrait contenir des données.
+ */
+function toBookingError(error: { code?: string; message: string }): BookingError {
+  const code = RPC_ERROR_CODES.find((known) => known === error.message);
+  return new BookingError(error.code === "P0001" && code ? code : "unknown");
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -140,145 +146,66 @@ export async function getServices(): Promise<Service[]> {
     durationMin: s.duration_min,
     priceLabel: s.price_label,
   }));
-  // TODO: brancher Supabase. À retirer avec la fausse base (créneaux et réservation).
+  // TODO: brancher Supabase. À retirer avec la fausse base (annulation encore factice).
   syncFakeServices(data);
   return services;
 }
 
 /**
- * Copie de `private.max_booking_time` : maintenant + 4 semaines, à la même heure d'horloge à
- * Paris (même si un changement d'heure tombe entre les deux).
+ * RPC `get_available_slots(p_service_id, p_day)` : créneaux libres d'un jour (heure de Paris),
+ * déjà filtrés par la base (lieux actifs, au moins 48 h, au plus 4 semaines, grille de 70 min,
+ * créneaux pris retirés). Rejette en cas d'erreur réseau, de base ou de config manquante.
  */
-function maxBookingTime(now: Date): number {
-  const day = addDaysToKey(parisDayKey(now), BOOKING_RULES.maxAdvanceDays);
-  return parisDateTime(day, formatTime(now)).getTime();
+export async function getAvailableSlots(serviceId: string, day: DayKey): Promise<AvailableSlot[]> {
+  const { data, error } = await getSupabase()
+    .rpc("get_available_slots", { p_service_id: serviceId, p_day: day })
+    .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+  if (error) throw new Error(`Lecture des créneaux impossible : ${error.message}`);
+
+  return data.map((slot) => ({
+    startsAt: slot.starts_at,
+    endsAt: slot.ends_at,
+    locationId: slot.location_id,
+    locationLabel: slot.location_label,
+  }));
 }
 
 /**
- * Copie de `private.compute_slots` : grille au pas de 70 min depuis le DÉBUT de chaque
- * dispo, créneaux entiers dans la dispo, moins les RDV confirmés (tous lieux), moins ce qui
- * est à moins de 48 h ou au-delà de 4 semaines.
+ * RPC `create_booking` : crée le RDV et renvoie le récap avec le lien d'annulation.
+ * Toutes les règles sont vérifiées par la base ; une erreur devient une `BookingError`.
+ *
+ * Volontairement SANS délai d'abandon : couper la requête côté navigateur n'annule pas
+ * l'insertion côté base. Le RDV serait créé, mais le client aurait perdu son seul lien
+ * d'annulation. On laisse le navigateur aller au bout (ou échouer de lui-même).
  */
-function computeSlots(serviceId: string, day: DayKey, now: Date) {
-  const db = fakeDb();
-  const service = db.services.find((s) => s.id === serviceId && s.active);
-  if (!service) return [];
-
-  const durationMs = service.duration_min * 60_000;
-  const stepMs = BOOKING_RULES.slotStepMinutes * 60_000;
-  const dayStart = parisDateTime(day, "00:00").getTime();
-  const dayEnd = parisDateTime(addDaysToKey(day, 1), "00:00").getTime();
-  const earliest = now.getTime() + BOOKING_RULES.minNoticeHours * HOUR_MS;
-  const latest = maxBookingTime(now);
-
-  const slots: AvailableSlot[] = [];
-  for (const availability of db.availabilities) {
-    const location = db.locations.find((l) => l.id === availability.location_id && l.active);
-    if (!location) continue;
-    const availabilityEnd = Date.parse(availability.ends_at);
-    for (
-      let start = Date.parse(availability.starts_at);
-      start + durationMs <= availabilityEnd;
-      start += stepMs
-    ) {
-      if (start < dayStart || start >= dayEnd || start < earliest || start > latest) continue;
-      const startsAt = new Date(start).toISOString();
-      const endsAt = new Date(start + durationMs).toISOString();
-      const taken = db.bookings.some(
-        (b) => b.status === "confirmed" && overlapsRange(b.starts_at, b.ends_at, startsAt, endsAt),
-      );
-      if (!taken) {
-        slots.push({
-          startsAt,
-          endsAt,
-          locationId: location.id,
-          locationLabel: location.public_label,
-        });
-      }
-    }
-  }
-  return slots.sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
-}
-
-/** RPC `get_available_slots(p_service_id, p_day)` : créneaux libres d'un jour (heure de Paris). */
-export async function getAvailableSlots(serviceId: string, day: DayKey): Promise<AvailableSlot[]> {
-  await fakeLatency();
-  return computeSlots(serviceId, day, new Date());
-}
-
-/** RPC `create_booking` : crée le RDV et renvoie le récap (dont l'adresse et le lien d'annulation). */
 export async function createBooking(input: NewBooking): Promise<BookingReceipt> {
-  await fakeLatency();
-  const db = fakeDb();
-  const now = new Date();
-
-  if ((input.website ?? "").trim() !== "") throw new BookingError("invalid_input");
-  const phone = normalizePhone(input.phone ?? "");
-  const email = normalizeEmail(input.email ?? "");
-  const service = db.services.find((s) => s.id === input.serviceId && s.active);
-  if (
-    !service ||
-    !isValidName(input.firstName) ||
-    !isValidName(input.lastName) ||
-    (phone === null && email === null) ||
-    (phone !== null && !isValidPhone(phone)) ||
-    (email !== null && !isValidEmail(email))
-  ) {
-    throw new BookingError("invalid_input");
+  let response;
+  try {
+    response = await getSupabase().rpc("create_booking", {
+      p_service_id: input.serviceId,
+      p_starts_at: input.startsAt,
+      p_location_id: input.locationId,
+      p_first_name: input.firstName,
+      p_last_name: input.lastName,
+      p_phone: input.phone?.trim() || null,
+      p_email: input.email?.trim() || null,
+      p_website: input.website || null,
+    });
+  } catch {
+    // Config manquante (SupabaseConfigError) ou erreur inattendue du client.
+    throw new BookingError("unknown");
   }
 
-  const startsAtMs = Date.parse(input.startsAt);
-  if (startsAtMs < now.getTime() + BOOKING_RULES.minNoticeHours * HOUR_MS) {
-    throw new BookingError("too_soon");
-  }
-  if (startsAtMs > maxBookingTime(now)) {
-    throw new BookingError("too_far");
-  }
-
-  // Le créneau doit exister, libre, ET dans le lieu affiché au client : si le barber a changé
-  // le lieu de la dispo entre-temps, le client ne réserve pas un lieu qu'il n'a pas vu.
-  const slot = computeSlots(service.id, parisDayKey(input.startsAt), now).find(
-    (s) => Date.parse(s.startsAt) === startsAtMs && s.locationId === input.locationId,
-  );
-  if (!slot) throw new BookingError("slot_unavailable");
-
-  // Anti-abus : au plus N RDV futurs par téléphone ou par email (alias « +… » ignoré).
-  const withoutAlias = (value: string) => value.replace(/\+[^@]*@/, "@");
-  const futureForContact = db.bookings.filter(
-    (b) =>
-      b.status === "confirmed" &&
-      Date.parse(b.starts_at) > now.getTime() &&
-      ((phone !== null && b.phone === phone) ||
-        (email !== null && b.email !== null && withoutAlias(b.email) === withoutAlias(email))),
-  );
-  if (futureForContact.length >= BOOKING_RULES.maxFutureBookings) {
-    throw new BookingError("limit_reached");
-  }
-
-  const location = db.locations.find((l) => l.id === slot.locationId)!;
-  const booking: BookingRow = {
-    id: randomUuid(),
-    service_id: service.id,
-    location_id: location.id,
-    starts_at: slot.startsAt,
-    ends_at: slot.endsAt,
-    first_name: input.firstName.trim(),
-    last_name: input.lastName.trim(),
-    phone,
-    email,
-    status: "confirmed",
-    cancel_token: randomUuid(),
-    created_at: now.toISOString(),
-  };
-  db.bookings.push(booking);
-
+  const { data, error } = response;
+  if (error) throw toBookingError(error);
+  const row = data[0];
+  if (!row) throw new BookingError("unknown");
   return {
-    startsAt: booking.starts_at,
-    endsAt: booking.ends_at,
-    serviceName: service.name,
-    locationLabel: location.public_label,
-    privateAddress: location.private_address,
-    cancelToken: booking.cancel_token,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    serviceName: row.service_name,
+    locationLabel: row.location_label,
+    cancelToken: row.cancel_token,
   };
 }
 
@@ -300,8 +227,6 @@ export async function getBooking(token: string): Promise<BookingDetails | null> 
     endsAt: booking.ends_at,
     serviceName: service.name,
     locationLabel: location.public_label,
-    privateAddress:
-      isConfirmed && Date.parse(booking.ends_at) > now ? location.private_address : null,
     firstName: booking.first_name,
     canCancel:
       isConfirmed &&

@@ -1,40 +1,89 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
-import { expect, test } from "./fixtures.ts";
+import {
+  addDaysToKey,
+  formatDayKey,
+  isoWeekday,
+  parisDateTime,
+  parisDayKey,
+  type DayKey,
+} from "../src/lib/dates.ts";
+import { expect, mockRpc, rpcError, test, type RpcResponse } from "./fixtures.ts";
 
 /**
- * Parcours /reserver sur mobile (Android et iPhone), contre la fausse base de données
- * (src/lib/fakeDb.ts) : ses dispos sont recalculées à partir d'aujourd'hui à chaque chargement.
- * Dispos de démonstration : aujourd'hui 9 h–21 h, puis mardi, mercredi, vendredi, samedi ;
- * rien le dimanche ni le lundi. Règles : grille de 70 min, rien à moins de 48 h (aujourd'hui
- * et demain n'ont donc jamais de créneau).
+ * Parcours /reserver (Android, iPhone, desktop) contre des RPC Supabase INTERCEPTÉES : aucune
+ * requête n'atteint une vraie base (e2e/fixtures.ts coupe tout ce qui n'est pas simulé).
+ * Créneaux simulés : chaque jour sauf le lundi, 14:00 « Angers » et 15:10
+ * « Saint-Christophe-du-Bois » (heure de Paris). Règle affichée : rien à moins de 48 h, le site
+ * n'interroge même pas la base pour ces jours-là.
  */
-test.skip(({ isMobile }) => !isMobile, "Parcours testé sur les projets mobiles");
 
-const JOUR = /^(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche) \d/;
+const ANGERS = "a11ce000-0000-4000-8000-000000000101";
+const SAINT_CHRISTOPHE = "a11ce000-0000-4000-8000-000000000102";
+const TOKEN = "7f1c2a9e-3b4d-4e5f-8a6b-9c0d1e2f3a4b";
+const HOUR_MS = 3_600_000;
+
+type SlotRow = { starts_at: string; ends_at: string; location_id: string; location_label: string };
+
+function slot(day: DayKey, start: string, end: string, locationId: string, label: string): SlotRow {
+  return {
+    starts_at: parisDateTime(day, start).toISOString(),
+    ends_at: parisDateTime(day, end).toISOString(),
+    location_id: locationId,
+    location_label: label,
+  };
+}
+
+function slotsFor(day: DayKey): SlotRow[] {
+  if (isoWeekday(day) === 1) return [];
+  return [
+    slot(day, "14:00", "15:00", ANGERS, "Angers"),
+    slot(day, "15:10", "16:10", SAINT_CHRISTOPHE, "Saint-Christophe-du-Bois"),
+  ];
+}
+
+/** Premier jour (à Paris) au-delà des 48 h qui a des créneaux simulés (pas un lundi). */
+function firstDayWithSlots(): DayKey {
+  let day = parisDayKey(new Date(Date.now() + 48 * HOUR_MS));
+  while (isoWeekday(day) === 1) day = addDaysToKey(day, 1);
+  return day;
+}
+
+/** Récap renvoyé par create_booking pour ce créneau (sans adresse, comme la vraie RPC). */
+function receiptFor(row: SlotRow) {
+  return [
+    {
+      starts_at: row.starts_at,
+      ends_at: row.ends_at,
+      service_name: "Coupe",
+      location_label: row.location_label,
+      cancel_token: TOKEN,
+    },
+  ];
+}
+
+/** get_available_slots simulée ; renvoie la liste des jours demandés par le site. */
+async function mockSlots(
+  page: Page,
+  respond = (day: DayKey): RpcResponse => ({ body: slotsFor(day) }),
+) {
+  const requested: string[] = [];
+  await mockRpc(page, "get_available_slots", (args) => {
+    requested.push(String(args.p_day));
+    return respond(String(args.p_day));
+  });
+  return requested;
+}
 
 /** Les jours du calendrier ont un bouton radio masqué : on touche son libellé visible. */
-async function toucherJour(jour: Locator) {
+async function toucherJour(page: Page, day: DayKey) {
+  const jour = page.getByRole("radio", { name: formatDayKey(day) });
   await jour.locator("xpath=ancestor::label[1]").click();
   await expect(jour).toBeChecked();
 }
 
 async function continuer(page: Page) {
   await page.getByRole("button", { name: "Continuer" }).click();
-}
-
-/** Parcourt les jours jusqu'au premier qui a des créneaux ; renvoie le groupe de créneaux. */
-async function choisirUnJourAvecCreneaux(page: Page): Promise<Locator> {
-  const jours = page.getByRole("radio", { name: JOUR });
-  const creneaux = page.getByRole("group", { name: /^Créneaux libres/ });
-  const aucun = page.getByText(/^Aucun créneau libre/);
-  const total = await jours.count();
-  for (let i = 0; i < total; i++) {
-    await toucherJour(jours.nth(i));
-    await expect(creneaux.or(aucun)).toBeVisible();
-    if (await creneaux.isVisible()) return creneaux;
-  }
-  throw new Error("Aucun jour avec des créneaux dans les 4 semaines");
 }
 
 /** Étape 1 : prestation « Coupe ». On arrive directement au choix du jour et du créneau. */
@@ -52,6 +101,10 @@ async function allerAuxCreneaux(page: Page) {
   await expect(page.getByText("Étape 2 sur 4")).toBeVisible();
 }
 
+function groupeCreneaux(page: Page): Locator {
+  return page.getByRole("group", { name: /^Créneaux libres/ });
+}
+
 /** Valeur d'une ligne du récapitulatif (<dt>libellé</dt><dd>valeur</dd>). */
 function valeurDuRecap(page: Page, libelle: string): Locator {
   return page
@@ -59,93 +112,234 @@ function valeurDuRecap(page: Page, libelle: string): Locator {
     .locator("xpath=following-sibling::dd[1]");
 }
 
-/** Texte visible d'un créneau (son libellé), espaces normalisés. */
-async function texteDuCreneau(creneau: Locator): Promise<string> {
-  return creneau.evaluate((el) => el.closest("label")!.textContent!.replace(/\s+/g, " ").trim());
+async function remplirCoordonnees(page: Page) {
+  await page.getByLabel("Prénom").fill("Zoé");
+  await page.getByLabel("Nom", { exact: true }).fill("Durand");
+  await page.getByLabel("Email").fill("zoe@example.com");
+  await page.getByRole("checkbox", { name: /J'accepte/ }).check();
+  await continuer(page);
 }
 
-const LIEU_EN_FIN = /(Saint-Christophe-du-Bois|Angers)$/;
+/** Réservation rapide jusqu'au récapitulatif (premier créneau du premier jour possible). */
+async function allerAuRecap(page: Page) {
+  await allerAuxCreneaux(page);
+  await toucherJour(page, firstDayWithSlots());
+  await groupeCreneaux(page).getByRole("radio").first().check();
+  await continuer(page);
+  await remplirCoordonnees(page);
+  await expect(page.getByRole("heading", { level: 2, name: "Vérifie et confirme" })).toBeVisible();
+}
 
-test("parcours complet : réserver, puis annuler avec le lien personnel", async ({ page }) => {
+async function reserverJusquALaConfirmation(page: Page) {
+  await mockSlots(page);
+  await mockRpc(page, "create_booking", () => ({
+    body: receiptFor(slotsFor(firstDayWithSlots())[0]!),
+  }));
+  await allerAuRecap(page);
+  await page.getByRole("button", { name: "Confirmer la réservation" }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "C'est réservé !" })).toBeVisible();
+}
+
+test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation sans adresse", async ({
+  page,
+}) => {
   const erreurs: string[] = [];
+  const consoleMessages: string[] = [];
+  // Requêtes qui quittent le site. L'hôte Supabase dépend du serveur (URL factice, ou celle de
+  // .env.local si un serveur de dev déjà lancé est réutilisé) : ces appels sont de toute façon
+  // interceptés par e2e/fixtures.ts. On vérifie qu'il n'y a QUE l'API Supabase, aucun tiers.
+  const sorties: string[] = [];
   page.on("pageerror", (e) => erreurs.push(e.message));
+  page.on("console", (m) => consoleMessages.push(m.text()));
+  page.on("request", (r) => {
+    const url = new URL(r.url());
+    if (url.host !== "localhost:5173") sorties.push(url.pathname);
+  });
+
+  const day = firstDayWithSlots();
+  const [, secondSlot] = slotsFor(day);
+  await mockSlots(page);
+  let envoye: Record<string, unknown> = {};
+  await mockRpc(page, "create_booking", (args) => {
+    envoye = args;
+    return { body: receiptFor(secondSlot!) };
+  });
 
   // Étape 1 : impossible de continuer sans prestation.
   await page.goto("/reserver");
   await expect(page.getByText("Étape 1 sur 4")).toBeVisible();
   await continuer(page);
   await expect(page.getByText("Choisis une prestation pour continuer.")).toBeVisible();
-
   await allerAuxCreneaux(page);
 
   // Étape 2 : jour puis créneau. Le client ne choisit jamais de lieu.
   await expect(page.getByRole("heading", { name: "Où ?" })).toHaveCount(0);
-  await expect(page.getByRole("radio", { name: /Peu importe/ })).toHaveCount(0);
   await continuer(page);
   await expect(page.getByText("Choisis un jour, puis un créneau.")).toBeVisible();
-  const creneaux = await choisirUnJourAvecCreneaux(page);
-  const premier = creneaux.getByRole("radio").first();
-  // Le créneau affiche le libellé public de son lieu, jamais l'adresse.
-  const texte = await texteDuCreneau(premier);
-  const lieu = LIEU_EN_FIN.exec(texte)?.[1];
-  expect(lieu, `lieu affiché sur le créneau « ${texte} »`).toBeDefined();
-  await expect(creneaux).not.toContainText("fictive");
-  await premier.check();
+  await toucherJour(page, day);
+  const creneaux = groupeCreneaux(page);
+  const textes = await creneaux
+    .getByRole("radio")
+    .evaluateAll((els) =>
+      els.map((el) => el.closest("label")!.textContent!.replace(/\s+/g, " ").trim()),
+    );
+  // Heures de Paris, chacune avec la ville de son lieu.
+  expect(textes).toEqual(["14:00 – 15:00Angers", "15:10 – 16:10Saint-Christophe-du-Bois"]);
+  await creneaux.getByRole("radio").nth(1).check();
   await continuer(page);
 
   // Étape 3 : coordonnées, avec validation.
   await expect(page.getByRole("heading", { level: 2, name: "Tes coordonnées" })).toBeFocused();
   await continuer(page);
   await expect(page.getByText("Indique ton prénom.")).toBeVisible();
-  await expect(page.getByText("Laisse au moins un téléphone ou un email.")).toBeVisible();
-  await expect(page.getByText("Coche la case pour pouvoir réserver.")).toBeVisible();
   await expect(page.getByLabel("Prénom")).toBeFocused();
-
   await page.getByLabel("Prénom").fill("Zoé");
   await page.getByLabel("Nom", { exact: true }).fill("Durand");
   await page.getByLabel("Téléphone").fill("06 39 98 00 10");
   await page.getByRole("checkbox", { name: /J'accepte/ }).check();
   await continuer(page);
 
-  // Étape 4 : récapitulatif, avec le lieu du créneau choisi et sans adresse.
+  // Étape 4 : récapitulatif, puis envoi.
   await expect(page.getByRole("heading", { level: 2, name: "Vérifie et confirme" })).toBeFocused();
-  await expect(page.getByText("Zoé Durand")).toBeVisible();
-  await expect(page.getByText("06 39 98 00 10")).toBeVisible();
-  await expect(valeurDuRecap(page, "Lieu")).toHaveText(lieu!);
-  await expect(page.getByText(/adresse fictive/)).toHaveCount(0);
+  await expect(valeurDuRecap(page, "Lieu")).toHaveText("Saint-Christophe-du-Bois");
   await page.getByRole("button", { name: "Confirmer la réservation" }).click();
 
-  // Confirmation : lieu du créneau, adresse exacte et lien d'annulation.
+  // Confirmation : date, heure de Paris, prestation, ville, lien ; pas d'adresse.
   await expect(page.getByRole("heading", { level: 2, name: "C'est réservé !" })).toBeFocused();
-  await expect(valeurDuRecap(page, "Lieu")).toHaveText(lieu!);
-  await expect(page.getByText(/adresse fictive/)).toBeVisible();
-  await expect(page.getByText(/\/annuler\?token=[0-9a-f-]{36}$/)).toBeVisible();
+  await expect(valeurDuRecap(page, "Prestation")).toHaveText("Coupe");
+  await expect(valeurDuRecap(page, "Date")).toHaveText(formatDayKey(day));
+  await expect(valeurDuRecap(page, "Heure")).toHaveText("15:10 – 16:10");
+  await expect(valeurDuRecap(page, "Lieu")).toHaveText("Saint-Christophe-du-Bois");
+  await expect(page.locator("dt", { hasText: /^Adresse$/ })).toHaveCount(0);
+  await expect(page.getByText(/pas d'e-mail de confirmation/)).toBeVisible();
+  await expect(page.locator("#cancel-link-url")).toHaveText(
+    new RegExp(`/annuler\\?token=${TOKEN}$`),
+  );
+
+  // Ce que le site a envoyé : le créneau ET le lieu du créneau choisi, honeypot vide.
+  expect(envoye).toMatchObject({
+    p_starts_at: secondSlot!.starts_at,
+    p_location_id: SAINT_CHRISTOPHE,
+    p_first_name: "Zoé",
+    p_last_name: "Durand",
+    p_phone: "06 39 98 00 10",
+    p_email: null,
+    p_website: null,
+  });
 
   const audit = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
     .analyze();
   expect(audit.violations.map((v) => v.id)).toEqual([]);
 
-  // Annulation avec le lien personnel (même onglet : la fausse base est en mémoire).
-  const lienAnnulation = page.getByRole("link", { name: "Ouvrir ma page d'annulation" });
-  expect((await lienAnnulation.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-  await lienAnnulation.click();
-  await expect(page).toHaveURL(/\/annuler\?token=/);
-  await expect(page.getByRole("heading", { level: 2, name: "Zoé, ton rendez-vous" })).toBeVisible();
-  await page.getByRole("button", { name: "Annuler mon rendez-vous" }).click();
-  await expect(page.getByText("L'annulation est définitive. Tu confirmes ?")).toBeVisible();
-  await page.getByRole("button", { name: "Oui, annuler" }).click();
-  await expect(page.getByRole("heading", { level: 2, name: "C'est annulé" })).toBeFocused();
-
+  // Le jeton ne part nulle part ailleurs et n'apparaît pas dans la console.
+  expect(sorties.filter((path) => !path.startsWith("/rest/v1/"))).toEqual([]);
+  expect(consoleMessages.filter((m) => m.includes(TOKEN))).toEqual([]);
   expect(erreurs).toEqual([]);
+});
+
+test("délai de 48 h : expliqué, et aucun appel à la base pour aujourd'hui", async ({ page }) => {
+  const requested = await mockSlots(page);
+  await allerAuxCreneaux(page);
+  await expect(page.getByText(/On réserve au plus tard 48 h avant le rendez-vous/)).toBeVisible();
+
+  const today = parisDayKey(new Date());
+  await toucherJour(page, today);
+  await expect(page.getByText(`Trop tard pour réserver le ${formatDayKey(today)}.`)).toBeVisible();
+  await expect(page.getByText(/Choisis un jour à partir du/)).toBeVisible();
+  expect(requested).not.toContain(today);
+});
+
+test("aucun créneau un lundi ; « Retour » ramène à la prestation", async ({ page }) => {
+  await mockSlots(page);
+  await allerAuxCreneaux(page);
+
+  await toucherJour(page, (await lastMonday(page))!);
+  await expect(page.getByText(/^Aucun créneau libre le lundi/)).toBeVisible();
+  await expect(page.getByText("Essaie un autre jour.")).toBeVisible();
+  await continuer(page);
+  await expect(page.getByText("Choisis un créneau.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Retour" }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "Quelle prestation ?" })).toBeFocused();
+});
+
+/** Le dernier lundi du calendrier (toujours au-delà des 48 h). */
+async function lastMonday(page: Page): Promise<DayKey | undefined> {
+  const valeurs = await page
+    .getByRole("radio", { name: /^lundi / })
+    .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value));
+  return valeurs.at(-1);
+}
+
+test("erreur réseau sur les créneaux : message et « Réessayer »", async ({ page }) => {
+  let echecs = 1;
+  await mockSlots(page, (day) => (echecs-- > 0 ? "network-error" : { body: slotsFor(day) }));
+  await allerAuxCreneaux(page);
+  await toucherJour(page, firstDayWithSlots());
+
+  await expect(page.getByRole("alert")).toContainText("Impossible de charger les créneaux");
+  await page.getByRole("button", { name: "Réessayer" }).click();
+  await expect(groupeCreneaux(page).getByRole("radio")).toHaveCount(2);
+});
+
+test("créneau pris entre-temps : message clair et liste rechargée sans lui", async ({ page }) => {
+  const day = firstDayWithSlots();
+  const [first, second] = slotsFor(day);
+  // Le premier créneau est « pris » au moment où le site tente de le réserver. (Pas de
+  // compteur de lectures : en dev, React StrictMode lance les effets deux fois.)
+  let pris = false;
+  let lecturesApres = 0;
+  const lectures = await mockSlots(page, () => {
+    if (pris) lecturesApres++;
+    return { body: pris ? [second] : [first, second] };
+  });
+  await mockRpc(page, "create_booking", () => {
+    pris = true;
+    return rpcError("slot_unavailable");
+  });
+
+  await allerAuRecap(page);
+  await page.getByRole("button", { name: "Confirmer la réservation" }).click();
+
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Quel jour, quelle heure ?" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Ce créneau n'est plus disponible. Choisis-en un autre."),
+  ).toBeVisible();
+  await expect(groupeCreneaux(page).getByRole("radio")).toHaveCount(1);
+  await expect(groupeCreneaux(page)).toContainText("15:10 – 16:10");
+  // La liste a bien été relue en base après le refus.
+  expect(lecturesApres).toBeGreaterThanOrEqual(1);
+  expect(lectures.length).toBeGreaterThan(lecturesApres);
+});
+
+test("limite atteinte : message sobre ; réseau coupé : on peut réessayer", async ({ page }) => {
+  await mockSlots(page);
+  let reponse: RpcResponse = rpcError("limit_reached");
+  await mockRpc(page, "create_booking", () => reponse);
+  await allerAuRecap(page);
+
+  const confirmer = page.getByRole("button", { name: "Confirmer la réservation" });
+  await confirmer.click();
+  const alerte = page.getByRole("alert");
+  await expect(alerte).toContainText("Réservation impossible avec ces coordonnées");
+  await expect(alerte).not.toContainText(/déjà 2|ce téléphone/);
+
+  reponse = "network-error";
+  await confirmer.click();
+  await expect(alerte).toContainText("Vérifie ta connexion");
+  await expect(confirmer).toBeEnabled();
 });
 
 test("coordonnées : champs à 16 px, zones tactiles de 44 px, honeypot hors écran", async ({
   page,
 }) => {
+  await mockSlots(page);
   await allerAuxCreneaux(page);
-  const creneaux = await choisirUnJourAvecCreneaux(page);
-  await creneaux.getByRole("radio").first().check();
+  await toucherJour(page, firstDayWithSlots());
+  await groupeCreneaux(page).getByRole("radio").first().check();
   await continuer(page);
   await expect(page.getByRole("heading", { level: 2, name: "Tes coordonnées" })).toBeVisible();
 
@@ -174,58 +368,6 @@ test("coordonnées : champs à 16 px, zones tactiles de 44 px, honeypot hors éc
   await expect(page.getByLabel("Téléphone")).toHaveAttribute("type", "tel");
   await expect(page.getByLabel("Email")).toHaveAttribute("type", "email");
 });
-
-test("aucun créneau un lundi ; chaque créneau affiche son lieu, jamais l'adresse", async ({
-  page,
-}) => {
-  await allerAuxCreneaux(page);
-
-  // Le dernier lundi du calendrier n'est jamais aujourd'hui (seul jour à dispo exceptionnelle).
-  await toucherJour(page.getByRole("radio", { name: /^lundi / }).last());
-  await expect(page.getByText(/^Aucun créneau libre le lundi/)).toBeVisible();
-  await expect(page.getByText("Essaie un autre jour.")).toBeVisible();
-  await continuer(page);
-  await expect(page.getByText("Choisis un créneau.")).toBeVisible();
-
-  // Le samedi, deux dispos dans deux lieux : 10 h–13 h « Angers », 14 h–18 h
-  // « Saint-Christophe-du-Bois ». Chaque créneau porte le lieu de SA dispo. Grille de 70 min
-  // depuis le début de chaque dispo (prestation de 60 min) : 12:20 et 17:30 déborderaient.
-  await toucherJour(page.getByRole("radio", { name: /^samedi / }).last());
-  const creneaux = page.getByRole("group", { name: /^Créneaux libres le samedi/ });
-  await expect(creneaux.getByRole("radio")).toHaveCount(5);
-  const textes = await creneaux
-    .getByRole("radio")
-    .evaluateAll((els) =>
-      els.map((el) => el.closest("label")!.textContent!.replace(/\s+/g, " ").trim()),
-    );
-  expect(textes).toEqual([
-    "10:00 – 11:00Angers",
-    "11:10 – 12:10Angers",
-    "14:00 – 15:00Saint-Christophe-du-Bois",
-    "15:10 – 16:10Saint-Christophe-du-Bois",
-    "16:20 – 17:20Saint-Christophe-du-Bois",
-  ]);
-  await expect(creneaux).not.toContainText("fictive");
-
-  // « Retour » ramène à la prestation : il n'y a plus d'étape de lieu.
-  await page.getByRole("button", { name: "Retour" }).click();
-  await expect(page.getByRole("heading", { level: 2, name: "Quelle prestation ?" })).toBeFocused();
-});
-
-/** Réservation rapide jusqu'à l'écran de confirmation (prestation, premier créneau libre). */
-async function reserverJusquALaConfirmation(page: Page) {
-  await allerAuxCreneaux(page);
-  const creneaux = await choisirUnJourAvecCreneaux(page);
-  await creneaux.getByRole("radio").first().check();
-  await continuer(page);
-  await page.getByLabel("Prénom").fill("Zoé");
-  await page.getByLabel("Nom", { exact: true }).fill("Durand");
-  await page.getByLabel("Email").fill("zoe@example.com");
-  await page.getByRole("checkbox", { name: /J'accepte/ }).check();
-  await continuer(page);
-  await page.getByRole("button", { name: "Confirmer la réservation" }).click();
-  await expect(page.getByRole("heading", { level: 2, name: "C'est réservé !" })).toBeVisible();
-}
 
 /**
  * Faux presse-papiers, installé avant le chargement de la page : on vérifie ce que NOTRE code
@@ -262,7 +404,7 @@ test("confirmation : « Copier le lien » copie le lien d'annulation", async ({ 
   await expect(page.getByRole("button", { name: "Lien copié" })).toBeVisible();
   const lienAffiche = await page.locator("#cancel-link-url").textContent();
   const copie = await page.evaluate(() => (window as unknown as { __copie: string }).__copie);
-  expect(copie).toMatch(/^http:\/\/localhost:5173\/annuler\?token=[0-9a-f-]{36}$/);
+  expect(copie).toBe(`http://localhost:5173/annuler?token=${TOKEN}`);
   expect(copie).toBe(lienAffiche?.trim());
 });
 
@@ -298,10 +440,9 @@ test("contexte non sécurisé (http) : prestations, réservation et repli de la 
   await expect(page.getByRole("radio", { name: /^Coupe \+ barbe/ })).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
 
-  // Toute la réservation fonctionne, lien d'annulation compris (uuid généré par le repli).
   await reserverJusquALaConfirmation(page);
   await expect(page.locator("#cancel-link-url")).toHaveText(
-    /\/annuler\?token=[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    new RegExp(`/annuler\\?token=${TOKEN}$`),
   );
   await page.getByRole("button", { name: "Copier le lien" }).click();
   await expect(page.getByRole("status").filter({ hasText: /Copie impossible/ })).toBeVisible();
