@@ -108,6 +108,28 @@ export async function mockRpc(
   });
 }
 
+/**
+ * Remplace la lecture d'une table (`GET /rest/v1/<table>`). Renvoie les URL demandées : un
+ * test peut vérifier les colonnes réclamées (ex. jamais `private_address`).
+ */
+export async function mockTable(page: Page, table: string, rows: unknown[]): Promise<string[]> {
+  const requested: string[] = [];
+  await page.route(new RegExp(`/rest/v1/${table}(\\?|$)`), async (route) => {
+    if (route.request().method() === "OPTIONS") {
+      await route.fulfill({ status: 204, headers: corsHeaders(route) });
+      return;
+    }
+    requested.push(route.request().url());
+    await route.fulfill({
+      status: 200,
+      headers: corsHeaders(route),
+      contentType: "application/json",
+      body: JSON.stringify(rows),
+    });
+  });
+  return requested;
+}
+
 // ---------------------------------------------------------------------------------------
 // Authentification admin simulée (Supabase Auth + table admins). Identifiants FICTIFS.
 // ---------------------------------------------------------------------------------------

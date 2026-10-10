@@ -1,18 +1,41 @@
-import { fakeDb, fakeLatency, overlapsRange } from "@/lib/fakeDb";
-import { randomUuid } from "@/lib/uuid";
+import type { BookingRules } from "@/features/admin/slots";
+import { fakeDb, fakeLatency } from "@/lib/fakeDb";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 /**
  * Couche données de l'espace admin : les écrans n'importent QUE ces fonctions.
- * Elles suivent les tables de supabase/migrations, lues directement par l'admin connecté
- * (la RLS l'autorise grâce à la table `admins`).
  *
- * L'authentification est dans `auth.ts` (vraie, Supabase Auth).
- * TODO: brancher Supabase. Les DONNÉES sont encore factices (src/lib/fakeDb.ts) : remplacer
- * chaque corps par `getSupabaseAdmin().from(…)`, puis convertir la ligne reçue.
+ * Branché sur Supabase (client admin, session d'Alix) : lieux et disponibilités. Les écritures
+ * de plages passent par des RPC dédiées (`admin_*`, migration …_admin_disponibilites.sql) qui
+ * valident tout côté base ; l'admin n'a plus le droit d'écrire directement dans la table.
+ * L'authentification est dans `auth.ts`.
+ *
+ * TODO: brancher Supabase. Les RENDEZ-VOUS sont encore factices (src/lib/fakeDb.ts).
  */
 
+/** Clés d'erreur stables des RPC admin (exceptions P0001 / 42501), plus réseau et inconnu. */
 export type AdminErrorCode =
-  "invalid_range" | "availability_overlap" | "availability_has_bookings" | "not_found";
+  | "invalid_input"
+  | "invalid_range"
+  | "in_past"
+  | "too_short"
+  | "location_inactive"
+  | "availability_overlap"
+  | "availability_has_bookings"
+  | "not_found"
+  | "forbidden"
+  | "unknown";
+
+const BUSINESS_ERROR_CODES: readonly AdminErrorCode[] = [
+  "invalid_input",
+  "invalid_range",
+  "in_past",
+  "too_short",
+  "location_inactive",
+  "availability_overlap",
+  "availability_has_bookings",
+  "not_found",
+];
 
 export class AdminError extends Error {
   readonly code: AdminErrorCode;
@@ -24,22 +47,69 @@ export class AdminError extends Error {
   }
 }
 
+/**
+ * Traduit l'erreur d'une requête en `AdminError`. Seules les exceptions métier (P0001, clé
+ * connue) et le refus de droits (42501) gardent leur sens ; le reste devient « unknown ». Le
+ * message d'origine n'est jamais recopié ni écrit dans la console.
+ */
+function toAdminError(error: { code?: string; message: string }): AdminError {
+  if (error.code === "42501") return new AdminError("forbidden");
+  const code = BUSINESS_ERROR_CODES.find((known) => known === error.message);
+  return new AdminError(error.code === "P0001" && code ? code : "unknown");
+}
+
+/** Le client admin ; une config absente est traitée comme une panne (« réessaie »). */
+function client() {
+  try {
+    return getSupabaseAdmin();
+  } catch {
+    throw new AdminError("unknown");
+  }
+}
+
+/** Au-delà, on abandonne une LECTURE : en 4G instable, mieux vaut « Réessayer ». */
+const REQUEST_TIMEOUT_MS = 10_000;
+
 // ---------------------------------------------------------------------------------------
-// Lieux (table `locations`)
+// Règles de réservation (RPC `admin_booking_rules`, lues dans private.settings())
+// ---------------------------------------------------------------------------------------
+
+export async function getBookingRules(): Promise<BookingRules> {
+  const { data, error } = await client()
+    .rpc("admin_booking_rules")
+    .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+  if (error) throw toAdminError(error);
+  const row = data[0];
+  if (!row) throw new AdminError("unknown");
+  return {
+    slotStepMin: row.slot_step_min,
+    minNoticeMin: row.min_notice_min,
+    maxAdvanceDays: row.max_advance_days,
+  };
+}
+
+// ---------------------------------------------------------------------------------------
+// Lieux (table `locations`, colonnes id, public_label, active : jamais l'adresse privée)
 // ---------------------------------------------------------------------------------------
 
 export type Location = {
   id: string;
   publicLabel: string;
-  privateAddress: string;
 };
 
+/**
+ * Lieux ACTIFS, par ordre alphabétique (l'admin n'a pas le droit de lire `sort_order`). Seul le
+ * développeur active un lieu, en même temps qu'il saisit sa vraie adresse (SQL Editor).
+ */
 export async function getLocations(): Promise<Location[]> {
-  await fakeLatency();
-  return fakeDb()
-    .locations.filter((l) => l.active)
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((l) => ({ id: l.id, publicLabel: l.public_label, privateAddress: l.private_address }));
+  const { data, error } = await client()
+    .from("locations")
+    .select("id, public_label")
+    .eq("active", true)
+    .order("public_label")
+    .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+  if (error) throw toAdminError(error);
+  return data.map((l) => ({ id: l.id, publicLabel: l.public_label }));
 }
 
 // ---------------------------------------------------------------------------------------
@@ -95,8 +165,10 @@ export async function getAdminBookings(filter: AdminBookingsFilter): Promise<Adm
     }));
 }
 
+
 // ---------------------------------------------------------------------------------------
-// Disponibilités (table `availabilities`)
+// Disponibilités (RPC `admin_list_availabilities`, `admin_create_availability`,
+// `admin_delete_availability`)
 // ---------------------------------------------------------------------------------------
 
 export type Availability = {
@@ -105,6 +177,8 @@ export type Availability = {
   locationLabel: string;
   startsAt: string;
   endsAt: string;
+  slotCount: number;
+  bookingCount: number;
 };
 
 export type NewAvailability = {
@@ -113,78 +187,60 @@ export type NewAvailability = {
   endsAt: string;
 };
 
-/** Disponibilités qui ne sont pas encore terminées, dans l'ordre chronologique. */
-export async function getAvailabilities(): Promise<Availability[]> {
-  await fakeLatency();
-  const db = fakeDb();
-  const now = Date.now();
-  return db.availabilities
-    .filter((a) => Date.parse(a.ends_at) > now)
-    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
-    .map((a) => ({
-      id: a.id,
-      locationId: a.location_id,
-      locationLabel: db.locations.find((l) => l.id === a.location_id)?.public_label ?? "",
-      startsAt: a.starts_at,
-      endsAt: a.ends_at,
-    }));
-}
+type AvailabilityRow = {
+  id: string;
+  location_id: string;
+  location_label: string;
+  starts_at: string;
+  ends_at: string;
+  slot_count: number;
+  booking_count: number;
+};
 
-/**
- * Ajoute une plage. Mêmes refus que la base : fin après début et 24 h maximum
- * (`availabilities_valid_range`), aucun chevauchement tous lieux confondus
- * (`availabilities_no_overlap`, erreur Postgres 23P01 à traduire au branchement).
- */
-export async function createAvailability(input: NewAvailability): Promise<Availability> {
-  await fakeLatency();
-  const db = fakeDb();
-  const start = Date.parse(input.startsAt);
-  const end = Date.parse(input.endsAt);
-  if (!(end > start) || end - start > 24 * 60 * 60 * 1000) throw new AdminError("invalid_range");
-  const location = db.locations.find((l) => l.id === input.locationId);
-  if (!location) throw new AdminError("not_found");
-  if (
-    db.availabilities.some((a) =>
-      overlapsRange(a.starts_at, a.ends_at, input.startsAt, input.endsAt),
-    )
-  ) {
-    throw new AdminError("availability_overlap");
-  }
-
-  const row = {
-    id: randomUuid(),
-    location_id: location.id,
-    starts_at: new Date(start).toISOString(),
-    ends_at: new Date(end).toISOString(),
-  };
-  db.availabilities.push(row);
+function toAvailability(row: AvailabilityRow): Availability {
   return {
     id: row.id,
     locationId: row.location_id,
-    locationLabel: location.public_label,
+    locationLabel: row.location_label,
     startsAt: row.starts_at,
     endsAt: row.ends_at,
+    slotCount: row.slot_count,
+    bookingCount: row.booking_count,
   };
 }
 
+/** Plages pas encore terminées, dans l'ordre chronologique, avec créneaux et RDV comptés. */
+export async function getAvailabilities(): Promise<Availability[]> {
+  const { data, error } = await client()
+    .rpc("admin_list_availabilities")
+    .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+  if (error) throw toAdminError(error);
+  return data.map(toAvailability);
+}
+
 /**
- * Supprime une plage. Refusé s'il reste des RDV futurs confirmés dedans (trigger
- * `availabilities_before_change`) : le barber doit d'abord les annuler.
+ * Ajoute une plage. La base refuse : plage passée (`in_past`), fin avant début ou plus de 24 h
+ * (`invalid_range`), moins d'un créneau (`too_short`), lieu inactif (`location_inactive`),
+ * chevauchement tous lieux confondus (`availability_overlap`).
+ * Sans délai d'abandon : couper la requête n'annulerait pas l'insertion côté base.
+ */
+export async function createAvailability(input: NewAvailability): Promise<Availability> {
+  const { data, error } = await client().rpc("admin_create_availability", {
+    p_location_id: input.locationId,
+    p_starts_at: input.startsAt,
+    p_ends_at: input.endsAt,
+  });
+  if (error) throw toAdminError(error);
+  const row = data[0];
+  if (!row) throw new AdminError("unknown");
+  return toAvailability(row);
+}
+
+/**
+ * Supprime une plage. Refusé (`availability_has_bookings`) dès qu'une réservation confirmée
+ * la touche : le barber annule d'abord les RDV. Aucune réservation n'est jamais supprimée.
  */
 export async function deleteAvailability(id: string): Promise<void> {
-  await fakeLatency();
-  const db = fakeDb();
-  const availability = db.availabilities.find((a) => a.id === id);
-  if (!availability) throw new AdminError("not_found");
-  const now = Date.now();
-  const hasBookings = db.bookings.some(
-    (b) =>
-      b.status === "confirmed" &&
-      Date.parse(b.ends_at) > now &&
-      b.location_id === availability.location_id &&
-      Date.parse(b.starts_at) >= Date.parse(availability.starts_at) &&
-      Date.parse(b.ends_at) <= Date.parse(availability.ends_at),
-  );
-  if (hasBookings) throw new AdminError("availability_has_bookings");
-  db.availabilities = db.availabilities.filter((a) => a.id !== id);
+  const { error } = await client().rpc("admin_delete_availability", { p_id: id });
+  if (error) throw toAdminError(error);
 }

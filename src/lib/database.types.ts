@@ -4,8 +4,9 @@
  * pouvoir le remplacer plus tard sans toucher au reste.
  *
  * À mettre à jour à chaque migration qui touche une table ou une fonction listée ici. Seules
- * celles réellement utilisées par le front y figurent (pour l'instant : les tables `services` et
- * `admins`, les RPC `get_available_slots`, `create_booking`, `get_booking` et `cancel_booking`).
+ * celles réellement utilisées par le front y figurent (pour l'instant : les tables `services`,
+ * `admins` et `locations` (vue admin), les RPC publiques `get_available_slots`,
+ * `create_booking`, `get_booking`, `cancel_booking` et les 4 RPC `admin_*` des disponibilités).
  */
 
 /** Table `public.services` (migration …_tables.sql). */
@@ -121,11 +122,61 @@ type AdminsTable = {
   Relationships: [];
 };
 
+/**
+ * Table `public.locations`, vue par l'ADMIN (migration …_admin_disponibilites.sql) : il n'a le
+ * droit de lire que ces trois colonnes. `private_address` n'y figure volontairement pas (le
+ * demander échouerait en 42501). Aucune écriture via l'API.
+ */
+type LocationsTable = {
+  Row: { id: string; public_label: string; active: boolean };
+  Insert: never;
+  Update: never;
+  Relationships: [];
+};
+
+/** Ligne commune à `admin_list_availabilities` et `admin_create_availability`. */
+type AdminAvailabilityRow = {
+  id: string;
+  location_id: string;
+  /** Libellé public du lieu (la ville), jamais l'adresse. */
+  location_label: string;
+  starts_at: string;
+  ends_at: string;
+  /** Créneaux qui tiennent dans la plage (pas de la grille de private.settings()). */
+  slot_count: number;
+  /** RDV confirmés du lieu qui touchent la plage, passés comme futurs. */
+  booking_count: number;
+};
+
+/**
+ * RPC admin (migration …_admin_disponibilites.sql), réservées à un utilisateur listé dans
+ * `admins` (sinon 42501 « forbidden »). Erreurs métier : exceptions P0001 dont le message est
+ * une clé stable (invalid_input, invalid_range, in_past, too_short, location_inactive,
+ * availability_overlap, availability_has_bookings, not_found).
+ */
+type AdminBookingRulesFunction = {
+  Args: Record<string, never>;
+  Returns: { slot_step_min: number; min_notice_min: number; max_advance_days: number }[];
+};
+type AdminListAvailabilitiesFunction = {
+  Args: Record<string, never>;
+  Returns: AdminAvailabilityRow[];
+};
+type AdminCreateAvailabilityFunction = {
+  Args: { p_location_id: string; p_starts_at: string; p_ends_at: string };
+  Returns: AdminAvailabilityRow[];
+};
+type AdminDeleteAvailabilityFunction = {
+  Args: { p_id: string };
+  Returns: undefined;
+};
+
 export type Database = {
   public: {
     Tables: {
       services: ServicesTable;
       admins: AdminsTable;
+      locations: LocationsTable;
     };
     Views: Record<never, never>;
     Functions: {
@@ -133,6 +184,10 @@ export type Database = {
       create_booking: CreateBookingFunction;
       get_booking: GetBookingFunction;
       cancel_booking: CancelBookingFunction;
+      admin_booking_rules: AdminBookingRulesFunction;
+      admin_list_availabilities: AdminListAvailabilitiesFunction;
+      admin_create_availability: AdminCreateAvailabilityFunction;
+      admin_delete_availability: AdminDeleteAvailabilityFunction;
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;

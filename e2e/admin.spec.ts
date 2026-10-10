@@ -13,7 +13,8 @@ import {
  * Espace admin (Android, iPhone, desktop) : connexion Supabase Auth SIMULÉE (e2e/fixtures.ts,
  * `mockAdminAuth`), jamais la vraie base. L'horloge du navigateur est fixée (`page.clock`) :
  * l'expiration des jetons et les jours affichés ne dépendent pas de la date du jour.
- * Les DONNÉES admin (dispos, RDV) sont encore celles de la fausse base (src/lib/fakeDb.ts).
+ * Les RDV admin sont encore ceux de la fausse base (src/lib/fakeDb.ts) ; les disponibilités
+ * sont testées dans admin-disponibilites.spec.ts.
  */
 
 const STORAGE_KEY = "cutsbyalix-admin-auth";
@@ -32,13 +33,6 @@ async function seConnecter(page: Page, email: string, password: string) {
 const sessionStockee = (page: Page) =>
   page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
 
-/** Jour de semaine voulu (0 = dimanche… 2 = mardi) deux à trois semaines après la date fixée. */
-function jourDansDeuxSemaines(jourSemaine: number): string {
-  const date = new Date(ADMIN_TEST_NOW);
-  date.setUTCDate(date.getUTCDate() + 14);
-  while (date.getUTCDay() !== jourSemaine) date.setUTCDate(date.getUTCDate() + 1);
-  return date.toISOString().slice(0, 10);
-}
 
 test("route protégée sans session : redirection vers la connexion, aucune donnée chargée", async ({
   page,
@@ -200,7 +194,7 @@ test("le manifeste PWA n'est lié que depuis l'espace admin", async ({ page }) =
   });
 });
 
-test("connecté : ajout d'une disponibilité (données encore factices)", async ({ page }) => {
+test("connecté : tableau de bord accessible, lien vers les disponibilités", async ({ page }) => {
   await preparer(page);
   await page.goto("/admin");
   await seConnecter(page, FAKE_ADMIN.email, FAKE_ADMIN.password);
@@ -212,17 +206,8 @@ test("connecté : ajout d'une disponibilité (données encore factices)", async 
     .analyze();
   expect(audit.violations.map((v) => v.id)).toEqual([]);
 
+  // Parcours complet des disponibilités (Supabase simulé) : e2e/admin-disponibilites.spec.ts.
   const nav = page.getByRole("navigation", { name: "Navigation admin" });
   await nav.getByRole("link", { name: "Dispos" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Disponibilités" })).toBeVisible();
-
-  // Chevauchement refusé : ce mardi est déjà ouvert de 14 h à 18 h (14 h–18 h par défaut).
-  await page.getByRole("radio", { name: /^Saint-Christophe-du-Bois/ }).check();
-  await page.getByLabel("Jour").fill(jourDansDeuxSemaines(2));
-  await page.getByRole("button", { name: "Ajouter la disponibilité" }).click();
-  await expect(page.getByText(/chevauche une autre disponibilité/)).toBeVisible();
-
-  await page.getByLabel("Jour").fill(jourDansDeuxSemaines(1));
-  await page.getByRole("button", { name: "Ajouter la disponibilité" }).click();
-  await expect(page.getByText(/^Disponibilité ajoutée : lundi/)).toBeVisible();
 });
