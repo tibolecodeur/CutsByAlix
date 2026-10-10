@@ -20,14 +20,30 @@ Dans le tableau de bord du projet **distant** :
 2. **Authentication → Policies → Passwords** (selon l'emplacement du réglage dans le tableau de
    bord) : longueur minimale **12**, caractères requis **aucun** (« No required characters »).
    « Prevent use of leaked passwords » : à activer si l'offre le permet.
-3. **Secure password change** : activé (l'écran « Mon compte » redemande l'ancien mot de passe
-   juste avant, ce qui satisfait ce réglage).
-4. **Authentication → URL Configuration** : Site URL = le domaine du site en production ;
+3. **Secure password change** : activé. Limite à connaître : le serveur n'exige une nouvelle
+   vérification que si la connexion date de plus de 24 h. L'écran « Mon compte » redemande
+   l'ancien mot de passe, mais **ce contrôle est fait par le site, pas par le serveur** :
+   quelqu'un qui volerait le jeton de session d'Alix (moins de 24 h) pourrait changer le mot de
+   passe en appelant l'API directement. Seul le **MFA** (prévu) ferme ce risque.
+4. **Secure email change** : activé (un changement d'e-mail doit être confirmé sur l'ancienne
+   ET la nouvelle adresse : un jeton volé ne suffit pas à détourner le compte).
+5. **Lien magique / code par e-mail** : non utilisés par le site. Ils ne se désactivent pas
+   séparément du fournisseur Email (nécessaire au mot de passe) et restent appelables : ils ne
+   donnent aucune session sans accès à la boîte mail d'Alix, mais peuvent servir à la spammer.
+   D'où le point suivant.
+6. **Authentication → Rate Limits** : limites basses sur les connexions et surtout sur les
+   e-mails envoyés (quelques-uns par heure).
+7. **Sessions** : « Refresh token rotation » activé (par défaut), expiration du JWT à **3600 s**
+   (par défaut). Un jeton d'accès reste valable jusqu'à 1 h après une déconnexion ou une
+   révocation (voir §5 et §6).
+8. **Authentication → URL Configuration** : Site URL = le domaine du site en production ;
    retirer `localhost` des Redirect URLs.
-5. **Authentication → Rate Limits** : garder des limites basses sur les connexions et les e-mails.
-6. **Settings → API (Data API)** : schémas exposés = `public` (et `graphql_public`) seulement.
-   Le schéma `private` ne doit **jamais** être exposé.
-7. Plus tard : MFA, et CAPTCHA (Cloudflare Turnstile) sur la connexion.
+9. **Settings → API (Data API)** : schémas exposés = `public` (et `graphql_public`) seulement.
+   Le schéma `private` ne doit **jamais** être exposé. Si GraphQL ne sert pas : désactiver
+   l'extension `pg_graphql` (Database → Extensions), une surface d'attaque de moins.
+10. Plus tard : **MFA**, et CAPTCHA (Cloudflare Turnstile) sur la connexion. Le CAPTCHA limitera
+    aussi la seule énumération restante : Supabase répond un peu plus vite pour un e-mail
+    inconnu (pas de calcul de mot de passe), ce que le site ne peut pas masquer.
 
 ## 2. Créer le compte d'Alix
 
@@ -75,27 +91,39 @@ Safari → bouton Partager → « Sur l'écran d'accueil » depuis `/admin`. L'a
 **stockage séparé** de Safari : il faut s'y **connecter une fois** (la session de Safari n'y est
 pas reprise). Ensuite, la session y reste.
 
+Conséquence : « Se déconnecter » dans Safari ne déconnecte PAS l'application de l'écran
+d'accueil (et inversement). Pour tout couper d'un coup (téléphone perdu, doute) : changer le mot
+de passe dans « Mon compte », qui déconnecte tous les autres appareils, ou suivre le §5.
+
 ## 5. Mot de passe oublié
 
 Pas de réinitialisation par e-mail (le SMTP gratuit de Supabase est limité). C'est Thibault qui
 fixe un mot de passe **temporaire**, puis Alix le change aussitôt dans « Mon compte ».
 
-Dans le **SQL Editor** (UUID et mot de passe fictifs) :
+Dans le **SQL Editor** (UUID fictif). Le mot de passe temporaire est **tiré au hasard par la
+base** et n'apparaît qu'une fois, dans le résultat : il n'est jamais écrit dans la requête, donc
+ni dans l'historique du SQL Editor ni dans les journaux.
 
 ```sql
--- Mot de passe temporaire (12 caractères minimum), chiffré par la base.
-update auth.users
-   set encrypted_password = extensions.crypt('TEMPORAIRE-A-CHANGER', extensions.gen_salt('bf')),
+-- Mot de passe temporaire aléatoire de 16 caractères, chiffré comme le fait Supabase Auth
+-- (bcrypt, coût 10). Le résultat l'affiche UNE fois : le noter pour le transmettre.
+with p as (
+  select translate(encode(extensions.gen_random_bytes(12), 'base64'), '+/', '-_') as pw
+)
+update auth.users u
+   set encrypted_password = extensions.crypt(p.pw, extensions.gen_salt('bf', 10)),
        updated_at = now()
- where id = '00000000-0000-4000-8000-000000000000';
+  from p
+ where u.id = '00000000-0000-4000-8000-000000000000'
+returning p.pw as mot_de_passe_temporaire;
 
 -- Déconnecte tous ses appareils (un téléphone perdu ne reste pas connecté).
 delete from auth.sessions where user_id = '00000000-0000-4000-8000-000000000000';
 ```
 
-Ensuite : **supprimer cette requête de l'historique du SQL Editor** (elle contient le mot de passe
-temporaire en clair), transmettre le mot de passe temporaire de vive voix, et vérifier qu'Alix
-l'a changé.
+Ensuite : transmettre le mot de passe temporaire de vive voix, effacer l'écran de résultat, et
+vérifier qu'Alix l'a changé. Délai à connaître : un jeton d'accès déjà délivré reste valable
+**jusqu'à 1 h** après la suppression des sessions (il expire alors sans pouvoir être renouvelé).
 
 ## 6. Retirer un admin
 
@@ -106,6 +134,9 @@ delete from auth.sessions where user_id = '00000000-0000-4000-8000-000000000000'
 
 Le compte peut aussi être supprimé dans Authentication → Users (sa ligne `admins` disparaît avec
 lui, `on delete cascade`).
+
+Effet immédiat : sans ligne dans `admins`, la RLS ne lui montre plus rien, même avec un jeton
+encore valable (les policies vérifient `admins` à chaque requête).
 
 ## 7. En développement (base locale uniquement)
 

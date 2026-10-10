@@ -16,7 +16,7 @@ begin
   end loop;
 end $$;
 
-select plan(33);
+select plan(35);
 
 -- Simule l'API Storage, seule autorisée à supprimer (trigger storage.protect_delete).
 set local storage.allow_delete_query = 'true';
@@ -82,6 +82,10 @@ select is((select count(*) from public.admins where user_id = auth.uid()), 0::bi
   'non-admin connecté : sa propre ligne admins n''existe pas (le front le voit non-admin)');
 select is((select count(*) from storage.objects where bucket_id = 'gallery'), 0::bigint,
   'non-admin connecté : ne liste aucun objet du bucket gallery');
+select is((select count(*) from storage.buckets), 0::bigint,
+  'non-admin connecté : ne voit même pas la liste des buckets');
+select ok(not has_function_privilege('authenticated', 'private.settings()', 'execute'),
+  'non-admin connecté : ne lit pas les règles métier (private.settings)');
 
 select throws_ok($$insert into public.services (name, duration_min) values ('Pirate', 60)$$,
   '42501', null, 'non-admin connecté : n''ajoute pas de prestation');

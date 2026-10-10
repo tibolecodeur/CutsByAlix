@@ -151,7 +151,20 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 - [ ] **iPhone** : l'application ajoutée à l'écran d'accueil a un stockage séparé de Safari, il
       faut s'y connecter une fois (noté dans `docs/ADMIN-COMPTE.md`, §4).
 - [ ] **Session dans le localStorage** (lisible par un script injecté) : ajouter une
-      Content-Security-Policy stricte dans `public/_headers` avant la mise en ligne de l'admin.
+      Content-Security-Policy stricte à TOUT le site dans `public/_headers`, **bloquant avant la
+      mise en ligne de l'admin**. Proposition de la revue (consigne 17), à tester sur le site
+      déployé : `default-src 'self'; connect-src 'self' https://<ref>.supabase.co
+  wss://<ref>.supabase.co; img-src 'self' https://<ref>.supabase.co data:;
+  frame-ancestors 'none'; base-uri 'self'; form-action 'self'`. Déjà fait : anti-iframe
+      (`X-Frame-Options` + `frame-ancestors`) sur `/admin*`.
+- [ ] **Changement de mot de passe vérifié côté serveur** : l'ancien mot de passe n'est
+      redemandé que par le site ; un jeton volé de moins de 24 h permettrait de le changer via
+      l'API. Fermé par le MFA (prévu).
+- [ ] **Accueil : ancre `/#galerie` depuis une autre page** : sous forte charge (e2e en local,
+      6 navigateurs en parallèle), la page défile vers la galerie avant que les prestations
+      au-dessus soient chargées, puis la galerie est repoussée hors de l'écran. Test e2e
+      « les ancres du menu fonctionnent depuis une autre page » parfois rouge en local (vert
+      seul et en CI). Piste : refaire le défilement une fois le contenu chargé.
 - [ ] Icônes PWA définitives (logo HD) à la place des icônes provisoires « CBA ».
 - [ ] MFA (plus tard) ; CAPTCHA Turnstile sur la connexion (V2).
 - [ ] Données admin : Disponibilités · Liste des RDV · Galerie · Prestations sur Supabase
