@@ -84,7 +84,7 @@ insert into public.availabilities (location_id, starts_at, ends_at) values
 set local role anon;
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      now() + interval '47 hours 59 minutes', 'Léa', 'Martin', '0612345678')$$,
+      now() + interval '47 hours 59 minutes', '20000000-0000-4000-8000-000000000001', 'Léa', 'Martin', '0612345678')$$,
   'P0001', 'too_soon', 'réservation à 47 h 59 : refusée (too_soon)');
 select is(
   (select count(*) from public.get_available_slots('10000000-0000-4000-8000-000000000001',
@@ -107,7 +107,7 @@ select is(
 select results_eq(
   $$select ends_at - starts_at, location_label
       from public.create_booking('10000000-0000-4000-8000-000000000001',
-        now() + interval '48 hours', 'Léa', 'Martin', '0612345678')$$,
+        now() + interval '48 hours', '20000000-0000-4000-8000-000000000001', 'Léa', 'Martin', '0612345678')$$,
   $$values (interval '70 minutes', 'Lieu un'::text)$$,
   'réservation à 48 h pile : acceptée, RDV de 70 min');
 reset role;
