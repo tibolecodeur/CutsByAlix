@@ -120,7 +120,9 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       appliquée faute de décision) : le fragment n'est jamais envoyé au serveur (ni journaux
       d'hébergeur, ni Referer). Aucun lien réel n'existe encore : à décider AVANT la mise en
       ligne, après il casserait les liens déjà envoyés. Touche `CancelPage`, `ConfirmationStep`,
-      SPEC, README.
+      SPEC, README. Mesuré en e2e : avec `?token=`, les requêtes
+      vers NOTRE site (modules, assets) portent l'adresse complète dans le Referer, donc dans
+      les journaux de l'hébergeur ; `no-referrer` ne couvre que les requêtes vers un autre hôte.
 - [ ] Formulaire : `required` (ou équivalent via Zod / react-hook-form) et zones `aria-live`
       pour les créneaux, les erreurs et la confirmation _(reporté depuis le squelette des pages)_
 - [ ] Accessibilité : déplacer le focus (h1 ou `main`) après un changement de page, pour que

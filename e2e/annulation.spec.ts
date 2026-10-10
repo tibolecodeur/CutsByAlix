@@ -198,9 +198,13 @@ test("confidentialité : no-referrer et noindex sur la page, jamais le jeton ail
   const erreurs: string[] = [];
   page.on("console", (m) => consoleMessages.push(m.text()));
   page.on("pageerror", (e) => erreurs.push(e.message));
+  const referers: string[] = [];
   page.on("request", (r) => {
     const url = new URL(r.url());
-    if (url.host !== "localhost:5173") sorties.push(`${url.pathname}${url.search}`);
+    if (url.host !== "localhost:5173") {
+      sorties.push(`${url.pathname}${url.search}`);
+      referers.push(r.headers()["referer"] ?? "");
+    }
   });
   await mockBooking(page);
 
@@ -221,6 +225,8 @@ test("confidentialité : no-referrer et noindex sur la page, jamais le jeton ail
   expect(sorties.filter((path) => !path.startsWith("/rest/v1/"))).toEqual([]);
   expect(sorties.filter((path) => path.includes(TOKEN))).toEqual([]);
   expect(consoleMessages.filter((m) => m.includes(TOKEN))).toEqual([]);
+  // Le Referer des requêtes vers un autre hôte (Supabase) ne contient jamais le jeton.
+  expect(referers.filter((value) => value.includes(TOKEN))).toEqual([]);
   expect(erreurs).toEqual([]);
 
   // En quittant la page (navigation interne), les consignes ne s'appliquent plus aux autres pages.

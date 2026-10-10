@@ -19,7 +19,7 @@ begin
   end loop;
 end $$;
 
-select plan(37);
+select plan(38);
 
 truncate public.bookings, public.availabilities, public.locations, public.services,
          public.gallery_items, public.admins;
@@ -202,6 +202,10 @@ select is(
   (select count(*) from private.get_booking_at('2026-10-20 08:31 Europe/Paris', 'd0000000-0000-4000-8000-00000000000d') g
     where to_jsonb(g)::text ~* '(secrète|0700000004|Roux|cancel_token|private_address)'),
   0::bigint, 'valeurs de get_booking : ni adresse, ni téléphone, ni email, ni nom de famille, ni jeton');
+select is(
+  (select count(*) from private.get_booking_at('2026-10-18 08:30 Europe/Paris', 'c0000000-0000-4000-8000-00000000000c') g
+    where to_jsonb(g)::text ~* '(secrète|0700000003|lou@example|Martin|cancel_token|private_address)'),
+  0::bigint, 'valeurs de get_booking sur un RDV avec email : ni email, ni téléphone, ni nom de famille');
 select is(
   (select pg_typeof(public.cancel_booking('49999999-0000-4000-8000-000000000000'))::text),
   'boolean', 'cancel_booking ne renvoie qu''un booléen');

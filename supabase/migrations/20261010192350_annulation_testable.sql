@@ -61,7 +61,7 @@ returns table (
   can_cancel boolean
 )
 language sql
-stable
+volatile  -- pas « stable » : PostgREST accepterait alors un GET (jeton dans l'URL des journaux d'API)
 security definer
 set search_path = ''
 as $$
