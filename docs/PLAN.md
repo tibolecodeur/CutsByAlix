@@ -106,8 +106,9 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 - [x] Tests Playwright (3 projets) _(parcours /reserver et 4 états de /annuler, RPC interceptées)_
 - [x] `noindex` sur `/annuler` (prop `noindex` de `PageMeta` + `X-Robots-Tag` dans
       `public/_headers`).
-- [ ] **`<meta name="robots" content="noindex">` sur `/admin` et la 404** (la prop `noindex` de
-      `PageMeta` existe : il reste à l'utiliser). **À faire avant la mise en ligne.**
+- [x] `noindex` sur `/admin` (consigne 17 : `AdminHead` + `X-Robots-Tag` dans `_headers`).
+- [ ] **`<meta name="robots" content="noindex">` sur la 404** (prop `noindex` de `PageMeta`).
+      **À faire avant la mise en ligne.**
 - [x] `referrer: no-referrer` sur `/annuler` : balise `<meta name="referrer">` (prop `noReferrer`
       de `PageMeta`) + `Referrer-Policy` dans `public/_headers` (Cloudflare Pages), **fichier
       prêt, rien de déployé**.
@@ -130,11 +131,33 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 
 ## Phase 6 — Espace admin
 
-- [ ] Connexion · Disponibilités · Liste des RDV · Galerie · Prestations
-      _(maquettes faites sur fausse base : connexion, tableau de bord, RDV, dispos (ajout,
-      suppression), galerie (sans envoi), mot de passe, déconnexion ; faux état connecté réservé
-      au dev, absent du build de prod (test). Restent : branchement Supabase Auth / tables /
-      Storage, prestations, duplication d'une semaine, annulation d'un RDV par le barber)_
+- [x] **Connexion, session et mot de passe** (consigne 17, issue #22) : Supabase Auth réel,
+      client admin distinct (`src/lib/supabaseAdmin.ts`, session persistante, clé de stockage
+      `cutsbyalix-admin-auth`), contrôle de la ligne `admins` sous RLS, route
+      `/admin/connexion` (message d'erreur unique et neutre), aucune page admin montée sans
+      session vérifiée, déconnexion locale, changement de mot de passe avec l'ancien (12
+      caractères, aucune autre règle) qui déconnecte les autres appareils. Migration
+      `…_restreindre_lecture_publique_a_anon` : un connecté non admin ne lit plus rien. Faux
+      login DEV supprimé (le test de build vérifie toujours son absence). PWA admin
+      (`public/admin.webmanifest`, icônes provisoires « CBA », liés depuis /admin seulement) ;
+      `noindex` sur /admin (meta + `_headers`). Procédure : `docs/ADMIN-COMPTE.md`.
+- [ ] **Avant de donner l'accès à Alix** : faire les réglages Supabase de
+      `docs/ADMIN-COMPTE.md` (§1), créer son compte (§2) et l'ajouter à `admins`. Et surtout
+      brancher les DONNÉES admin (RDV, dispos, galerie, prestations) : elles sont encore
+      factices (`src/lib/fakeDb.ts`), Alix verrait de faux rendez-vous.
+- [ ] **Mot de passe oublié** : pas de réinitialisation par e-mail (SMTP gratuit limité) ;
+      Thibault fixe un mot de passe temporaire dans le SQL Editor (`docs/ADMIN-COMPTE.md`, §5),
+      Alix le change ensuite dans « Mon compte ».
+- [ ] **iPhone** : l'application ajoutée à l'écran d'accueil a un stockage séparé de Safari, il
+      faut s'y connecter une fois (noté dans `docs/ADMIN-COMPTE.md`, §4).
+- [ ] **Session dans le localStorage** (lisible par un script injecté) : ajouter une
+      Content-Security-Policy stricte dans `public/_headers` avant la mise en ligne de l'admin.
+- [ ] Icônes PWA définitives (logo HD) à la place des icônes provisoires « CBA ».
+- [ ] MFA (plus tard) ; CAPTCHA Turnstile sur la connexion (V2).
+- [ ] Données admin : Disponibilités · Liste des RDV · Galerie · Prestations sur Supabase
+      _(maquettes faites sur fausse base : tableau de bord, RDV, dispos (ajout, suppression),
+      galerie (sans envoi). Restent : branchement des tables et du Storage, prestations,
+      duplication d'une semaine, annulation d'un RDV par le barber)_
 - [ ] Disponibilités : afficher au barber qu'un créneau ne devient visible des clients que
       48 h avant (« visible à partir de J+2 »), pour qu'il publie ses dispos assez tôt.
 
