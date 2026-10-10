@@ -2,6 +2,7 @@ import { useRef, useState, type MouseEvent, type SubmitEvent } from "react";
 import { Choice } from "@/components/Choice";
 import { EmptyMessage, ErrorMessage, LoadingMessage } from "@/components/StatusMessage";
 import { getAvailableSlots, type AvailableSlot } from "@/features/booking/data";
+import { firstBookableDay, isTooSoonDay } from "@/features/booking/notice";
 import { BOOKING_RULES } from "@/lib/bookingRules";
 import {
   addDaysToKey,
@@ -54,11 +55,14 @@ export function SlotStep(props: SlotStepProps) {
       list.scrollIntoView({ block: "start" });
     }
   }
-  const slots = useAsync(day === null ? null : `slots|${serviceId}|${day}`, () =>
+  const now = new Date();
+  // Jour entièrement à moins de 48 h : inutile d'interroger la base, on explique pourquoi.
+  const tooSoon = day !== null && isTooSoonDay(day, now);
+  const slots = useAsync(day === null || tooSoon ? null : `slots|${serviceId}|${day}`, () =>
     getAvailableSlots(serviceId, day ?? ""),
   );
 
-  const today = parisDayKey(new Date());
+  const today = parisDayKey(now);
   const days = Array.from({ length: BOOKING_RULES.maxAdvanceDays }, (_, i) =>
     addDaysToKey(today, i),
   );
@@ -78,6 +82,10 @@ export function SlotStep(props: SlotStepProps) {
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-8">
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-lg font-semibold">Jour</legend>
+          <p className="text-muted">
+            On réserve au plus tard {BOOKING_RULES.minNoticeHours} h avant le rendez-vous, et
+            jusqu'à {BOOKING_RULES.maxAdvanceDays / 7} semaines à l'avance.
+          </p>
           <div
             aria-hidden="true"
             className="grid grid-cols-7 gap-0.5 text-center text-sm text-muted"
@@ -125,6 +133,7 @@ export function SlotStep(props: SlotStepProps) {
         <div ref={slotsRef} className="flex flex-col gap-3">
           <SlotList
             day={day}
+            firstDay={tooSoon ? firstBookableDay(now) : null}
             state={slots}
             selected={slot}
             error={error}
@@ -144,6 +153,8 @@ export function SlotStep(props: SlotStepProps) {
 
 type SlotListProps = {
   day: DayKey | null;
+  /** Renseigné quand le jour choisi est à moins de 48 h : premier jour possible. */
+  firstDay: DayKey | null;
   state: AsyncResult<AvailableSlot[]>;
   selected: AvailableSlot | null;
   error?: string;
@@ -151,7 +162,18 @@ type SlotListProps = {
 };
 
 /** Créneaux du jour choisi, avec les états chargement, erreur et « aucun créneau ». */
-function SlotList({ day, state, selected, error, onSelect }: SlotListProps) {
+function SlotList({ day, firstDay, state, selected, error, onSelect }: SlotListProps) {
+  if (day !== null && firstDay !== null) {
+    return (
+      <EmptyMessage>
+        <p className="font-semibold">Trop tard pour réserver le {formatDayKey(day)}.</p>
+        <p>
+          On réserve au plus tard {BOOKING_RULES.minNoticeHours} h avant. Choisis un jour à partir
+          du {formatDayKey(firstDay)}.
+        </p>
+      </EmptyMessage>
+    );
+  }
   if (day === null || state.status === "idle") {
     return (
       <div className="flex flex-col gap-2">

@@ -30,7 +30,8 @@ test("lien valide : détail du RDV, puis annulation", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("Coupe + barbe")).toBeVisible();
   await expect(page.getByText("Angers")).toBeVisible();
-  await expect(page.getByText(/adresse fictive/)).toBeVisible();
+  // Adresse privée jamais affichée tant que la règle de révélation n'est pas décidée.
+  await expect(page.getByText(/adresse fictive/)).toHaveCount(0);
   await expectNoAxeViolation(page);
 
   await page.getByRole("button", { name: "Annuler mon rendez-vous" }).click();

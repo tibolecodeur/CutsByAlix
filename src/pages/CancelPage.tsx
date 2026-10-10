@@ -119,10 +119,8 @@ function BookingCancellation({ token, booking }: { token: string; booking: Booki
           ["Prestation", booking.serviceName],
           ["Date", formatLongDay(booking.startsAt)],
           ["Heure", `${formatTime(booking.startsAt)} – ${formatTime(booking.endsAt)}`],
+          // TODO: règle de révélation de l'adresse privée à décider (docs/PLAN.md).
           ["Lieu", booking.locationLabel],
-          ...(booking.privateAddress
-            ? [["Adresse", booking.privateAddress] as [string, string]]
-            : []),
         ]}
       />
       <p>Tu ne peux plus venir ? Annule ici pour libérer le créneau.</p>

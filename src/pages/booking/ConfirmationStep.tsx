@@ -12,7 +12,10 @@ type ConfirmationStepProps = {
   focusOnMount: boolean;
 };
 
-/** Réservation confirmée : récap avec l'adresse exacte et le lien personnel d'annulation. */
+/**
+ * Réservation confirmée : récap (date, heure de Paris, prestation, ville) et lien personnel
+ * d'annulation. Le jeton n'est affiché qu'ici, jamais écrit dans la console.
+ */
 export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProps) {
   const cancelPath = `/annuler?token=${encodeURIComponent(receipt.cancelToken)}`;
   const cancelUrl = `${window.location.origin}${cancelPath}`;
@@ -27,8 +30,9 @@ export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProp
           ["Prestation", receipt.serviceName],
           ["Date", formatLongDay(receipt.startsAt)],
           ["Heure", `${formatTime(receipt.startsAt)} – ${formatTime(receipt.endsAt)}`],
+          // TODO: règle de révélation de l'adresse privée à décider (docs/PLAN.md) ; en
+          // attendant, ni la base ni l'écran ne la donnent.
           ["Lieu", receipt.locationLabel],
-          ["Adresse", receipt.privateAddress],
           ["Paiement", "En liquide, sur place"],
         ]}
       />
