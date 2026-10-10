@@ -46,7 +46,7 @@ const ok = (data: unknown): Promise<Reply> => Promise.resolve({ data, error: nul
 const fail = (message: string, code?: string): Promise<Reply> =>
   Promise.resolve({ data: null, error: { message, code } });
 
-function renderPage(url = `/annuler?token=${TOKEN}`) {
+function renderPage(url = `/annuler#${TOKEN}`) {
   return render(
     <MemoryRouter initialEntries={[url]}>
       <CancelPage />
@@ -198,7 +198,7 @@ describe("CancelPage : lien invalide", () => {
 
     // « Expiré » : la base répond exactement pareil (0 ligne), donc exactement le même écran.
     mockRpc({ get_booking: () => ok([]) });
-    const expired = renderPage(`/annuler?token=aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee`);
+    const expired = renderPage(`/annuler#aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee`);
     await screen.findByRole("heading", { name: INVALID });
     expect(expired.container.innerHTML).toBe(unknownHtml);
   });
@@ -210,13 +210,29 @@ describe("CancelPage : lien invalide", () => {
     const referenceHtml = reference.container.innerHTML;
     reference.unmount();
 
-    const malformed = renderPage("/annuler?token=pas-un-uuid");
+    const malformed = renderPage("/annuler#pas-un-uuid");
     expect(await screen.findByRole("heading", { name: INVALID })).toBeVisible();
     expect(malformed.container.innerHTML).toBe(referenceHtml);
     expect(rpc).not.toHaveBeenCalled();
     expect(
       screen.queryByRole("button", { name: "Annuler mon rendez-vous" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("ne reconnaît plus l'ancien format ?token= : lien invalide, la base n'est pas interrogée", async () => {
+    const rpc = mockRpc({ get_booking: () => ok([ROW]) });
+    renderPage(`/annuler?token=${TOKEN}`);
+
+    expect(await screen.findByRole("heading", { name: INVALID })).toBeVisible();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("lit le jeton dans le fragment : la base le reçoit dans le corps de la requête", async () => {
+    const rpc = mockRpc({ get_booking: () => ok([ROW]) });
+    renderPage(`/annuler#${TOKEN}`);
+
+    await screen.findByRole("heading", { name: "Lucas, ton rendez-vous" });
+    expect(rpc).toHaveBeenCalledWith("get_booking", { p_token: TOKEN });
   });
 });
 

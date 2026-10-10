@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useSearchParams } from "react-router";
+import { useLocation } from "react-router";
 import { Button, ButtonLink } from "@/components/Button";
 import { PageMeta } from "@/components/PageMeta";
 import { Section } from "@/components/Section";
@@ -16,19 +16,23 @@ import { useAsync } from "@/lib/useAsync";
 import { BookingSummary } from "@/pages/booking/BookingSummary";
 
 /**
- * Annulation via le lien personnel `/annuler?token=…` (jamais via l'id du RDV).
+ * Annulation via le lien personnel `/annuler#<jeton>` (jamais via l'id du RDV).
  * États : lien valide (détail + bouton), déjà annulé, trop tard, lien invalide ; plus
  * chargement et erreur réseau. « Lien invalide » est la réponse unique pour un jeton absent,
  * mal formé, inconnu OU expiré (RDV terminé) : la base ne les distingue pas, l'écran non plus.
  *
- * L'URL contient un secret : la page demande `no-referrer` (aucun site tiers ne reçoit le
- * lien) et `noindex` (jamais dans un moteur de recherche). Le jeton n'est écrit nulle part
- * (ni console, ni message d'erreur) et ne part que dans le corps des requêtes à Supabase.
- * Les mêmes protections existent côté hébergeur dans `public/_headers`.
+ * Le jeton est dans le FRAGMENT de l'URL (après le `#`), pas dans la query : un fragment n'est
+ * jamais envoyé au serveur, ni recopié dans l'en-tête Referer, ni écrit dans les journaux de
+ * l'hébergeur (équivalent côté PHP : une ancre `#` n'arrive jamais dans `$_SERVER`). L'ancien
+ * format `?token=` n'existe plus : il donne « Lien invalide » sans requête.
+ * Le jeton n'est écrit nulle part (ni console, ni message d'erreur) et ne part que dans le
+ * corps des requêtes à Supabase. Par précaution, la page demande aussi `no-referrer` et
+ * `noindex`, comme `public/_headers` côté hébergeur.
  */
 export function CancelPage() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") ?? "";
+  // `location.hash` vaut « #<jeton> » : on retire le « # ». Le jeton vit dans l'état du routeur
+  // (en mémoire) le temps de la page ; il n'est ni copié ailleurs ni journalisé.
+  const token = useLocation().hash.slice(1);
   const booking = useAsync(token === "" ? null : `booking|${token}`, () => getBooking(token));
 
   return (

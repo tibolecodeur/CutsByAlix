@@ -58,7 +58,7 @@ test("lien valide : récapitulatif sans adresse, puis annulation en deux temps",
   page,
 }) => {
   const sent = await mockBooking(page);
-  await page.goto(`/annuler?token=${TOKEN}`);
+  await page.goto(`/annuler#${TOKEN}`);
 
   await expect(
     page.getByRole("heading", { level: 2, name: "Lucas, ton rendez-vous" }),
@@ -88,7 +88,7 @@ test("lien valide : récapitulatif sans adresse, puis annulation en deux temps",
 
 test("trop tard : moins de 24 h avant le RDV", async ({ page }) => {
   await mockBooking(page, { booking: { body: [{ ...ROW, can_cancel: false }] } });
-  await page.goto(`/annuler?token=${TOKEN}`);
+  await page.goto(`/annuler#${TOKEN}`);
 
   await expect(
     page.getByRole("heading", { level: 2, name: "Trop tard pour annuler en ligne" }),
@@ -100,7 +100,7 @@ test("trop tard : moins de 24 h avant le RDV", async ({ page }) => {
 
 test("trop tard au moment d'annuler : la base refuse (too_late)", async ({ page }) => {
   await mockBooking(page, { cancel: rpcError("too_late") });
-  await page.goto(`/annuler?token=${TOKEN}`);
+  await page.goto(`/annuler#${TOKEN}`);
 
   await demanderLAnnulation(page);
   await page.getByRole("button", { name: "Oui, annuler" }).click();
@@ -113,7 +113,7 @@ test("RDV déjà annulé", async ({ page }) => {
   await mockBooking(page, {
     booking: { body: [{ ...ROW, status: "cancelled", can_cancel: false }] },
   });
-  await page.goto(`/annuler?token=${TOKEN}`);
+  await page.goto(`/annuler#${TOKEN}`);
 
   await expect(
     page.getByRole("heading", { level: 2, name: "Rendez-vous déjà annulé" }),
@@ -128,8 +128,9 @@ test("lien invalide : même écran pour absent, mal formé, inconnu et expiré",
   const sent = await mockBooking(page, { booking: { body: [] } });
   const cas = [
     ["sans jeton", "/annuler", false],
-    ["jeton mal formé", "/annuler?token=pas-un-uuid", false],
-    ["jeton inconnu ou expiré", `/annuler?token=${TOKEN}`, true],
+    ["jeton mal formé", "/annuler#pas-un-uuid", false],
+    ["ancien format ?token= (supprimé)", `/annuler?token=${TOKEN}`, false],
+    ["jeton inconnu ou expiré", `/annuler#${TOKEN}`, true],
   ] as const;
 
   const ecrans: string[] = [];
@@ -152,7 +153,7 @@ test("erreur réseau au chargement : message, puis « Réessayer »", async ({ p
   // lance le chargement deux fois au montage, en dev).
   let coupe = true;
   await mockRpc(page, "get_booking", () => (coupe ? "network-error" : { body: [ROW] }));
-  await page.goto(`/annuler?token=${TOKEN}`);
+  await page.goto(`/annuler#${TOKEN}`);
 
   await expect(page.getByRole("alert")).toContainText("Impossible de charger ton rendez-vous");
   await expect(page.getByText(TOKEN)).toHaveCount(0);
@@ -169,7 +170,7 @@ test("erreur réseau pendant l'annulation : message, puis nouvel essai en un app
   let echecs = 1;
   await mockRpc(page, "get_booking", () => ({ body: [ROW] }));
   await mockRpc(page, "cancel_booking", () => (echecs-- > 0 ? "network-error" : { body: true }));
-  await page.goto(`/annuler?token=${TOKEN}`);
+  await page.goto(`/annuler#${TOKEN}`);
 
   await demanderLAnnulation(page);
   await page.getByRole("button", { name: "Oui, annuler" }).click();
@@ -181,7 +182,7 @@ test("erreur réseau pendant l'annulation : message, puis nouvel essai en un app
 
 test("double clic sur « Oui, annuler » : une seule annulation envoyée", async ({ page }) => {
   const sent = await mockBooking(page);
-  await page.goto(`/annuler?token=${TOKEN}`);
+  await page.goto(`/annuler#${TOKEN}`);
 
   await demanderLAnnulation(page);
   await page.getByRole("button", { name: "Oui, annuler" }).dblclick();
@@ -190,25 +191,28 @@ test("double clic sur « Oui, annuler » : une seule annulation envoyée", async
   expect(sent.cancel).toHaveLength(1);
 });
 
-test("confidentialité : no-referrer et noindex sur la page, jamais le jeton ailleurs", async ({
+test("confidentialité : aucune requête ne contient le jeton (URL, Referer), meta no-referrer et noindex", async ({
   page,
 }) => {
-  const sorties: string[] = [];
   const consoleMessages: string[] = [];
   const erreurs: string[] = [];
   page.on("console", (m) => consoleMessages.push(m.text()));
   page.on("pageerror", (e) => erreurs.push(e.message));
+  // TOUTES les requêtes, vers notre site comme vers un tiers : URL (sans fragment) et Referer.
+  const urls: string[] = [];
   const referers: string[] = [];
+  const horsSite: string[] = [];
   page.on("request", (r) => {
-    const url = new URL(r.url());
-    if (url.host !== "localhost:5173") {
-      sorties.push(`${url.pathname}${url.search}`);
-      referers.push(r.headers()["referer"] ?? "");
-    }
+    // Le fragment (#…) ne quitte jamais le navigateur ; Playwright l'ajoute parfois à l'URL
+    // de la navigation, on le retire pour ne regarder que ce qui part vraiment.
+    const url = new URL(r.url().split("#")[0]!);
+    urls.push(url.href);
+    referers.push(r.headers()["referer"] ?? "");
+    if (url.host !== "localhost:5173") horsSite.push(url.pathname);
   });
   await mockBooking(page);
 
-  await page.goto(`/annuler?token=${TOKEN}`);
+  await page.goto(`/annuler#${TOKEN}`);
   await expect(
     page.getByRole("heading", { level: 2, name: "Lucas, ton rendez-vous" }),
   ).toBeVisible();
@@ -221,12 +225,14 @@ test("confidentialité : no-referrer et noindex sur la page, jamais le jeton ail
   await page.getByRole("button", { name: "Oui, annuler" }).click();
   await expect(page.getByRole("heading", { level: 2, name: "C'est annulé" })).toBeVisible();
 
-  // Seules des requêtes vers l'API Supabase, jamais avec le jeton dans l'URL ; rien dans la console.
-  expect(sorties.filter((path) => !path.startsWith("/rest/v1/"))).toEqual([]);
-  expect(sorties.filter((path) => path.includes(TOKEN))).toEqual([]);
-  expect(consoleMessages.filter((m) => m.includes(TOKEN))).toEqual([]);
-  // Le Referer des requêtes vers un autre hôte (Supabase) ne contient jamais le jeton.
+  // Seules des requêtes vers l'API Supabase hors de notre site.
+  expect(horsSite.filter((path) => !path.startsWith("/rest/v1/"))).toEqual([]);
+  // Aucune requête (notre site ou un tiers) ne contient le jeton : ni dans l'URL, ni dans le
+  // Referer. Le jeton ne part que dans le corps des deux POST vers l'API Supabase.
+  expect(urls.length).toBeGreaterThan(0);
+  expect(urls.filter((url) => url.includes(TOKEN))).toEqual([]);
   expect(referers.filter((value) => value.includes(TOKEN))).toEqual([]);
+  expect(consoleMessages.filter((m) => m.includes(TOKEN))).toEqual([]);
   expect(erreurs).toEqual([]);
 
   // En quittant la page (navigation interne), les consignes ne s'appliquent plus aux autres pages.

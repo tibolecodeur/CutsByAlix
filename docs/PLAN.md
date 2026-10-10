@@ -111,18 +111,18 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 - [x] `referrer: no-referrer` sur `/annuler` : balise `<meta name="referrer">` (prop `noReferrer`
       de `PageMeta`) + `Referrer-Policy` dans `public/_headers` (Cloudflare Pages), **fichier
       prêt, rien de déployé**.
-- [ ] **Hébergeur à trancher, puis déployer les en-têtes** : CLAUDE.md et l'ADR 0001 disent
-      Vercel (`vercel.json` existe), README et ce plan disent Cloudflare Pages. `_headers` est
-      ignoré par Vercel : si c'est Vercel, mettre l'équivalent dans `vercel.json` (`headers`).
-      **À vérifier après le déploiement** : `curl -sI <site>/annuler` doit montrer
-      `referrer-policy: no-referrer` et `x-robots-tag: noindex`.
-- [ ] **Jeton dans le fragment `#` plutôt que `?token=`** (proposition de la consigne 16, non
-      appliquée faute de décision) : le fragment n'est jamais envoyé au serveur (ni journaux
-      d'hébergeur, ni Referer). Aucun lien réel n'existe encore : à décider AVANT la mise en
-      ligne, après il casserait les liens déjà envoyés. Touche `CancelPage`, `ConfirmationStep`,
-      SPEC, README. Mesuré en e2e : avec `?token=`, les requêtes
-      vers NOTRE site (modules, assets) portent l'adresse complète dans le Referer, donc dans
-      les journaux de l'hébergeur ; `no-referrer` ne couvre que les requêtes vers un autre hôte.
+- [x] **Hébergeur : Cloudflare Pages** (décision du 2026-10-10), `public/_headers` conservé, pas
+      de `vercel.json` à compléter. CLAUDE.md et l'ADR 0001 disent encore Vercel : à aligner.
+- [ ] **Déployer le site sur Cloudflare Pages, puis vérifier les en-têtes** :
+      `curl -sI <site>/annuler` doit montrer `referrer-policy: no-referrer` et
+      `x-robots-tag: noindex`.
+- [x] **Jeton dans le fragment de l'URL** (décision du 2026-10-10) : le lien est
+      `/annuler#<jeton>`. Le fragment n'est jamais envoyé au serveur : ni requête, ni Referer, ni
+      journal d'hébergeur. `CancelPage` le lit dans `location.hash` (en mémoire) ; l'ancien format
+      `?token=` est supprimé (rien n'est en ligne) et donne « Lien invalide » sans requête.
+      L'e2e vérifie qu'aucune requête (notre site ou un tiers) ne contient le jeton, ni dans
+      l'URL ni dans le Referer. Raison mesurée : avec `?token=`, même les requêtes vers notre
+      propre site portaient l'adresse complète dans le Referer.
 - [ ] Formulaire : `required` (ou équivalent via Zod / react-hook-form) et zones `aria-live`
       pour les créneaux, les erreurs et la confirmation _(reporté depuis le squelette des pages)_
 - [ ] Accessibilité : déplacer le focus (h1 ou `main`) après un changement de page, pour que

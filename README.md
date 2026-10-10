@@ -144,7 +144,7 @@ Squelette en place : structure et textes provisoires, sans style ni appel à la 
 | ---------------------------- | ------------------------------------------------------------------------------------ |
 | `/`                          | Accueil, une seule longue page : `#accueil`, `#prestations`, `#galerie`, `#reserver` |
 | `/reserver`                  | Parcours de réservation (prestation, jour, créneau, coordonnées, consentement)       |
-| `/annuler`                   | Annulation via le lien personnel (`?token=…`)                                        |
+| `/annuler`                   | Annulation via le lien personnel (`#<jeton>`)                                        |
 | `/admin`                     | Connexion de l'espace admin                                                          |
 | `/mentions-legales`          | Mentions légales                                                                     |
 | `/politique-confidentialite` | Politique de confidentialité                                                         |

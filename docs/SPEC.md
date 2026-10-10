@@ -43,7 +43,7 @@ public du lieu à côté de chaque créneau.
 - Réservation : prestation → jour (calendrier) → créneau libre → prénom, nom, téléphone et/ou email
   → consentement RGPD → confirmation.
 - Page de confirmation : récap, lien d'annulation personnel, bouton « Ajouter à mon calendrier » (.ics).
-- Annulation via le lien personnel (`/annuler?token=…`), possible jusqu'à X h avant le RDV (À confirmer).
+- Annulation via le lien personnel (`/annuler#<jeton>`, le jeton est dans le fragment : jamais envoyé au serveur), possible jusqu'à 24 h avant le RDV.
 - Pages : mentions légales, politique de confidentialité.
 
 ### Admin (`/admin`, connexion email + mot de passe)

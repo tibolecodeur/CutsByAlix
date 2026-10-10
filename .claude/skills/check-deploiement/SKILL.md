@@ -32,7 +32,7 @@ Vérifie chaque point, coche-le dans un rapport, et corrige ce qui peut l'être 
 
 ### Déploiement
 - [ ] Variables `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` configurées sur Vercel (projet de prod)
-- [ ] Routage SPA OK (recharger `/admin` ou `/annuler?token=…` ne donne pas de 404)
+- [ ] Routage SPA OK (recharger `/admin` ou `/annuler#<jeton>` ne donne pas de 404)
 - [ ] Domaine et HTTPS OK
 
 Termine par : prêt / pas prêt, et la liste de ce qu'il me reste à faire à la main.
