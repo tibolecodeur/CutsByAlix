@@ -90,13 +90,14 @@ set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", 
 
 select is((select count(*) from public.bookings), 1::bigint,
   'admin : voit les réservations');
-select is((select private_address from public.locations), '1 rue Secrète, 00000 Testville',
-  'admin : lit l''adresse privée');
+-- Depuis la consigne 18 : l'admin lit id, public_label et active, jamais l'adresse privée.
+select throws_ok('select private_address from public.locations', '42501', null,
+  'admin : ne lit pas l''adresse privée');
 select is((select count(*) from public.services), 2::bigint,
   'admin : voit aussi les prestations inactives');
-select lives_ok(
+select throws_ok(
   $$insert into public.locations (public_label, private_address) values ('Lieu deux', 'Ailleurs')$$,
-  'admin : crée un lieu');
+  '42501', null, 'admin : ne crée pas de lieu via l''API (consigne 18)');
 select lives_ok(
   $$update public.bookings set status = 'cancelled'$$,
   'admin : annule une réservation');
