@@ -19,7 +19,7 @@ begin
   end loop;
 end $$;
 
-select plan(60);
+select plan(64);
 
 truncate public.bookings, public.availabilities, public.locations, public.services,
          public.gallery_items, public.admins;
@@ -95,6 +95,26 @@ select ok(not has_function_privilege('authenticated', 'private.require_admin()',
 select ok(not has_function_privilege('authenticated',
   'private.availability_booking_count(uuid, timestamptz, timestamptz)', 'execute'),
   'authenticated : private.availability_booking_count non exécutable');
+select ok(not has_function_privilege('authenticated',
+  'private.availability_slot_count(timestamptz, timestamptz)', 'execute'),
+  'authenticated : private.availability_slot_count non exécutable');
+select is(
+  (select count(*) from unnest(array[
+      'private.require_admin()',
+      'private.availability_slot_count(timestamptz, timestamptz)',
+      'private.availability_booking_count(uuid, timestamptz, timestamptz)',
+      'private.admin_create_availability_at(timestamptz, uuid, timestamptz, timestamptz)'
+    ]) f where has_function_privilege('anon', f, 'execute')),
+  0::bigint, 'anon : aucune fonction interne des disponibilités exécutable');
+-- Création, suppression de plage et réservation prennent le MÊME verrou global : une plage ne
+-- disparaît jamais entre la vérification d'un créneau et l'insertion d'un RDV.
+select is(
+  (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where (n.nspname, p.proname) in (('private', 'create_booking_at'),
+                                     ('private', 'admin_create_availability_at'),
+                                     ('public', 'admin_delete_availability'))
+      and p.prosrc like '%hashtextextended(''booking:slots'', 0)%'),
+  3::bigint, 'create_booking_at, création et suppression de plage partagent le verrou booking:slots');
 select is(
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname like 'admin\_%' and not p.prosecdef),
@@ -173,12 +193,24 @@ select throws_ok($$delete from public.availabilities$$, '42501', null,
 -- Règles : lues dans private.settings().
 select results_eq('select * from public.admin_booking_rules()',
   $$values (70, 2880, 28)$$, 'admin : règles 70 min / 48 h / 28 jours');
+-- Comparaison faite en postgres (seul à lire private.settings()), avec l'identité de l'admin
+-- toujours dans les claims (exigée par admin_booking_rules).
+reset role;
+select ok(
+  (select make_interval(days => r.max_advance_days) = (select max_advance from private.settings())
+     and make_interval(mins => r.slot_step_min) = (select slot_step from private.settings())
+     and make_interval(mins => r.min_notice_min) = (select min_notice from private.settings())
+     from public.admin_booking_rules() r),
+  'admin_booking_rules rend exactement private.settings() (horizon en jours seuls)');
+set local role authenticated;
 
 -- Liste : plages non terminées seulement, comptes, aucun champ d'adresse.
 select results_eq(
-  'select id, location_label, slot_count, booking_count from public.admin_list_availabilities()',
-  $$values ('50000000-0000-4000-8000-000000000005'::uuid, 'Ville un'::text, 1, 0),
-           ('50000000-0000-4000-8000-000000000002'::uuid, 'Ville un'::text, 3, 1),
+  -- Filtre sur 2099 : la plage de mars 2030 (…005) sortira de la liste après sa fin, le test
+  -- ne doit pas casser ce jour-là.
+  $$select id, location_label, slot_count, booking_count from public.admin_list_availabilities()
+     where starts_at > '2050-01-01'$$,
+  $$values ('50000000-0000-4000-8000-000000000002'::uuid, 'Ville un'::text, 3, 1),
            ('50000000-0000-4000-8000-000000000003'::uuid, 'Ville un'::text, 3, 0),
            ('50000000-0000-4000-8000-000000000004'::uuid, 'Ville un'::text, 3, 0)$$,
   'admin : liste chronologique, sans la plage passée, créneaux de 70 min et RDV confirmés');

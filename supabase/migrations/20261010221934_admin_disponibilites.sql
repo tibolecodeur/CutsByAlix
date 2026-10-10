@@ -99,6 +99,9 @@ set search_path = ''
 as $$
 begin
   perform private.require_admin();
+  -- max_advance doit rester exprimé en JOURS seuls (interval '28 days') : extract(day …)
+  -- renverrait 0 pour interval '1 month' et ignorerait des heures ajoutées. Vérifié par
+  -- pgTAP 13 (le nombre renvoyé doit égaler max_advance).
   return query
     select (extract(epoch from cfg.slot_step) / 60)::integer,
            (extract(epoch from cfg.min_notice) / 60)::integer,
@@ -189,6 +192,11 @@ begin
     raise exception 'too_short' using errcode = 'P0001';
   end if;
 
+  -- Même verrou que private.create_booking_at : une plage n'apparaît ni ne disparaît entre la
+  -- vérification d'un créneau et l'insertion d'une réservation. Pris AVANT tout verrou de
+  -- ligne, comme dans create_booking_at : un seul ordre (verrou global, puis lignes).
+  perform pg_advisory_xact_lock(hashtextextended('booking:slots', 0));
+
   -- Lieu inconnu ou inactif : même réponse (un lieu inactif n'a pas encore d'adresse réelle).
   -- FOR SHARE : le lieu ne peut pas être désactivé pendant la création.
   select l.public_label into v_label
@@ -198,10 +206,6 @@ begin
   if not found then
     raise exception 'location_inactive' using errcode = 'P0001';
   end if;
-
-  -- Même verrou que private.create_booking_at : une plage n'apparaît ni ne disparaît entre la
-  -- vérification d'un créneau et l'insertion d'une réservation.
-  perform pg_advisory_xact_lock(hashtextextended('booking:slots', 0));
 
   -- Chevauchement, tous lieux confondus. '[)' : 10h-12h et 12h-14h se touchent sans se
   -- chevaucher. La contrainte d'exclusion reste le filet (exception ci-dessous).
