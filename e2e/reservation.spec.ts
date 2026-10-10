@@ -178,6 +178,8 @@ test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation 
   await expect(page.getByText("Choisis un jour, puis un créneau.")).toBeVisible();
   await toucherJour(page, day);
   const creneaux = groupeCreneaux(page);
+  // `evaluateAll` ne patiente pas : on attend d'abord que les créneaux soient chargés.
+  await expect(creneaux.getByRole("radio")).toHaveCount(2);
   const textes = await creneaux
     .getByRole("radio")
     .evaluateAll((els) =>

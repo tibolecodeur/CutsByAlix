@@ -18,7 +18,13 @@ import { BookingSummary } from "@/pages/booking/BookingSummary";
 /**
  * Annulation via le lien personnel `/annuler?token=…` (jamais via l'id du RDV).
  * États : lien valide (détail + bouton), déjà annulé, trop tard, lien invalide ; plus
- * chargement et erreur réseau.
+ * chargement et erreur réseau. « Lien invalide » est la réponse unique pour un jeton absent,
+ * mal formé, inconnu OU expiré (RDV terminé) : la base ne les distingue pas, l'écran non plus.
+ *
+ * L'URL contient un secret : la page demande `no-referrer` (aucun site tiers ne reçoit le
+ * lien) et `noindex` (jamais dans un moteur de recherche). Le jeton n'est écrit nulle part
+ * (ni console, ni message d'erreur) et ne part que dans le corps des requêtes à Supabase.
+ * Les mêmes protections existent côté hébergeur dans `public/_headers`.
  */
 export function CancelPage() {
   const [searchParams] = useSearchParams();
@@ -30,6 +36,8 @@ export function CancelPage() {
       <PageMeta
         title="Annuler ma réservation"
         description="Annule ton rendez-vous CutsByAlix grâce au lien personnel reçu lors de la réservation."
+        noindex
+        noReferrer
       />
       <Section variant="blush">
         <h1>Annuler ma réservation</h1>
@@ -60,10 +68,15 @@ type Outcome = "idle" | "confirming" | "cancelling" | "cancelled" | "too_late" |
 
 function BookingCancellation({ token, booking }: { token: string; booking: BookingDetails }) {
   const [outcome, setOutcome] = useState<Outcome>("idle");
+  // Garde contre le double appui : le bouton est désactivé au rendu suivant, mais deux clics
+  // très rapprochés pourraient passer avant. Une `ref` change tout de suite (sans rendu).
+  const sending = useRef(false);
   // Après une action, l'écran change : le titre du nouvel état reçoit le focus.
   const hasActed = outcome !== "idle" && outcome !== "confirming";
 
   async function handleCancel() {
+    if (sending.current) return;
+    sending.current = true;
     setOutcome("cancelling");
     try {
       // false = déjà annulé entre-temps (autre onglet) : le résultat est le même pour le client.
@@ -73,6 +86,8 @@ function BookingCancellation({ token, booking }: { token: string; booking: Booki
       setOutcome(
         caught instanceof BookingError && caught.code === "too_late" ? "too_late" : "error",
       );
+    } finally {
+      sending.current = false;
     }
   }
 
@@ -130,7 +145,7 @@ function BookingCancellation({ token, booking }: { token: string; booking: Booki
         </ErrorMessage>
       )}
       {/* Annulation en deux temps : définitive, elle ne doit pas partir sur un appui malheureux. */}
-      {outcome === "confirming" || cancelling ? (
+      {outcome === "confirming" || outcome === "error" || cancelling ? (
         <div className="flex flex-col gap-3">
           <p className="font-semibold">L'annulation est définitive. Tu confirmes ?</p>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -161,8 +176,8 @@ function InvalidLink() {
   return (
     <StateBlock title="Lien invalide">
       <p>
-        Ce lien d'annulation n'est pas valide. Vérifie que tu as bien copié le lien en entier, tel
-        qu'il s'est affiché après ta réservation.
+        Ce lien d'annulation n'est pas valide ou n'est plus actif. Vérifie que tu as bien copié le
+        lien en entier, tel qu'il s'est affiché après ta réservation.
       </p>
       <BookAgain />
     </StateBlock>

@@ -1,0 +1,10 @@
+# En-têtes HTTP pour Cloudflare Pages (copié dans le build : dist/_headers).
+# Rien n'est déployé pour l'instant. Vercel ignore ce fichier : voir docs/PLAN.md.
+#
+# /annuler contient le jeton d'annulation dans son URL :
+#   · jamais de Referer vers un autre site ;
+#   · jamais dans un moteur de recherche.
+# La page pose aussi ces consignes dans son HTML (<meta>) : double protection.
+/annuler*
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex

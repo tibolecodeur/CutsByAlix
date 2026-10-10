@@ -1,0 +1,257 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Database } from "@/lib/database.types";
+import { getSupabase } from "@/lib/supabase";
+import { CancelPage } from "@/pages/CancelPage";
+
+/**
+ * Page /annuler avec la VRAIE couche données (src/features/booking/data.ts) et un client
+ * Supabase simulé : aucune requête ne part. Les cas « mal formé » passent par `isUuid`, qui ne
+ * doit même pas interroger la base.
+ */
+vi.mock("@/lib/supabase", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/supabase")>()),
+  getSupabase: vi.fn(),
+}));
+
+const TOKEN = "7f1c2a9e-3b4d-4e5f-8a6b-9c0d1e2f3a4b";
+
+const ROW = {
+  status: "confirmed",
+  starts_at: "2026-10-20T12:00:00+00:00", // mardi 20 octobre, 14 h à Paris
+  ends_at: "2026-10-20T13:00:00+00:00",
+  service_name: "Coupe + barbe",
+  location_label: "Angers",
+  first_name: "Lucas",
+  can_cancel: true,
+};
+
+type Reply = { data: unknown; error: { code?: string; message: string } | null };
+
+/** Client simulé : `handlers[nom]()` répond à `rpc(nom, …)`. Renvoie l'espion `rpc`. */
+function mockRpc(handlers: Record<string, () => Promise<Reply>>) {
+  const rpc = vi.fn((name: string) => {
+    const promise = handlers[name]!();
+    // `abortSignal` existe sur la vraie requête (get_booking) ; absent d'une promesse simple.
+    return Object.assign(promise, { abortSignal: () => promise });
+  });
+  vi.mocked(getSupabase).mockReturnValue({ rpc } as unknown as SupabaseClient<Database>);
+  return rpc;
+}
+
+const ok = (data: unknown): Promise<Reply> => Promise.resolve({ data, error: null });
+const fail = (message: string, code?: string): Promise<Reply> =>
+  Promise.resolve({ data: null, error: { message, code } });
+
+function renderPage(url = `/annuler?token=${TOKEN}`) {
+  return render(
+    <MemoryRouter initialEntries={[url]}>
+      <CancelPage />
+    </MemoryRouter>,
+  );
+}
+
+const consoleSpies = (["log", "info", "warn", "error", "debug"] as const).map((method) =>
+  vi.spyOn(console, method),
+);
+
+beforeEach(() => {
+  consoleSpies.forEach((spy) => spy.mockClear());
+  vi.mocked(getSupabase).mockReset();
+});
+
+afterEach(() => {
+  // Le jeton ne doit jamais être écrit dans la console.
+  const written = consoleSpies.flatMap((spy) => spy.mock.calls).map((args) => JSON.stringify(args));
+  expect(written.filter((line) => line.includes(TOKEN))).toEqual([]);
+});
+
+describe("CancelPage : lien valide", () => {
+  it("affiche le chargement, puis le récapitulatif sans adresse ni coordonnées", async () => {
+    mockRpc({ get_booking: () => ok([ROW]) });
+    renderPage();
+
+    expect(screen.getByRole("status")).toHaveTextContent("Chargement de ton rendez-vous…");
+    expect(await screen.findByRole("heading", { name: "Lucas, ton rendez-vous" })).toBeVisible();
+    expect(screen.getByText("Coupe + barbe")).toBeVisible();
+    expect(screen.getByText("mardi 20 octobre")).toBeVisible();
+    expect(screen.getByText("14:00 – 15:00")).toBeVisible();
+    expect(screen.getByText("Angers")).toBeVisible();
+    expect(screen.queryByText("Adresse")).not.toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(TOKEN);
+  });
+
+  it("annule en deux temps, envoie le jeton à la base et annonce « C'est annulé »", async () => {
+    const user = userEvent.setup();
+    const rpc = mockRpc({ get_booking: () => ok([ROW]), cancel_booking: () => ok(true) });
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Annuler mon rendez-vous" }));
+    expect(screen.getByText("L'annulation est définitive. Tu confirmes ?")).toBeVisible();
+    expect(rpc).not.toHaveBeenCalledWith("cancel_booking", expect.anything());
+
+    await user.click(screen.getByRole("button", { name: "Oui, annuler" }));
+    const title = await screen.findByRole("heading", { name: "C'est annulé" });
+    expect(title).toHaveFocus();
+    expect(rpc).toHaveBeenCalledWith("cancel_booking", { p_token: TOKEN });
+  });
+
+  it("peut garder son rendez-vous après avoir demandé l'annulation", async () => {
+    const user = userEvent.setup();
+    const rpc = mockRpc({ get_booking: () => ok([ROW]) });
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Annuler mon rendez-vous" }));
+    await user.click(screen.getByRole("button", { name: "Garder mon rendez-vous" }));
+
+    expect(screen.getByRole("button", { name: "Annuler mon rendez-vous" })).toBeVisible();
+    expect(rpc).not.toHaveBeenCalledWith("cancel_booking", expect.anything());
+  });
+
+  it("double clic : une seule annulation envoyée", async () => {
+    const user = userEvent.setup();
+    let resolveCancel: (value: Reply) => void = () => {};
+    const rpc = mockRpc({
+      get_booking: () => ok([ROW]),
+      cancel_booking: () => new Promise<Reply>((resolve) => (resolveCancel = resolve)),
+    });
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: "Annuler mon rendez-vous" }));
+    const confirm = screen.getByRole("button", { name: "Oui, annuler" });
+
+    // Deux clics dans le même rendu : le bouton n'est pas encore désactivé au second.
+    act(() => {
+      fireEvent.click(confirm);
+      fireEvent.click(confirm);
+    });
+    expect(screen.getByRole("button", { name: "Annulation en cours…" })).toBeDisabled();
+    await act(async () => resolveCancel({ data: true, error: null }));
+
+    expect(await screen.findByRole("heading", { name: "C'est annulé" })).toBeVisible();
+    expect(rpc.mock.calls.filter(([name]) => name === "cancel_booking")).toHaveLength(1);
+  });
+
+  it("répond aussi « C'est annulé » si la base répond false (rejeu après coupure réseau)", async () => {
+    const user = userEvent.setup();
+    mockRpc({ get_booking: () => ok([ROW]), cancel_booking: () => ok(false) });
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Annuler mon rendez-vous" }));
+    await user.click(screen.getByRole("button", { name: "Oui, annuler" }));
+
+    expect(await screen.findByRole("heading", { name: "C'est annulé" })).toBeVisible();
+  });
+});
+
+describe("CancelPage : trop tard et déjà annulé", () => {
+  it("affiche « Trop tard » sans bouton d'annulation quand can_cancel est faux", async () => {
+    mockRpc({ get_booking: () => ok([{ ...ROW, can_cancel: false }]) });
+    renderPage();
+
+    expect(
+      await screen.findByRole("heading", { name: "Trop tard pour annuler en ligne" }),
+    ).toBeVisible();
+    expect(screen.getByText(/jusqu'à 24 h avant/)).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Annuler mon rendez-vous" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("passe à « Trop tard » si la base refuse (too_late) au moment d'annuler", async () => {
+    const user = userEvent.setup();
+    mockRpc({
+      get_booking: () => ok([ROW]),
+      cancel_booking: () => fail("too_late", "P0001"),
+    });
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Annuler mon rendez-vous" }));
+    await user.click(screen.getByRole("button", { name: "Oui, annuler" }));
+
+    const title = await screen.findByRole("heading", { name: "Trop tard pour annuler en ligne" });
+    expect(title).toHaveFocus();
+  });
+
+  it("affiche « Rendez-vous déjà annulé » sans bouton d'annulation", async () => {
+    mockRpc({ get_booking: () => ok([{ ...ROW, status: "cancelled", can_cancel: false }]) });
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Rendez-vous déjà annulé" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Annuler mon rendez-vous" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("CancelPage : lien invalide", () => {
+  const INVALID = "Lien invalide";
+
+  it("affiche le même écran pour un jeton inconnu ou expiré (la base renvoie 0 ligne)", async () => {
+    mockRpc({ get_booking: () => ok([]) });
+    const { container, unmount } = renderPage();
+    await screen.findByRole("heading", { name: INVALID });
+    const unknownHtml = container.innerHTML;
+    unmount();
+
+    // « Expiré » : la base répond exactement pareil (0 ligne), donc exactement le même écran.
+    mockRpc({ get_booking: () => ok([]) });
+    const expired = renderPage(`/annuler?token=aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee`);
+    await screen.findByRole("heading", { name: INVALID });
+    expect(expired.container.innerHTML).toBe(unknownHtml);
+  });
+
+  it("affiche le même écran, sans interroger la base, pour un jeton absent ou mal formé", async () => {
+    const rpc = mockRpc({ get_booking: () => ok([ROW]) });
+    const reference = renderPage("/annuler");
+    expect(await screen.findByRole("heading", { name: INVALID })).toBeVisible();
+    const referenceHtml = reference.container.innerHTML;
+    reference.unmount();
+
+    const malformed = renderPage("/annuler?token=pas-un-uuid");
+    expect(await screen.findByRole("heading", { name: INVALID })).toBeVisible();
+    expect(malformed.container.innerHTML).toBe(referenceHtml);
+    expect(rpc).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: "Annuler mon rendez-vous" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("CancelPage : erreurs réseau", () => {
+  it("propose « Réessayer » quand le chargement échoue, sans afficher le jeton", async () => {
+    const user = userEvent.setup();
+    let attempt = 0;
+    mockRpc({
+      get_booking: () => (attempt++ === 0 ? fail(`échec ${TOKEN}`) : ok([ROW])),
+    });
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Impossible de charger/);
+    expect(document.body).not.toHaveTextContent(TOKEN);
+    await user.click(screen.getByRole("button", { name: "Réessayer" }));
+    expect(await screen.findByRole("heading", { name: "Lucas, ton rendez-vous" })).toBeVisible();
+  });
+
+  it("garde le bouton quand l'annulation échoue, et permet de réessayer", async () => {
+    const user = userEvent.setup();
+    let attempt = 0;
+    mockRpc({
+      get_booking: () => ok([ROW]),
+      cancel_booking: () => (attempt++ === 0 ? fail(`réseau ${TOKEN}`) : ok(true)),
+    });
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Annuler mon rendez-vous" }));
+    await user.click(screen.getByRole("button", { name: "Oui, annuler" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /L'annulation n'a pas pu être envoyée/,
+    );
+    expect(document.body).not.toHaveTextContent(TOKEN);
+    await user.click(screen.getByRole("button", { name: "Oui, annuler" }));
+    expect(await screen.findByRole("heading", { name: "C'est annulé" })).toBeVisible();
+  });
+});

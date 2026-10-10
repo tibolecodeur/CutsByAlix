@@ -72,8 +72,8 @@ export type FakeDb = {
 };
 
 /**
- * Liens d'annulation de démonstration, un par état de la page /annuler.
- * Utilisés par les tests e2e et pour essayer la page à la main en développement.
+ * Jetons des faux RDV de démonstration (liste de l'admin). La page /annuler, elle, lit la
+ * vraie base : ces jetons n'y donnent plus accès à rien.
  */
 export const FAKE_CANCEL_TOKENS = {
   /** RDV confirmé dans quelques jours : annulable. */
@@ -279,24 +279,6 @@ export function fakeDb(): FakeDb {
 export function resetFakeDb(now: Date = new Date()): FakeDb {
   db = seed(now);
   return db;
-}
-
-/**
- * TODO: brancher Supabase. Pont provisoire : les prestations viennent de la vraie table
- * `services` (uuid réels), mais créneaux et réservations sont encore calculés ici. Sans cette
- * copie, la fausse base ne reconnaîtrait pas la prestation choisie et n'afficherait aucun
- * créneau. Ajout ou mise à jour, jamais de suppression : les faux RDV (annulation, admin)
- * pointent encore vers les prestations de démonstration. À supprimer avec ce fichier.
- */
-export function syncFakeServices(
-  services: Pick<ServiceRow, "id" | "name" | "duration_min" | "price_label">[],
-): void {
-  const db = fakeDb();
-  for (const service of services) {
-    const existing = db.services.find((s) => s.id === service.id);
-    if (existing) Object.assign(existing, service, { active: true });
-    else db.services.push({ ...service, active: true, sort_order: db.services.length + 1 });
-  }
 }
 
 /**

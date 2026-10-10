@@ -1,6 +1,4 @@
-import { BOOKING_RULES, HOUR_MS } from "@/lib/bookingRules";
 import type { DayKey } from "@/lib/dates";
-import { fakeDb, fakeLatency, syncFakeServices } from "@/lib/fakeDb";
 import { getSupabase } from "@/lib/supabase";
 
 /**
@@ -8,9 +6,9 @@ import { getSupabase } from "@/lib/supabase";
  * Chaque fonction a la forme de la table ou de la RPC Supabase correspondante
  * (supabase/migrations/…_reservation_reelle.sql), avec des noms en camelCase.
  *
- * Branché sur Supabase : `getServices`, `getAvailableSlots`, `createBooking`.
- * TODO: brancher Supabase. `getBooking` et `cancelBooking` sont encore factices
- * (src/lib/fakeDb.ts) : remplacer chaque corps par l'appel `getSupabase().rpc(…)`.
+ * Tout est branché sur Supabase : `getServices` (table), `getAvailableSlots`, `createBooking`,
+ * `getBooking` et `cancelBooking` (RPC). Le `cancel_token` ne doit jamais être écrit dans la
+ * console, un message d'erreur ni une URL de requête : il ne part que dans le corps des `POST`.
  */
 
 /** Table `services`. */
@@ -146,8 +144,6 @@ export async function getServices(): Promise<Service[]> {
     durationMin: s.duration_min,
     priceLabel: s.price_label,
   }));
-  // TODO: brancher Supabase. À retirer avec la fausse base (annulation encore factice).
-  syncFakeServices(data);
   return services;
 }
 
@@ -209,43 +205,51 @@ export async function createBooking(input: NewBooking): Promise<BookingReceipt> 
   };
 }
 
-/** RPC `get_booking(p_token)` : null si le lien est invalide (rien d'autre ne fuit). */
+/**
+ * RPC `get_booking(p_token)` : le récap du RDV, ou `null` si le lien est invalide. « Invalide »
+ * regroupe volontairement : jeton mal formé, inconnu, ou RDV terminé (lien expiré) : la base ne
+ * distingue pas ces cas, l'écran non plus. Rejette en cas d'erreur réseau ou de base.
+ */
 export async function getBooking(token: string): Promise<BookingDetails | null> {
+  // Mal formé : inutile d'interroger la base (qui répondrait par une erreur de syntaxe).
   if (!isUuid(token)) return null;
-  await fakeLatency();
-  const db = fakeDb();
-  const booking = db.bookings.find((b) => b.cancel_token === token.toLowerCase());
-  if (!booking) return null;
 
-  const now = Date.now();
-  const service = db.services.find((s) => s.id === booking.service_id)!;
-  const location = db.locations.find((l) => l.id === booking.location_id)!;
-  const isConfirmed = booking.status === "confirmed";
+  const { data, error } = await getSupabase()
+    .rpc("get_booking", { p_token: token })
+    .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+  // Message d'origine volontairement NON recopié : il pourrait contenir le jeton.
+  if (error) throw new Error("Lecture du rendez-vous impossible");
+
+  const row = data[0];
+  if (!row) return null;
   return {
-    status: booking.status,
-    startsAt: booking.starts_at,
-    endsAt: booking.ends_at,
-    serviceName: service.name,
-    locationLabel: location.public_label,
-    firstName: booking.first_name,
-    canCancel:
-      isConfirmed &&
-      now <= Date.parse(booking.starts_at) - BOOKING_RULES.cancelNoticeHours * HOUR_MS,
+    status: row.status,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    serviceName: row.service_name,
+    locationLabel: row.location_label,
+    firstName: row.first_name,
+    canCancel: row.can_cancel,
   };
 }
 
 /**
- * RPC `cancel_booking(p_token)` : true si annulé ; false si lien inconnu ou RDV déjà annulé ;
- * erreur `too_late` à moins de 24 h du RDV.
+ * RPC `cancel_booking(p_token)` : `true` si annulé ; `false` si lien inconnu, RDV déjà annulé
+ * ou terminé (même résultat : rien ne fuit) ; erreur `too_late` à moins de 24 h du RDV.
+ *
+ * Volontairement SANS délai d'abandon (couper la requête n'annule pas l'écriture). Rejouer
+ * après une coupure réseau est sans danger : la seconde tentative renvoie `false`.
  */
 export async function cancelBooking(token: string): Promise<boolean> {
   if (!isUuid(token)) return false;
-  await fakeLatency();
-  const booking = fakeDb().bookings.find((b) => b.cancel_token === token.toLowerCase());
-  if (!booking || booking.status !== "confirmed") return false;
-  if (Date.now() > Date.parse(booking.starts_at) - BOOKING_RULES.cancelNoticeHours * HOUR_MS) {
-    throw new BookingError("too_late");
+
+  let response;
+  try {
+    response = await getSupabase().rpc("cancel_booking", { p_token: token });
+  } catch {
+    // Config manquante (SupabaseConfigError) ou erreur inattendue du client.
+    throw new BookingError("unknown");
   }
-  booking.status = "cancelled";
-  return true;
+  if (response.error) throw toBookingError(response.error);
+  return response.data;
 }

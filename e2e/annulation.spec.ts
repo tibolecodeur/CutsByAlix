@@ -1,19 +1,46 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { expect, test } from "./fixtures.ts";
+import { expect, mockRpc, rpcError, test, type RpcResponse } from "./fixtures.ts";
 
 /**
- * Les 4 états de /annuler, sur mobile, avec les liens de démonstration de la fausse base
- * (FAKE_CANCEL_TOKENS dans src/lib/fakeDb.ts, recopiés ici : le test reste « boîte noire »).
+ * Page /annuler (Android, iPhone, desktop) contre des RPC Supabase INTERCEPTÉES : aucune
+ * requête n'atteint une vraie base (e2e/fixtures.ts coupe tout ce qui n'est pas simulé). Les
+ * réponses ont des dates FIXES : la page affiche ce que la base renvoie, rien ne dépend de la
+ * date du jour (la règle des 24 h est testée en SQL, test pgTAP 11).
  */
-test.skip(({ isMobile }) => !isMobile, "Parcours testé sur les projets mobiles");
 
-const TOKENS = {
-  valid: "11111111-1111-4111-8111-111111111111",
-  cancelled: "22222222-2222-4222-8222-222222222222",
-  tooLate: "33333333-3333-4333-8333-333333333333",
-  unknown: "00000000-0000-4000-8000-000000000000",
+const TOKEN = "7f1c2a9e-3b4d-4e5f-8a6b-9c0d1e2f3a4b";
+
+/** Ligne renvoyée par get_booking (ni adresse, ni téléphone, ni email). */
+const ROW = {
+  status: "confirmed",
+  starts_at: "2030-03-12T13:00:00+00:00", // mardi 12 mars 2030, 14 h à Paris
+  ends_at: "2030-03-12T14:00:00+00:00",
+  service_name: "Coupe + barbe",
+  location_label: "Angers",
+  first_name: "Lucas",
+  can_cancel: true,
 };
+
+/** Simule get_booking et cancel_booking ; renvoie ce que le site a envoyé. */
+async function mockBooking(
+  page: Page,
+  {
+    booking = { body: [ROW] },
+    cancel = { body: true },
+  }: { booking?: RpcResponse; cancel?: RpcResponse } = {},
+) {
+  const sent = { get: [] as unknown[], cancel: [] as unknown[] };
+  await mockRpc(page, "get_booking", (args) => {
+    sent.get.push(args);
+    return booking;
+  });
+  await mockRpc(page, "cancel_booking", (args) => {
+    sent.cancel.push(args);
+    return cancel;
+  });
+  return sent;
+}
 
 async function expectNoAxeViolation(page: Page) {
   const audit = await new AxeBuilder({ page })
@@ -22,27 +49,71 @@ async function expectNoAxeViolation(page: Page) {
   expect(audit.violations.map((v) => v.id)).toEqual([]);
 }
 
-test("lien valide : détail du RDV, puis annulation", async ({ page }) => {
-  await page.goto(`/annuler?token=${TOKENS.valid}`);
+async function demanderLAnnulation(page: Page) {
+  await page.getByRole("button", { name: "Annuler mon rendez-vous" }).click();
+  await expect(page.getByText("L'annulation est définitive. Tu confirmes ?")).toBeVisible();
+}
+
+test("lien valide : récapitulatif sans adresse, puis annulation en deux temps", async ({
+  page,
+}) => {
+  const sent = await mockBooking(page);
+  await page.goto(`/annuler?token=${TOKEN}`);
 
   await expect(
     page.getByRole("heading", { level: 2, name: "Lucas, ton rendez-vous" }),
   ).toBeVisible();
+  // Prestation, date, heure de Paris, ville : rien d'autre.
   await expect(page.getByText("Coupe + barbe")).toBeVisible();
+  await expect(page.getByText("mardi 12 mars")).toBeVisible();
+  await expect(page.getByText("14:00 – 15:00")).toBeVisible();
   await expect(page.getByText("Angers")).toBeVisible();
-  // Adresse privée jamais affichée tant que la règle de révélation n'est pas décidée.
-  await expect(page.getByText(/adresse fictive/)).toHaveCount(0);
+  await expect(page.locator("dt", { hasText: /^Adresse$/ })).toHaveCount(0);
   await expectNoAxeViolation(page);
 
-  await page.getByRole("button", { name: "Annuler mon rendez-vous" }).click();
-  await expect(page.getByText("L'annulation est définitive. Tu confirmes ?")).toBeVisible();
+  await demanderLAnnulation(page);
   await page.getByRole("button", { name: "Oui, annuler" }).click();
   await expect(page.getByRole("heading", { level: 2, name: "C'est annulé" })).toBeFocused();
   await expect(page.getByRole("link", { name: "Réserver un créneau" })).toBeVisible();
+  await expectNoAxeViolation(page);
+
+  // Le jeton part dans le corps des requêtes. (En dev, React StrictMode lance l'effet de
+  // chargement deux fois au montage : plusieurs lectures sont normales, une seule annulation.)
+  expect(sent.get.length).toBeGreaterThanOrEqual(1);
+  expect(
+    sent.get.every((args) => JSON.stringify(args) === JSON.stringify({ p_token: TOKEN })),
+  ).toBe(true);
+  expect(sent.cancel).toEqual([{ p_token: TOKEN }]);
+});
+
+test("trop tard : moins de 24 h avant le RDV", async ({ page }) => {
+  await mockBooking(page, { booking: { body: [{ ...ROW, can_cancel: false }] } });
+  await page.goto(`/annuler?token=${TOKEN}`);
+
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Trop tard pour annuler en ligne" }),
+  ).toBeVisible();
+  await expect(page.getByText(/jusqu'à 24 h avant/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Annuler mon rendez-vous" })).toHaveCount(0);
+  await expectNoAxeViolation(page);
+});
+
+test("trop tard au moment d'annuler : la base refuse (too_late)", async ({ page }) => {
+  await mockBooking(page, { cancel: rpcError("too_late") });
+  await page.goto(`/annuler?token=${TOKEN}`);
+
+  await demanderLAnnulation(page);
+  await page.getByRole("button", { name: "Oui, annuler" }).click();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Trop tard pour annuler en ligne" }),
+  ).toBeFocused();
 });
 
 test("RDV déjà annulé", async ({ page }) => {
-  await page.goto(`/annuler?token=${TOKENS.cancelled}`);
+  await mockBooking(page, {
+    booking: { body: [{ ...ROW, status: "cancelled", can_cancel: false }] },
+  });
+  await page.goto(`/annuler?token=${TOKEN}`);
 
   await expect(
     page.getByRole("heading", { level: 2, name: "Rendez-vous déjà annulé" }),
@@ -51,29 +122,110 @@ test("RDV déjà annulé", async ({ page }) => {
   await expectNoAxeViolation(page);
 });
 
-test("trop tard : moins de 24 h avant le RDV", async ({ page }) => {
-  await page.goto(`/annuler?token=${TOKENS.tooLate}`);
+test("lien invalide : même écran pour absent, mal formé, inconnu et expiré", async ({ page }) => {
+  // Inconnu et expiré : la base répond pareil (aucune ligne). Absent et mal formé : le site
+  // n'interroge même pas la base.
+  const sent = await mockBooking(page, { booking: { body: [] } });
+  const cas = [
+    ["sans jeton", "/annuler", false],
+    ["jeton mal formé", "/annuler?token=pas-un-uuid", false],
+    ["jeton inconnu ou expiré", `/annuler?token=${TOKEN}`, true],
+  ] as const;
 
-  await expect(
-    page.getByRole("heading", { level: 2, name: "Trop tard pour annuler en ligne" }),
-  ).toBeVisible();
-  await expect(page.getByText(/jusqu'à 24 h avant/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Annuler mon rendez-vous" })).toHaveCount(0);
-  // L'adresse n'est pas rappelée dans cet état.
-  await expect(page.getByText(/adresse fictive/)).toHaveCount(0);
+  const ecrans: string[] = [];
+  for (const [nom, url, interroge] of cas) {
+    const avant = sent.get.length;
+    await page.goto(url);
+    await expect(page.getByRole("heading", { level: 2, name: "Lien invalide" }), nom).toBeVisible();
+    await expect(page.getByRole("button", { name: "Annuler mon rendez-vous" })).toHaveCount(0);
+    const appels = sent.get.length - avant;
+    if (interroge) expect(appels, `${nom} : appels à get_booking`).toBeGreaterThanOrEqual(1);
+    else expect(appels, `${nom} : aucun appel à get_booking`).toBe(0);
+    ecrans.push(await page.locator("main").innerText());
+  }
+  expect(new Set(ecrans).size, "les trois écrans sont identiques").toBe(1);
   await expectNoAxeViolation(page);
 });
 
-for (const [cas, url] of [
-  ["sans token", "/annuler"],
-  ["token mal formé", "/annuler?token=pas-un-uuid"],
-  ["token inconnu", `/annuler?token=${TOKENS.unknown}`],
-] as const) {
-  test(`lien invalide (${cas})`, async ({ page }) => {
-    await page.goto(url);
+test("erreur réseau au chargement : message, puis « Réessayer »", async ({ page }) => {
+  // Réseau coupé jusqu'au clic sur « Réessayer » (et non « au premier appel » : StrictMode
+  // lance le chargement deux fois au montage, en dev).
+  let coupe = true;
+  await mockRpc(page, "get_booking", () => (coupe ? "network-error" : { body: [ROW] }));
+  await page.goto(`/annuler?token=${TOKEN}`);
 
-    await expect(page.getByRole("heading", { level: 2, name: "Lien invalide" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Annuler mon rendez-vous" })).toHaveCount(0);
-    await expectNoAxeViolation(page);
+  await expect(page.getByRole("alert")).toContainText("Impossible de charger ton rendez-vous");
+  await expect(page.getByText(TOKEN)).toHaveCount(0);
+  coupe = false;
+  await page.getByRole("button", { name: "Réessayer" }).click();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Lucas, ton rendez-vous" }),
+  ).toBeVisible();
+});
+
+test("erreur réseau pendant l'annulation : message, puis nouvel essai en un appui", async ({
+  page,
+}) => {
+  let echecs = 1;
+  await mockRpc(page, "get_booking", () => ({ body: [ROW] }));
+  await mockRpc(page, "cancel_booking", () => (echecs-- > 0 ? "network-error" : { body: true }));
+  await page.goto(`/annuler?token=${TOKEN}`);
+
+  await demanderLAnnulation(page);
+  await page.getByRole("button", { name: "Oui, annuler" }).click();
+  await expect(page.getByRole("alert")).toContainText("L'annulation n'a pas pu être envoyée");
+
+  await page.getByRole("button", { name: "Oui, annuler" }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "C'est annulé" })).toBeVisible();
+});
+
+test("double clic sur « Oui, annuler » : une seule annulation envoyée", async ({ page }) => {
+  const sent = await mockBooking(page);
+  await page.goto(`/annuler?token=${TOKEN}`);
+
+  await demanderLAnnulation(page);
+  await page.getByRole("button", { name: "Oui, annuler" }).dblclick();
+
+  await expect(page.getByRole("heading", { level: 2, name: "C'est annulé" })).toBeVisible();
+  expect(sent.cancel).toHaveLength(1);
+});
+
+test("confidentialité : no-referrer et noindex sur la page, jamais le jeton ailleurs", async ({
+  page,
+}) => {
+  const sorties: string[] = [];
+  const consoleMessages: string[] = [];
+  const erreurs: string[] = [];
+  page.on("console", (m) => consoleMessages.push(m.text()));
+  page.on("pageerror", (e) => erreurs.push(e.message));
+  page.on("request", (r) => {
+    const url = new URL(r.url());
+    if (url.host !== "localhost:5173") sorties.push(`${url.pathname}${url.search}`);
   });
-}
+  await mockBooking(page);
+
+  await page.goto(`/annuler?token=${TOKEN}`);
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Lucas, ton rendez-vous" }),
+  ).toBeVisible();
+  await expect(page.locator('head meta[name="robots"]')).toHaveAttribute("content", "noindex");
+  await expect(page.locator('head meta[name="referrer"]')).toHaveAttribute(
+    "content",
+    "no-referrer",
+  );
+  await demanderLAnnulation(page);
+  await page.getByRole("button", { name: "Oui, annuler" }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "C'est annulé" })).toBeVisible();
+
+  // Seules des requêtes vers l'API Supabase, jamais avec le jeton dans l'URL ; rien dans la console.
+  expect(sorties.filter((path) => !path.startsWith("/rest/v1/"))).toEqual([]);
+  expect(sorties.filter((path) => path.includes(TOKEN))).toEqual([]);
+  expect(consoleMessages.filter((m) => m.includes(TOKEN))).toEqual([]);
+  expect(erreurs).toEqual([]);
+
+  // En quittant la page (navigation interne), les consignes ne s'appliquent plus aux autres pages.
+  await page.getByRole("link", { name: "Réserver un créneau" }).click();
+  await expect(page).toHaveURL(/\/reserver$/);
+  await expect(page.locator('head meta[name="robots"]')).toHaveCount(0);
+  await expect(page.locator('head meta[name="referrer"]')).toHaveCount(0);
+});
