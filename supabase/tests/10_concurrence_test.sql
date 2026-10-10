@@ -14,6 +14,22 @@
 --     qu'en local et en CI.
 -- « Maintenant » est fixé (create_booking_at) : 1er juin 2030, 8 h 30 à Paris.
 begin;
+-- Garde-fou : ce test VALIDE des données en base. Il refuse de tourner ailleurs que sur une
+-- base locale (Docker de `supabase start`, ou la CI) : jamais avec `supabase test db --linked`.
+-- Deuxième barrière : le mot de passe « postgres » n'est valable qu'en local, la connexion
+-- échouerait avant toute écriture.
+do $$
+begin
+  if inet_server_addr() is null
+     or not (inet_server_addr() <<= any (array[
+       '127.0.0.0/8', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '::1/128'
+     ]::inet[]))
+     or current_database() <> 'postgres'
+  then
+    raise exception '10_concurrence_test.sql : base non locale, test abandonné.';
+  end if;
+end $$;
+
 create extension if not exists pgtap with schema extensions;
 create extension if not exists dblink with schema extensions;
 
