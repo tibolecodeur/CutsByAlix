@@ -196,8 +196,9 @@ select set_eq(
      cross join lateral unnest(p.proargnames, p.proargmodes) as a(name, mode)
      where n.nspname = 'public' and p.proname = 'get_booking' and a.mode = 't'$$,
   array['status', 'starts_at', 'ends_at', 'service_name', 'location_label', 'first_name',
-        'can_cancel'],
-  'get_booking renvoie exactement : statut, début, fin, prestation, ville, prénom, annulable');
+        'can_cancel', 'cancelled_by'],
+  'get_booking renvoie exactement : statut, début, fin, prestation, ville, prénom, annulable, '
+  'auteur de l''annulation (consigne 19)');
 select is(
   (select count(*) from private.get_booking_at('2026-10-20 08:31 Europe/Paris', 'd0000000-0000-4000-8000-00000000000d') g
     where to_jsonb(g)::text ~* '(secrète|0700000004|Roux|cancel_token|private_address)'),
