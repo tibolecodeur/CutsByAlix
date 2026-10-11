@@ -13,7 +13,9 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       _(modèle de PR fait ; le reste est à faire à la main sur GitHub)_
 - [x] CI GitHub Actions (lint, typecheck, tests, build, e2e) · README · ADR 0001 (choix de stack)
 - [x] Pages vides et navigation (accueil, prestations, galerie, réserver, admin)
-- [ ] Déployé (Cloudflare Pages, plus tard : rien n'est en ligne pour l'instant)
+- [ ] Déployé (Cloudflare Pages) : dépôt prêt (consigne 22, issue #32 : `_headers`, repli SPA,
+      `robots.txt`, anti-pause, `docs/DEPLOIEMENT.md`, ADR 0007) ; création du projet
+      Cloudflare, variables et réglages Supabase Auth faits à la main par Thibault
 
 ## Phase 2 — Base de données et sécurité
 
@@ -122,10 +124,12 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       de `PageMeta`) + `Referrer-Policy` dans `public/_headers` (Cloudflare Pages), **fichier
       prêt, rien de déployé**.
 - [x] **Hébergeur : Cloudflare Pages** (décision du 2026-10-10), `public/_headers` conservé, pas
-      de `vercel.json` à compléter. CLAUDE.md et l'ADR 0001 disent encore Vercel : à aligner.
+      de `vercel.json` à compléter. ~~CLAUDE.md et l'ADR 0001 disent encore Vercel~~ : alignés
+      (consigne 22, ADR 0007, notes de correction datées dans les ADR 0001 et 0002).
 - [ ] **Déployer le site sur Cloudflare Pages, puis vérifier les en-têtes** :
       `curl -sI <site>/annuler` doit montrer `referrer-policy: no-referrer` et
-      `x-robots-tag: noindex`.
+      `x-robots-tag: noindex, nofollow`, chaque en-tête une seule fois (vérifié en local avec
+      wrangler, consigne 22 ; à refaire sur l'aperçu : `docs/TESTS-APPAREILS.md` §2.12).
 - [x] **Jeton dans le fragment de l'URL** (décision du 2026-10-10) : le lien est
       `/annuler#<jeton>`. Le fragment n'est jamais envoyé au serveur : ni requête, ni Referer, ni
       journal d'hébergeur. `CancelPage` le lit dans `location.hash` (en mémoire) ; l'ancien format
@@ -164,7 +168,10 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       déployé : `default-src 'self'; connect-src 'self' https://<ref>.supabase.co
   wss://<ref>.supabase.co; img-src 'self' https://<ref>.supabase.co data: blob:;
   frame-ancestors 'none'; base-uri 'self'; form-action 'self'`. Déjà fait : anti-iframe
-      (`X-Frame-Options` + `frame-ancestors`) sur `/admin*`.
+      (`X-Frame-Options` + `frame-ancestors`) sur `/admin*`. **Consigne 22** : CSP posée sur
+      tout le site en `Report-Only` (sans `wss:`, aucun temps réel utilisé) ; mesure locale :
+      seule l'`eval` de Zod serait signalée (`docs/DEPLOIEMENT.md` §5). Passage en blocage après
+      les tests sur l'aperçu, avec ta validation.
 - [ ] **Changement de mot de passe vérifié côté serveur** : l'ancien mot de passe n'est
       redemandé que par le site ; un jeton volé de moins de 24 h permettrait de le changer via
       l'API. Fermé par le MFA (prévu).

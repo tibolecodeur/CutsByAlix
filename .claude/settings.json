@@ -50,8 +50,6 @@
       "Bash(npx supabase db push *)",
       "Bash(npx supabase db reset *)",
       "Bash(git push *)",
-      "Bash(vercel *)",
-      "Bash(npx vercel *)",
       "Bash(gh pr merge *)",
       "Bash(gh issue create *)",
       "Bash(git merge *)"

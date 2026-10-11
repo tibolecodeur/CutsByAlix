@@ -1,0 +1,52 @@
+name: Anti-pause Supabase
+
+# Le plan gratuit de Supabase met le projet en PAUSE après 7 jours sans activité. Ce workflow fait
+# UNE lecture publique tous les 3 jours (la liste des prestations, avec la clé publique « anon »),
+# exactement ce que fait la page d'accueil d'un visiteur.
+#
+# Ce n'est PAS une sauvegarde : il ne copie rien. Sauvegardes : docs/SAUVEGARDES.md.
+#
+# Secrets du dépôt à créer (Settings > Secrets and variables > Actions) :
+#   SUPABASE_URL       https://<ref>.supabase.co
+#   SUPABASE_ANON_KEY  la clé publique « anon » (JAMAIS la clé service_role)
+#
+# Limite connue : GitHub désactive les workflows planifiés d'un dépôt public après 60 jours sans
+# aucune activité (commit, PR…). Un e-mail prévient avant ; il suffit de le réactiver dans
+# l'onglet Actions (docs/DEPLOIEMENT.md).
+
+on:
+  schedule:
+    # 6 h UTC les jours 1, 4, 7… du mois : jamais plus de 3 jours d'écart (2 au plus en fin de
+    # mois), bien en deçà des 7 jours de Supabase.
+    - cron: "0 6 */3 * *"
+  workflow_dispatch:
+
+# Aucun droit sur le dépôt : le job ne lit ni n'écrit rien chez GitHub.
+permissions: {}
+
+jobs:
+  lecture:
+    name: Une lecture publique
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Lire la liste des prestations (attendu : HTTP 200)"
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Secrets SUPABASE_URL et/ou SUPABASE_ANON_KEY absents du dépôt."
+            exit 1
+          fi
+          # Seul le code HTTP est affiché : ni la clé, ni l'URL, ni le contenu de la réponse.
+          status=$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" \
+            --max-time 30 \
+            --header "apikey: $SUPABASE_ANON_KEY" \
+            --header "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/services?select=id&limit=1") || status="000"
+          echo "Réponse de Supabase : HTTP $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::Lecture refusée ou impossible (HTTP $status) : le projet est peut-être en pause."
+            exit 1
+          fi

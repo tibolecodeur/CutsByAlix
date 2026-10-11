@@ -32,7 +32,7 @@ pensé pour le téléphone. Paiement **sur place, en liquide** : aucun paiement 
 | Tests end-to-end                | **Playwright**                       | Parcours réels sur Chromium et WebKit (Safari), mobile et desktop   |
 | Tests SQL                       | **pgTAP**                            | Prouver que l'anonyme ne peut pas lire les réservations             |
 | Qualité                         | **ESLint** + **Prettier**            | Règles et formatage homogènes                                       |
-| Hébergement                     | **Cloudflare Pages** (prévu)         | Rien n'est en ligne pour l'instant ; offre gratuite                 |
+| Hébergement                     | **Cloudflare Pages**                 | Gratuit, en-têtes de sécurité, aperçus https (docs/DEPLOIEMENT.md)  |
 
 shadcn/ui n'est pas encore initialisé : son CLI impose de choisir un preset qui embarque une
 police, un jeu d'icônes et un thème. Cette décision appartient à la phase 3 (identité visuelle).

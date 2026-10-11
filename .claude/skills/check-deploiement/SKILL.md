@@ -31,8 +31,13 @@ Vérifie chaque point, coche-le dans un rapport, et corrige ce qui peut l'être 
 - [ ] Titre, meta description, Open Graph, favicon ; page 404
 
 ### Déploiement
-- [ ] Variables `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` configurées sur Vercel (projet de prod)
-- [ ] Routage SPA OK (recharger `/admin` ou `/annuler#<jeton>` ne donne pas de 404)
+- [ ] Variables `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` configurées sur Cloudflare Pages
+      (environnement Production), et `NODE_VERSION=22` (docs/DEPLOIEMENT.md)
+- [ ] Routage SPA OK (recharger `/admin` ou `/annuler#<jeton>` ne donne pas de 404) : aucun
+      `404.html` ni `_redirects` dans `dist/`
+- [ ] En-têtes réels vérifiés (`curl -sI` sur `/`, `/annuler`, `/admin`) : aucun en double, CSP
+      passée de Report-Only à blocage si validée, noindex global retiré au lancement public
+- [ ] Workflow « Anti-pause Supabase » actif et vert ; sauvegarde récente (docs/SAUVEGARDES.md)
 - [ ] Domaine et HTTPS OK
 
 Termine par : prêt / pas prêt, et la liste de ce qu'il me reste à faire à la main.

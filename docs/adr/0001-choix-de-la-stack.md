@@ -1,7 +1,11 @@
 # ADR 0001 — Choix de la stack technique
 
 - **Date** : 2026-10-04
-- **Statut** : accepté
+- **Statut** : accepté (hébergement remplacé par l'ADR 0007)
+
+> **Correction du 2026-10-11** : l'hébergement retenu est **Cloudflare Pages**, et non Vercel
+> (décision du 2026-10-10, consignée dans l'ADR 0007). Les mentions de Vercel ci-dessous sont
+> conservées telles qu'écrites à l'époque.
 
 ## Contexte
 

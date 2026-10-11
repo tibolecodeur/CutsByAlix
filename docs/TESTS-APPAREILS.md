@@ -45,14 +45,18 @@ Limites de cette méthode :
 
 ### Façon B — déploiement de prévisualisation (avant une mise en ligne)
 
-Une fois le projet relié à Vercel (phase 1 du plan), chaque branche poussée obtient une URL de
-prévisualisation en **https**, avec le **build de production**. C'est la méthode de référence
-pour la checklist complète :
+Une fois le dépôt relié à Cloudflare Pages (`docs/DEPLOIEMENT.md`), chaque branche poussée
+obtient une URL d'aperçu en **https** (`https://<hash>.<projet>.pages.dev`), avec le **build de
+production** et les vrais en-têtes de `public/_headers`. C'est la méthode de référence pour la
+checklist complète :
 
-1. Pousser la branche, ouvrir la PR : Vercel commente l'URL de prévisualisation.
-2. Ouvrir cette URL sur le téléphone. Si la protection des déploiements Vercel est active, se
-   connecter à Vercel sur le téléphone ou partager un lien de prévisualisation.
+1. Pousser la branche : l'URL d'aperçu apparaît dans la PR (vérification « Cloudflare Pages »)
+   et dans le tableau de bord Cloudflare.
+2. Ouvrir cette URL sur le téléphone. Les aperçus ne sont pas protégés par mot de passe : ne pas
+   diffuser le lien.
 3. Couper le Wi-Fi pour tester en **vrai réseau mobile** (section 2.10).
+4. Les aperçus utilisent la **vraie** base Supabase (variables « Preview ») : une réservation de
+   test est une vraie réservation. L'annuler à la fin (section 2.12).
 
 ### Voir la console du téléphone (optionnel)
 
@@ -157,6 +161,44 @@ réserver, annuler, admin), sur iPhone **et** Android.
 - [ ] « Publier » reste impossible tant que la case d'accord n'est pas cochée.
 - [ ] Couper le réseau pendant l'envoi : message clair ; réessayer fonctionne.
 - [ ] Masquer une photo : elle disparaît de l'accueil après rechargement.
+
+### 2.12 Aperçu déployé : parcours réels (façon B, iPhone ET Android)
+
+À faire sur l'aperçu Cloudflare Pages, avec la vraie base. Noter l'URL de l'aperçu et l'heure
+dans le journal (section 3).
+
+- [ ] **Réservation de bout en bout** : prestation → jour → créneau → coordonnées (prénom de
+      test, vrai téléphone ou e-mail à soi) → confirmation. Le récapitulatif affiche la bonne
+      heure de Paris, la ville, « En liquide, sur place », le lien d'annulation.
+- [ ] Réserver un créneau à **moins de 24 h** : le récapitulatif et la confirmation préviennent
+      que l'annulation en ligne sera impossible.
+- [ ] **Annulation par le lien** : copier le lien, l'ouvrir dans un nouvel onglet (et après avoir
+      fermé le navigateur) → « Annuler mon rendez-vous » → confirmation ; le créneau redevient
+      réservable. Un lien de RDV à moins de 24 h affiche « Trop tard pour annuler en ligne ».
+- [ ] Recharger `/annuler#<jeton>`, `/admin` et une URL inconnue : pas de page d'erreur de
+      l'hébergeur (repli SPA), la page 404 du site pour l'URL inconnue.
+- [ ] **Connexion admin** (`/admin`) avec le compte d'Alix ; déconnexion ; reconnexion.
+- [ ] **Ajout de créneau** : créer une plage, vérifier le texte « réservable par les clients du
+      … » ; elle apparaît côté client dans /reserver (si elle est à plus de 5 h).
+- [ ] **Annulation côté barber** : annuler depuis l'admin la réservation de test ; le lien du
+      client affiche « Rendez-vous annulé par Alix ».
+- [ ] **Envoi d'une photo en galerie depuis un vrai téléphone** (« Prendre une photo » ET
+      « Choisir dans la galerie », section 2.11) : l'appareil photo s'ouvre bien malgré
+      `Permissions-Policy: camera=()` (qui ne concerne que l'accès direct à la caméra par le
+      site, pas l'appareil photo du système).
+- [ ] **URL signées** : les photos publiées s'affichent sur l'accueil (adresse en
+      `…supabase.co/storage/v1/object/sign/…`) ; une photo masquée ne s'affiche plus. Les URL
+      valent 1 h sans renouvellement : laisser la page ouverte plus d'une heure, faire défiler
+      jusqu'aux photos pas encore chargées, et noter si elles s'affichent (limite connue).
+- [ ] **Installation PWA depuis /admin uniquement** : sur `/admin`, « Ajouter à l'écran
+      d'accueil » propose l'icône « Alix admin » et l'app s'ouvre sur `/admin` ; depuis l'accueil
+      public, aucune proposition d'installation (pas de manifeste hors admin).
+- [ ] **Console ouverte** (`chrome://inspect` sur Android, section 1) : relever les messages
+      « [Report Only] Refused to… » de la CSP sur chaque page parcourue, et les reporter dans la
+      PR (`docs/DEPLOIEMENT.md` §5). Attendu : seulement l'`eval` de Zod.
+- [ ] En-têtes : `curl -sI <aperçu>/`, `<aperçu>/annuler`, `<aperçu>/admin` depuis le PC ;
+      chaque en-tête présent **une seule fois**, `x-robots-tag: noindex, nofollow` partout.
+- [ ] Nettoyage : annuler toutes les réservations de test, supprimer les photos de test.
 
 ## 3. Journal des passages
 
