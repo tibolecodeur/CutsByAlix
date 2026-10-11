@@ -226,6 +226,10 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       et `crossOrigin="anonymous"` sur l'image, sinon le canvas WebGL est « contaminé » et
       refuse de les lire. URL signées d'1 h : prévoir de les renouveler pour une page restée
       ouverte.
+- [ ] **Renouveler les URL signées de la galerie (1 h)** : le futur carrousel WebGL et toute
+      page galerie restée ouverte longtemps doivent redemander les URL avant leur expiration
+      (`getPublishedGallery` rappelée, par exemple à 50 min ou au retour de l'onglet au
+      premier plan), sinon les photos pas encore chargées s'affichent cassées.
 
 ## Phase 8 — Mise en ligne
 
