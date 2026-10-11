@@ -5,6 +5,7 @@ import {
   expect,
   FAKE_ADMIN,
   mockAdminAuth,
+  mockRpc,
   test,
   type AdminAuthCalls,
 } from "./fixtures.ts";
@@ -13,8 +14,8 @@ import {
  * Espace admin (Android, iPhone, desktop) : connexion Supabase Auth SIMULÉE (e2e/fixtures.ts,
  * `mockAdminAuth`), jamais la vraie base. L'horloge du navigateur est fixée (`page.clock`) :
  * l'expiration des jetons et les jours affichés ne dépendent pas de la date du jour.
- * Les RDV admin sont encore ceux de la fausse base (src/lib/fakeDb.ts) ; les disponibilités
- * sont testées dans admin-disponibilites.spec.ts.
+ * Les disponibilités sont testées dans admin-disponibilites.spec.ts, les rendez-vous dans
+ * admin-reservations.spec.ts.
  */
 
 const STORAGE_KEY = "cutsbyalix-admin-auth";
@@ -32,7 +33,6 @@ async function seConnecter(page: Page, email: string, password: string) {
 
 const sessionStockee = (page: Page) =>
   page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY);
-
 
 test("route protégée sans session : redirection vers la connexion, aucune donnée chargée", async ({
   page,
@@ -196,11 +196,13 @@ test("le manifeste PWA n'est lié que depuis l'espace admin", async ({ page }) =
 
 test("connecté : tableau de bord accessible, lien vers les disponibilités", async ({ page }) => {
   await preparer(page);
+  await mockRpc(page, "admin_list_bookings", () => ({ body: [] }));
   await page.goto("/admin");
   await seConnecter(page, FAKE_ADMIN.email, FAKE_ADMIN.password);
 
   await expect(page.getByRole("heading", { level: 1, name: "Tableau de bord" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Aujourd'hui" })).toBeVisible();
+  await expect(page.getByText("Aucun rendez-vous aujourd'hui.")).toBeVisible();
   const audit = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
     .analyze();

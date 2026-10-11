@@ -406,6 +406,7 @@ test("confirmation : « Ouvrir ma page d'annulation » garde le jeton dans le fr
           location_label: creneau!.location_label,
           first_name: "Zoé",
           can_cancel: true,
+          cancelled_by: null,
         },
       ],
     };

@@ -68,6 +68,8 @@ export type BookingDetails = {
   locationLabel: string;
   firstName: string;
   canCancel: boolean;
+  /** Qui a annulé (null tant que confirmé) : « annulé par Alix » s'affiche autrement. */
+  cancelledBy: "client" | "barber" | null;
 };
 
 /** Clés d'erreur stables renvoyées par les RPC (exceptions P0001), plus « unknown » (réseau…). */
@@ -230,6 +232,7 @@ export async function getBooking(token: string): Promise<BookingDetails | null> 
     locationLabel: row.location_label,
     firstName: row.first_name,
     canCancel: row.can_cancel,
+    cancelledBy: row.cancelled_by,
   };
 }
 

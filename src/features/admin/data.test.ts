@@ -1,20 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AdminError,
+  cancelAdminBooking,
   createAvailability,
   deleteAvailability,
+  getAdminBooking,
   getAdminBookings,
   getAvailabilities,
   getBookingRules,
   getLocations,
 } from "@/features/admin/data";
-import { formatTime } from "@/lib/dates";
-import { resetFakeDb } from "@/lib/fakeDb";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { fakeSupabaseClient, type FakeQueryResult } from "@/test/fakeSupabase";
 
-// Lieux et disponibilités passent par Supabase : client admin simulé, aucune requête ne part.
-// Les rendez-vous restent sur la fausse base (src/lib/fakeDb.ts).
+// Lieux, disponibilités et rendez-vous passent par Supabase : client admin simulé, aucune
+// requête ne part.
 vi.mock("@/lib/supabaseAdmin", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/supabaseAdmin")>()),
   getSupabaseAdmin: vi.fn(),
@@ -36,7 +36,6 @@ const NOW = new Date("2026-10-13T06:00:00Z");
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
-  resetFakeDb(NOW);
 });
 
 afterEach(() => {
@@ -182,29 +181,82 @@ describe("disponibilités", () => {
   });
 });
 
+/** Ligne de admin_list_bookings : contacts FICTIFS, jamais de vraies données. */
+const BOOKING_ROW = {
+  id: "60000000-0000-4000-8000-000000000001",
+  starts_at: "2026-10-20T08:00:00+00:00",
+  ends_at: "2026-10-20T09:00:00+00:00",
+  service_name: "Coupe",
+  location_label: "Angers",
+  first_name: "Léa",
+  last_name: "Martin",
+  status: "confirmed",
+  cancelled_by: null,
+};
+
 describe("getAdminBookings", () => {
-  it("liste les RDV confirmés d'une période, dans l'ordre, avec le client", async () => {
-    const today = await getAdminBookings({
-      from: "2026-10-12T22:00:00Z",
-      to: "2026-10-13T22:00:00Z",
+  it("appelle admin_list_bookings avec la portée et traduit les lignes", async () => {
+    const calls = mockSupabase({
+      data: [BOOKING_ROW, { ...BOOKING_ROW, id: "x", status: "cancelled", cancelled_by: "barber" }],
+      error: null,
     });
-    expect(today.map((b) => [formatTime(b.startsAt), b.firstName])).toEqual([
-      ["09:00", "Nathan"],
-      ["11:00", "Sami"],
-      ["19:00", "Hugo"],
-    ]);
-    expect(today[0]).toMatchObject({
-      serviceName: "Coupe",
-      locationLabel: "Saint-Christophe-du-Bois",
-      phone: "0639980001",
+    const bookings = await getAdminBookings("upcoming");
+    expect(asCalls(calls)[0]).toEqual(["rpc", "admin_list_bookings", { p_scope: "upcoming" }]);
+    expect(bookings[0]).toEqual({
+      id: BOOKING_ROW.id,
       status: "confirmed",
+      cancelledBy: null,
+      startsAt: BOOKING_ROW.starts_at,
+      endsAt: BOOKING_ROW.ends_at,
+      serviceName: "Coupe",
+      locationLabel: "Angers",
+      firstName: "Léa",
+      lastName: "Martin",
     });
+    expect(bookings[1]).toMatchObject({ status: "cancelled", cancelledBy: "barber" });
   });
 
-  it("inclut les annulés sur demande", async () => {
-    const all = await getAdminBookings({ from: NOW.toISOString(), includeCancelled: true });
-    const confirmed = await getAdminBookings({ from: NOW.toISOString() });
-    expect(all.filter((b) => b.status === "cancelled")).toHaveLength(1);
-    expect(confirmed).toHaveLength(all.length - 1);
+  it("refus de droits → forbidden ; panne → unknown, sans recopier le message", async () => {
+    mockSupabase({ data: null, error: { code: "42501", message: "forbidden" } });
+    await expectAdminError(getAdminBookings("past"), "forbidden");
+    mockSupabase({ data: null, error: { code: "08006", message: "Léa Martin 0639980001" } });
+    const promise = getAdminBookings("past");
+    await expectAdminError(promise, "unknown");
+    await expect(promise).rejects.not.toHaveProperty("message", expect.stringContaining("Léa"));
+  });
+});
+
+describe("getAdminBooking", () => {
+  it("renvoie le détail avec le contact du client", async () => {
+    const calls = mockSupabase({
+      data: [{ ...BOOKING_ROW, phone: "0639980001", email: "lea@example.test" }],
+      error: null,
+    });
+    expect(await getAdminBooking(BOOKING_ROW.id)).toMatchObject({
+      firstName: "Léa",
+      phone: "0639980001",
+      email: "lea@example.test",
+    });
+    expect(asCalls(calls)[0]).toEqual(["rpc", "admin_get_booking", { p_id: BOOKING_ROW.id }]);
+  });
+
+  it("inconnu → not_found (erreur de la base ou réponse vide)", async () => {
+    mockSupabase({ data: null, error: { code: "P0001", message: "not_found" } });
+    await expectAdminError(getAdminBooking(BOOKING_ROW.id), "not_found");
+    mockSupabase({ data: [], error: null });
+    await expectAdminError(getAdminBooking(BOOKING_ROW.id), "not_found");
+  });
+});
+
+describe("cancelAdminBooking", () => {
+  it("appelle admin_cancel_booking ; « déjà annulé » (false) n'est pas une erreur", async () => {
+    const calls = mockSupabase({ data: false, error: null });
+    await expect(cancelAdminBooking(BOOKING_ROW.id)).resolves.toBeUndefined();
+    expect(asCalls(calls)[0]).toEqual(["rpc", "admin_cancel_booking", { p_id: BOOKING_ROW.id }]);
+  });
+
+  it("RDV commencé → already_started", async () => {
+    mockSupabase({ data: null, error: { code: "P0001", message: "already_started" } });
+    await expectAdminError(cancelAdminBooking(BOOKING_ROW.id), "already_started");
   });
 });

@@ -54,14 +54,14 @@ insert into public.availabilities (id, location_id, starts_at, ends_at) values
   ('50000000-0000-4000-8000-000000000005', '20000000-0000-4000-8000-000000000001',
    '2030-03-06 10:00 Europe/Paris', '2030-03-06 12:00 Europe/Paris');
 
-insert into public.bookings (service_id, location_id, starts_at, ends_at, first_name, last_name, phone, status)
+insert into public.bookings (service_id, location_id, starts_at, ends_at, first_name, last_name, phone, status, cancelled_by)
 values
   ('10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001',
-   '2001-05-02 10:00 Europe/Paris', now(), 'Eva', 'Petit', '0700000001', 'confirmed'),
+   '2001-05-02 10:00 Europe/Paris', now(), 'Eva', 'Petit', '0700000001', 'confirmed', null),
   ('10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001',
-   '2099-06-10 11:10 Europe/Paris', now(), 'Tom', 'Durand', '0700000002', 'confirmed'),
+   '2099-06-10 11:10 Europe/Paris', now(), 'Tom', 'Durand', '0700000002', 'confirmed', null),
   ('10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001',
-   '2099-06-11 10:00 Europe/Paris', now(), 'Lou', 'Martin', '0700000003', 'cancelled');
+   '2099-06-11 10:00 Europe/Paris', now(), 'Lou', 'Martin', '0700000003', 'cancelled', 'client');
 
 -- Raccourci : création à date fixe (lundi 4 mars 2030, 9 h, Paris), lieu actif par défaut.
 create function pg_temp.create_at(

@@ -77,8 +77,8 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       changement d'heure, décompte des 2 RDV, fuites, droits), Vitest, Playwright (3 projets).
       Pont `syncFakeServices` supprimé. Appliqué en local seulement. Ordre pour la production :
       migration (`db push`) PUIS front.
-- [ ] `src/lib/fakeDb.ts` reste utilisé par l'admin et la galerie (fictifs) : à supprimer avec
-      eux, phase 6.
+- [ ] `src/lib/fakeDb.ts` ne sert plus qu'à la galerie (fictive) depuis la consigne 19 : à
+      supprimer avec elle, phase 6.
 - [ ] Poids du bundle : supabase-js ajoute ~56 kB gzip (107 → 163 kB, avertissement Vite
       « chunk > 500 kB »). Piste à valider : charger le client par import dynamique.
 
@@ -143,8 +143,8 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       `noindex` sur /admin (meta + `_headers`). Procédure : `docs/ADMIN-COMPTE.md`.
 - [ ] **Avant de donner l'accès à Alix** : faire les réglages Supabase de
       `docs/ADMIN-COMPTE.md` (§1), créer son compte (§2) et l'ajouter à `admins`. Et surtout
-      brancher les DONNÉES admin (RDV, galerie, prestations ; les dispos sont faites) : encore
-      factices (`src/lib/fakeDb.ts`), Alix verrait de faux rendez-vous.
+      brancher les DONNÉES admin restantes (galerie, prestations ; dispos et RDV sont faits) :
+      la galerie est encore factice (`src/lib/fakeDb.ts`).
 - [ ] **Mot de passe oublié** : pas de réinitialisation par e-mail (SMTP gratuit limité) ;
       Thibault fixe un mot de passe temporaire dans le SQL Editor (`docs/ADMIN-COMPTE.md`, §5),
       Alix le change ensuite dans « Mon compte ».
@@ -179,10 +179,24 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       semaine, aperçu en direct, « Réservable par les clients du … au … », message « aucun lieu
       actif ». pgTAP 13 (date fixe), Vitest, Playwright (3 projets). Appliqué en local
       seulement. Ordre pour la production : migration (`db push`) PUIS front.
-- [ ] Données admin : Liste des RDV · Galerie · Prestations sur Supabase
-      _(maquettes faites sur fausse base : tableau de bord, RDV, galerie (sans envoi). Restent :
-      branchement des tables et du Storage, prestations, duplication d'une semaine, modification
-      d'une plage, annulation d'un RDV par le barber)_
+- [x] **Rendez-vous réels et annulation par le barber** (consigne 19, issue #26) : migration
+      `…_admin_reservations.sql` (ADR 0005). `authenticated` n'a plus aucun droit sur
+      `bookings` ; RPC admin `admin_list_bookings('upcoming' | 'past')` (sans téléphone ni
+      e-mail ; passées = 30 derniers jours), `admin_get_booking` (seul endroit avec le contact),
+      `admin_cancel_booking` (via `private.admin_cancel_booking_at(p_now…)` : pas de délai de
+      24 h, `false` si déjà annulé, `already_started` si commencé). Colonne
+      `bookings.cancelled_by` (`client` | `barber`) ; `get_booking` la renvoie et /annuler
+      affiche « Rendez-vous annulé par Alix ». **Le créneau annulé par Alix redevient
+      réservable** (décision du 2026-10-11). Écrans : « À venir » par jour (aujourd'hui mis en
+      avant) / « Passées », compteur, détail avec « Appeler » / « SMS » / « E-mail »,
+      confirmation explicite, double appui sans double annulation ; seul l'uuid dans l'URL,
+      titres fixes, aucune exportation ni recherche. Tableau de bord branché aussi. pgTAP 14
+      (date fixe), Vitest, Playwright (3 projets). Appliqué en local seulement. Ordre pour la
+      production : migration (`db push`) PUIS front. **Rappel : la purge RGPD à 6 mois reste
+      bloquante avant la mise en ligne** (phase 8) : ces écrans montrent des données clients.
+- [ ] Données admin : Galerie · Prestations sur Supabase
+      _(maquette de la galerie sur fausse base, sans envoi. Restent : branchement de la table et
+      du Storage, prestations, duplication d'une semaine, modification d'une plage)_
 - [x] Disponibilités : afficher au barber quand les clients pourront réserver (consigne 18 :
       période réservable calculée depuis les règles 48 h / 4 semaines lues en base).
 
@@ -213,16 +227,18 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
     quelqu'un d'autre, on l'empêche de réserver ; la réponse `limit_reached` permet aussi de
     compter ses RDV futurs (risque n° 4 de l'ADR 0002).
   - Options à choisir : plafond global (`max_bookings_per_hour` dans `private.settings()`,
-    vérifié sous le verrou global de `create_booking_at`) ; annulation d'un RDV côté admin
-    (phase 6, pour nettoyer les fausses réservations) ; Cloudflare Turnstile avancé en V1.
+    vérifié sous le verrou global de `create_booking_at`) ; Cloudflare Turnstile avancé en V1.
+  - **Fait (consigne 19)** : Alix peut annuler une fausse réservation ou débloquer le numéro
+    d'un tiers depuis l'admin (le créneau et la limite sont libérés). Cela nettoie après coup,
+    sans empêcher un script de saturer les créneaux : le plafond global reste à décider.
 
 ## Backlog (non planifié)
 
 - [ ] Bouton « Ajouter à mon calendrier » (.ics) sur la confirmation de réservation (SPEC V1).
 - [ ] Calendrier de /reserver : griser les jours sans créneau (une requête pour les 4 semaines,
       jours sans dispo en `aria-disabled`).
-- [ ] Annulation d'un RDV par le barber, en phase admin : nouvelle RPC (motif, statut
-      `cancelled`), tests pgTAP (seul l'admin peut l'appeler).
+- [x] ~~Annulation d'un RDV par le barber~~ : faite par la consigne 19 (`admin_cancel_booking`,
+      `cancelled_by = 'barber'`, pgTAP 14). Pas de motif enregistré (minimisation).
 
 ## V2
 

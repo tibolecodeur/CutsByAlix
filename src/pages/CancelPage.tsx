@@ -17,8 +17,8 @@ import { BookingSummary } from "@/pages/booking/BookingSummary";
 
 /**
  * Annulation via le lien personnel `/annuler#<jeton>` (jamais via l'id du RDV).
- * États : lien valide (détail + bouton), déjà annulé, trop tard, lien invalide ; plus
- * chargement et erreur réseau. « Lien invalide » est la réponse unique pour un jeton absent,
+ * États : lien valide (détail + bouton), déjà annulé, annulé par Alix, trop tard, lien
+ * invalide ; plus chargement et erreur réseau. « Lien invalide » est la réponse unique pour un jeton absent,
  * mal formé, inconnu OU expiré (RDV terminé) : la base ne les distingue pas, l'écran non plus.
  *
  * Le jeton est dans le FRAGMENT de l'URL (après le `#`), pas dans la query : un fragment n'est
@@ -101,6 +101,17 @@ function BookingCancellation({ token, booking }: { token: string; booking: Booki
         <p>
           Ton rendez-vous du {formatLongDay(booking.startsAt)} à {formatTime(booking.startsAt)} est
           annulé. Le créneau est libéré pour quelqu'un d'autre.
+        </p>
+        <BookAgain />
+      </StateBlock>
+    );
+  }
+  if (booking.status === "cancelled" && booking.cancelledBy === "barber") {
+    return (
+      <StateBlock title="Rendez-vous annulé par Alix">
+        <p>
+          Alix a annulé ton rendez-vous du {formatLongDay(booking.startsAt)} à{" "}
+          {formatTime(booking.startsAt)}. Pour en reprendre un, choisis un nouveau créneau.
         </p>
         <BookAgain />
       </StateBlock>

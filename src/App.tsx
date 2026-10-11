@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router";
 import { Layout } from "@/components/Layout";
 import { AdminAccountPage } from "@/pages/admin/AdminAccountPage";
 import { AdminAvailabilitiesPage } from "@/pages/admin/AdminAvailabilitiesPage";
+import { AdminBookingDetailPage } from "@/pages/admin/AdminBookingDetailPage";
 import { AdminBookingsPage } from "@/pages/admin/AdminBookingsPage";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminGalleryPage } from "@/pages/admin/AdminGalleryPage";
@@ -38,6 +39,7 @@ export default function App() {
       <Route path="admin" element={<AdminLayout />}>
         <Route index element={<AdminDashboardPage />} />
         <Route path="rendez-vous" element={<AdminBookingsPage />} />
+        <Route path="rendez-vous/:id" element={<AdminBookingDetailPage />} />
         <Route path="disponibilites" element={<AdminAvailabilitiesPage />} />
         <Route path="galerie" element={<AdminGalleryPage />} />
         <Route path="compte" element={<AdminAccountPage />} />

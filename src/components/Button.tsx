@@ -33,6 +33,15 @@ export function Button({
   );
 }
 
+/** Lien hors du site qui a l'apparence d'un bouton (`tel:`, `sms:`, `mailto:`). */
+export function ButtonAnchor({
+  variant = "primary",
+  className,
+  ...props
+}: ComponentProps<"a"> & VariantProps) {
+  return <a className={cx(BASE_CLASS, VARIANT_CLASS[variant], className)} {...props} />;
+}
+
 /** Lien qui a l'apparence d'un bouton (navigation interne via React Router). */
 export function ButtonLink({ variant = "primary", className, ...props }: LinkProps & VariantProps) {
   return <Link className={cx(BASE_CLASS, VARIANT_CLASS[variant], className)} {...props} />;

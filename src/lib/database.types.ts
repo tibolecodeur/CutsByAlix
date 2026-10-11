@@ -83,8 +83,11 @@ type CreateBookingFunction = {
   }[];
 };
 
+/** Auteur d'une annulation (colonne `bookings.cancelled_by`). */
+export type CancelledBy = "client" | "barber";
+
 /**
- * RPC `get_booking` (migration …_annulation_testable.sql) : récap pour le porteur du lien.
+ * RPC `get_booking` (migration …_admin_reservations.sql) : récap pour le porteur du lien.
  * Aucune ligne si le jeton est inconnu, nul ou si le RDV est terminé (lien « expiré »). Ni
  * adresse privée, ni téléphone, ni email, ni nom de famille.
  */
@@ -99,6 +102,8 @@ type GetBookingFunction = {
     first_name: string;
     /** Confirmé ET à 24 h ou plus du début. */
     can_cancel: boolean;
+    /** Qui a annulé : null tant que le RDV est confirmé. */
+    cancelled_by: CancelledBy | null;
   }[];
 };
 
@@ -171,6 +176,39 @@ type AdminDeleteAvailabilityFunction = {
   Returns: undefined;
 };
 
+/** Ligne de `admin_list_bookings` : ni téléphone ni e-mail (lus au détail seulement). */
+type AdminBookingListRow = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  service_name: string;
+  /** Libellé public du lieu (la ville), jamais l'adresse. */
+  location_label: string;
+  first_name: string;
+  last_name: string;
+  status: "confirmed" | "cancelled";
+  cancelled_by: CancelledBy | null;
+};
+
+/**
+ * RPC admin des réservations (migration …_admin_reservations.sql), réservées à un utilisateur
+ * listé dans `admins` (sinon 42501 « forbidden »). Erreurs P0001 : invalid_input, not_found,
+ * already_started.
+ */
+type AdminListBookingsFunction = {
+  Args: { p_scope: "upcoming" | "past" };
+  Returns: AdminBookingListRow[];
+};
+type AdminGetBookingFunction = {
+  Args: { p_id: string };
+  Returns: (AdminBookingListRow & { phone: string | null; email: string | null })[];
+};
+/** `true` annulé maintenant ; `false` déjà annulé (double clic, rejeu). */
+type AdminCancelBookingFunction = {
+  Args: { p_id: string };
+  Returns: boolean;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -188,6 +226,9 @@ export type Database = {
       admin_list_availabilities: AdminListAvailabilitiesFunction;
       admin_create_availability: AdminCreateAvailabilityFunction;
       admin_delete_availability: AdminDeleteAvailabilityFunction;
+      admin_list_bookings: AdminListBookingsFunction;
+      admin_get_booking: AdminGetBookingFunction;
+      admin_cancel_booking: AdminCancelBookingFunction;
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;

@@ -114,7 +114,8 @@ select is(
 
 -- Une réservation annulée libère le créneau.
 select lives_ok(
-  $$update public.bookings set status = 'cancelled' where id = '60000000-0000-4000-8000-000000000001'$$,
+  $$update public.bookings set status = 'cancelled', cancelled_by = 'client'
+     where id = '60000000-0000-4000-8000-000000000001'$$,
   'annulation d''une réservation');
 select lives_ok(
   $$insert into public.bookings (service_id, location_id, starts_at, ends_at, first_name, last_name, phone)

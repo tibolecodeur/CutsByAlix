@@ -60,8 +60,8 @@ values ('10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-0000000
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000002", "role": "authenticated"}';
 
-select is((select count(*) from public.bookings), 0::bigint,
-  'non-admin connecté : ne voit aucune réservation');
+select throws_ok('select count(*) from public.bookings', '42501', null,
+  'non-admin connecté : aucun droit sur les réservations');
 select is((select count(*) from public.locations), 0::bigint,
   'non-admin connecté : ne voit aucun lieu');
 select is((select count(*) from public.availabilities), 0::bigint,
@@ -73,9 +73,8 @@ select is((select count(*) from public.services where not active), 0::bigint,
 select throws_ok(
   $$insert into public.locations (public_label, private_address) values ('Pirate', 'x')$$,
   '42501', null, 'non-admin connecté : ne peut pas créer de lieu');
-select results_eq(
-  $$with u as (update public.bookings set first_name = 'Pirate' returning 1) select count(*) from u$$,
-  $$values (0::bigint)$$,
+select throws_ok(
+  $$update public.bookings set first_name = 'Pirate'$$, '42501', null,
   'non-admin connecté : ne peut modifier aucune réservation');
 select throws_ok(
   $$insert into public.gallery_items (image_path) values ('pirate.jpg')$$,
@@ -88,8 +87,10 @@ reset role;
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", "role": "authenticated"}';
 
-select is((select count(*) from public.bookings), 1::bigint,
-  'admin : voit les réservations');
+-- Depuis la consigne 19 : réservations lues et annulées par les fonctions admin seulement
+-- (admin_list_bookings, admin_get_booking, admin_cancel_booking, testées dans 14).
+select throws_ok('select count(*) from public.bookings', '42501', null,
+  'admin : ne lit pas les réservations en direct');
 -- Depuis la consigne 18 : l'admin lit id, public_label et active, jamais l'adresse privée.
 select throws_ok('select private_address from public.locations', '42501', null,
   'admin : ne lit pas l''adresse privée');
@@ -98,9 +99,9 @@ select is((select count(*) from public.services), 2::bigint,
 select throws_ok(
   $$insert into public.locations (public_label, private_address) values ('Lieu deux', 'Ailleurs')$$,
   '42501', null, 'admin : ne crée pas de lieu via l''API (consigne 18)');
-select lives_ok(
-  $$update public.bookings set status = 'cancelled'$$,
-  'admin : annule une réservation');
+select throws_ok(
+  $$update public.bookings set status = 'cancelled', cancelled_by = 'barber'$$, '42501', null,
+  'admin : n''annule pas en direct (contournerait admin_cancel_booking)');
 select lives_ok(
   $$insert into public.gallery_items (image_path, caption, published) values ('coupe.jpg', 'Dégradé', true)$$,
   'admin : ajoute une photo');

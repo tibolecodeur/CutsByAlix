@@ -16,7 +16,7 @@ begin
   end loop;
 end $$;
 
-select plan(35);
+select plan(37);
 
 -- Simule l'API Storage, seule autorisée à supprimer (trigger storage.protect_delete).
 set local storage.allow_delete_query = 'true';
@@ -45,13 +45,14 @@ values ('10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-0000000
         '2030-06-12 10:00 Europe/Paris', '2030-06-12 11:00 Europe/Paris', 'Léa', 'Martin', '0612345678');
 insert into storage.objects (bucket_id, name) values ('gallery', 'photo.jpg');
 
--- Raccourci : nombre de lignes visibles dans chacune des 6 tables, pour le rôle courant.
+-- Raccourci : nombre de lignes visibles dans 5 tables, pour le rôle courant. bookings n'y est
+-- plus : depuis la consigne 19, authenticated n'a plus aucun droit dessus (testé à part).
 create function pg_temp.visible() returns text
 language sql as $$
-  select format('services=%s gallery_items=%s locations=%s availabilities=%s bookings=%s admins=%s',
+  select format('services=%s gallery_items=%s locations=%s availabilities=%s admins=%s',
     (select count(*) from public.services), (select count(*) from public.gallery_items),
     (select count(*) from public.locations), (select count(*) from public.availabilities),
-    (select count(*) from public.bookings), (select count(*) from public.admins));
+    (select count(*) from public.admins));
 $$;
 grant execute on function pg_temp.visible() to anon, authenticated;
 
@@ -76,8 +77,10 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000002", "role": "authenticated"}';
 
 select is(pg_temp.visible(),
-  'services=0 gallery_items=0 locations=0 availabilities=0 bookings=0 admins=0',
-  'non-admin connecté : 0 ligne sur les 6 tables (même le catalogue public)');
+  'services=0 gallery_items=0 locations=0 availabilities=0 admins=0',
+  'non-admin connecté : 0 ligne sur les 5 tables (même le catalogue public)');
+select throws_ok('select count(*) from public.bookings', '42501', null,
+  'non-admin connecté : aucun droit sur bookings (consigne 19)');
 select is((select count(*) from public.admins where user_id = auth.uid()), 0::bigint,
   'non-admin connecté : sa propre ligne admins n''existe pas (le front le voit non-admin)');
 select is((select count(*) from storage.objects where bucket_id = 'gallery'), 0::bigint,
@@ -98,9 +101,8 @@ select throws_ok($$insert into public.availabilities (location_id, starts_at, en
   '42501', null, 'non-admin connecté : ne crée pas de dispo');
 select throws_ok($$insert into public.admins (user_id) values ('30000000-0000-4000-8000-000000000002')$$,
   '42501', null, 'non-admin connecté : ne peut pas se déclarer admin');
-select results_eq(
-  $$with u as (update public.bookings set first_name = 'Pirate' returning 1) select count(*) from u$$,
-  $$values (0::bigint)$$, 'non-admin connecté : ne modifie aucune réservation');
+select throws_ok($$update public.bookings set first_name = 'Pirate'$$, '42501', null,
+  'non-admin connecté : ne modifie aucune réservation (aucun droit depuis la consigne 19)');
 select results_eq(
   $$with u as (update public.services set active = true returning 1) select count(*) from u$$,
   $$values (0::bigint)$$, 'non-admin connecté : ne modifie aucune prestation');
@@ -132,8 +134,10 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", "role": "authenticated"}';
 
 select is(pg_temp.visible(),
-  'services=2 gallery_items=2 locations=1 availabilities=1 bookings=1 admins=1',
-  'admin : voit toutes les lignes des 6 tables (masquées comprises)');
+  'services=2 gallery_items=2 locations=1 availabilities=1 admins=1',
+  'admin : voit toutes les lignes des 5 tables (masquées comprises)');
+select throws_ok('select count(*) from public.bookings', '42501', null,
+  'admin : ne lit plus bookings en direct, seulement par les fonctions admin (consigne 19)');
 select is((select count(*) from public.admins where user_id = auth.uid()), 1::bigint,
   'admin : lit SA ligne admins (c''est ainsi que le front le reconnaît)');
 select throws_ok('select private_address from public.locations', '42501', null,

@@ -1,16 +1,16 @@
 import type { BookingRules } from "@/features/admin/slots";
-import { fakeDb, fakeLatency } from "@/lib/fakeDb";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 /**
  * Couche données de l'espace admin : les écrans n'importent QUE ces fonctions.
  *
- * Branché sur Supabase (client admin, session d'Alix) : lieux et disponibilités. Les écritures
- * de plages passent par des RPC dédiées (`admin_*`, migration …_admin_disponibilites.sql) qui
- * valident tout côté base ; l'admin n'a plus le droit d'écrire directement dans la table.
- * L'authentification est dans `auth.ts`.
+ * Branché sur Supabase (client admin, session d'Alix) : lieux, disponibilités et rendez-vous.
+ * Plages et rendez-vous passent par des RPC dédiées (`admin_*`, migrations
+ * …_admin_disponibilites.sql et …_admin_reservations.sql) qui valident tout côté base ; l'admin
+ * n'a plus aucun droit direct sur ces tables. L'authentification est dans `auth.ts`.
  *
- * TODO: brancher Supabase. Les RENDEZ-VOUS sont encore factices (src/lib/fakeDb.ts).
+ * Données client (nom, téléphone, e-mail) : jamais dans une erreur, la console ni un log. Les
+ * erreurs ne portent qu'un code stable.
  */
 
 /** Clés d'erreur stables des RPC admin (exceptions P0001 / 42501), plus réseau et inconnu. */
@@ -23,6 +23,7 @@ export type AdminErrorCode =
   | "availability_overlap"
   | "availability_has_bookings"
   | "not_found"
+  | "already_started"
   | "forbidden"
   | "unknown";
 
@@ -35,6 +36,7 @@ const BUSINESS_ERROR_CODES: readonly AdminErrorCode[] = [
   "availability_overlap",
   "availability_has_bookings",
   "not_found",
+  "already_started",
 ];
 
 export class AdminError extends Error {
@@ -113,58 +115,94 @@ export async function getLocations(): Promise<Location[]> {
 }
 
 // ---------------------------------------------------------------------------------------
-// Rendez-vous (table `bookings`)
+// Rendez-vous (RPC `admin_list_bookings`, `admin_get_booking`, `admin_cancel_booking`)
 // ---------------------------------------------------------------------------------------
 
+/** Qui a annulé : le client (lien personnel) ou Alix (espace admin). */
+export type CancelledBy = "client" | "barber";
+
+/** Un rendez-vous dans une liste : sans téléphone ni e-mail (lus au détail seulement). */
 export type AdminBooking = {
   id: string;
   status: "confirmed" | "cancelled";
+  cancelledBy: CancelledBy | null;
   startsAt: string;
   endsAt: string;
   serviceName: string;
+  /** Libellé public du lieu (la ville), jamais l'adresse. */
   locationLabel: string;
   firstName: string;
   lastName: string;
+};
+
+/** Détail d'un rendez-vous : le seul endroit où arrivent les coordonnées du client. */
+export type AdminBookingDetails = AdminBooking & {
   phone: string | null;
   email: string | null;
 };
 
-export type AdminBookingsFilter = {
-  /** RDV qui finissent après cet instant (ISO). */
-  from: string;
-  /** RDV qui commencent avant cet instant (ISO). Sans limite si absent. */
-  to?: string;
-  includeCancelled?: boolean;
+/** « À venir » (pas encore terminés) ou « Passées » (terminés depuis 30 jours au plus). */
+export type AdminBookingsScope = "upcoming" | "past";
+
+type AdminBookingListRow = {
+  id: string;
+  status: "confirmed" | "cancelled";
+  cancelled_by: CancelledBy | null;
+  starts_at: string;
+  ends_at: string;
+  service_name: string;
+  location_label: string;
+  first_name: string;
+  last_name: string;
 };
 
-/** RDV d'une période, du plus proche au plus lointain. */
-export async function getAdminBookings(filter: AdminBookingsFilter): Promise<AdminBooking[]> {
-  await fakeLatency();
-  const db = fakeDb();
-  const from = Date.parse(filter.from);
-  const to = filter.to === undefined ? Infinity : Date.parse(filter.to);
-  return db.bookings
-    .filter(
-      (b) =>
-        Date.parse(b.ends_at) > from &&
-        Date.parse(b.starts_at) < to &&
-        (filter.includeCancelled || b.status === "confirmed"),
-    )
-    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
-    .map((b) => ({
-      id: b.id,
-      status: b.status,
-      startsAt: b.starts_at,
-      endsAt: b.ends_at,
-      serviceName: db.services.find((s) => s.id === b.service_id)?.name ?? "",
-      locationLabel: db.locations.find((l) => l.id === b.location_id)?.public_label ?? "",
-      firstName: b.first_name,
-      lastName: b.last_name,
-      phone: b.phone,
-      email: b.email,
-    }));
+function toAdminBooking(row: AdminBookingListRow): AdminBooking {
+  return {
+    id: row.id,
+    status: row.status,
+    cancelledBy: row.cancelled_by,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    serviceName: row.service_name,
+    locationLabel: row.location_label,
+    firstName: row.first_name,
+    lastName: row.last_name,
+  };
 }
 
+/**
+ * Rendez-vous d'une portée, annulés compris. « À venir » : chronologique, celui en cours
+ * compris ; « Passées » : du plus récent au plus ancien. L'ordre est celui de la base.
+ */
+export async function getAdminBookings(scope: AdminBookingsScope): Promise<AdminBooking[]> {
+  const { data, error } = await client()
+    .rpc("admin_list_bookings", { p_scope: scope })
+    .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+  if (error) throw toAdminError(error);
+  return data.map(toAdminBooking);
+}
+
+/** Détail d'un rendez-vous, avec le contact du client. Inconnu : `AdminError("not_found")`. */
+export async function getAdminBooking(id: string): Promise<AdminBookingDetails> {
+  const { data, error } = await client()
+    .rpc("admin_get_booking", { p_id: id })
+    .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+  if (error) throw toAdminError(error);
+  const row = data[0];
+  if (!row) throw new AdminError("not_found");
+  return { ...toAdminBooking(row), phone: row.phone, email: row.email };
+}
+
+/**
+ * Annulation par Alix, sans délai de 24 h ; le créneau redevient réservable. Résout aussi si
+ * le RDV était déjà annulé (`false` côté base : double clic, autre onglet, rejeu) : le
+ * résultat est le même pour Alix. Rejette `already_started` si le RDV a commencé.
+ * Pas de délai d'abandon : une écriture interrompue laisserait croire à un échec.
+ */
+export async function cancelAdminBooking(id: string): Promise<void> {
+  const { error } = await client().rpc("admin_cancel_booking", { p_id: id });
+  if (error) throw toAdminError(error);
+}
 
 // ---------------------------------------------------------------------------------------
 // Disponibilités (RPC `admin_list_availabilities`, `admin_create_availability`,
