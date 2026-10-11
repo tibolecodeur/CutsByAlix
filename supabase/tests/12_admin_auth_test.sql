@@ -126,7 +126,7 @@ select ok(not has_function_privilege('authenticated',
 reset role;
 
 -- ---------------------------------------------------------------------------
--- 3. Admin : tout, mais jamais l'écriture de admins via l'API.
+-- 3. Admin : tout, sauf l'écriture de admins via l'API et l'adresse privée des lieux.
 -- ---------------------------------------------------------------------------
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", "role": "authenticated"}';
@@ -136,8 +136,8 @@ select is(pg_temp.visible(),
   'admin : voit toutes les lignes des 6 tables (masquées comprises)');
 select is((select count(*) from public.admins where user_id = auth.uid()), 1::bigint,
   'admin : lit SA ligne admins (c''est ainsi que le front le reconnaît)');
-select is((select private_address from public.locations), '1 rue Secrète, 00000 Testville',
-  'admin : lit l''adresse privée');
+select throws_ok('select private_address from public.locations', '42501', null,
+  'admin : ne lit pas l''adresse privée (consigne 18)');
 select is((select count(*) from storage.objects where bucket_id = 'gallery'), 1::bigint,
   'admin : liste les objets du bucket gallery');
 select lives_ok($$insert into public.services (name, duration_min) values ('Barbe', 30)$$,

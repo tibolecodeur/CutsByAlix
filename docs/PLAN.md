@@ -143,7 +143,7 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       `noindex` sur /admin (meta + `_headers`). Procédure : `docs/ADMIN-COMPTE.md`.
 - [ ] **Avant de donner l'accès à Alix** : faire les réglages Supabase de
       `docs/ADMIN-COMPTE.md` (§1), créer son compte (§2) et l'ajouter à `admins`. Et surtout
-      brancher les DONNÉES admin (RDV, dispos, galerie, prestations) : elles sont encore
+      brancher les DONNÉES admin (RDV, galerie, prestations ; les dispos sont faites) : encore
       factices (`src/lib/fakeDb.ts`), Alix verrait de faux rendez-vous.
 - [ ] **Mot de passe oublié** : pas de réinitialisation par e-mail (SMTP gratuit limité) ;
       Thibault fixe un mot de passe temporaire dans le SQL Editor (`docs/ADMIN-COMPTE.md`, §5),
@@ -167,12 +167,24 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       seul et en CI). Piste : refaire le défilement une fois le contenu chargé.
 - [ ] Icônes PWA définitives (logo HD) à la place des icônes provisoires « CBA ».
 - [ ] MFA (plus tard) ; CAPTCHA Turnstile sur la connexion (V2).
-- [ ] Données admin : Disponibilités · Liste des RDV · Galerie · Prestations sur Supabase
-      _(maquettes faites sur fausse base : tableau de bord, RDV, dispos (ajout, suppression),
-      galerie (sans envoi). Restent : branchement des tables et du Storage, prestations,
-      duplication d'une semaine, annulation d'un RDV par le barber)_
-- [ ] Disponibilités : afficher au barber qu'un créneau ne devient visible des clients que
-      48 h avant (« visible à partir de J+2 »), pour qu'il publie ses dispos assez tôt.
+- [x] **Disponibilités réelles** (consigne 18, issue #24) : migration
+      `…_admin_disponibilites.sql` (ADR 0004). Écritures par RPC `security definer` réservées
+      aux admins (`admin_create_availability` via `private.admin_create_availability_at(p_now…)`,
+      `admin_delete_availability`), lectures `admin_list_availabilities` (créneaux de 70 min et
+      RDV par plage) et `admin_booking_rules` (valeurs de `private.settings()`, rien en dur au
+      front). Base : plage future, fin > début, ≤ 24 h, ≥ 1 créneau, lieu actif, chevauchement
+      traduit, verrou partagé avec `create_booking`. Suppression refusée dès qu'une réservation
+      confirmée touche la plage (passée ou future). L'admin ne lit plus que `id, public_label,
+      active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : liste par
+      semaine, aperçu en direct, « Réservable par les clients du … au … », message « aucun lieu
+      actif ». pgTAP 13 (date fixe), Vitest, Playwright (3 projets). Appliqué en local
+      seulement. Ordre pour la production : migration (`db push`) PUIS front.
+- [ ] Données admin : Liste des RDV · Galerie · Prestations sur Supabase
+      _(maquettes faites sur fausse base : tableau de bord, RDV, galerie (sans envoi). Restent :
+      branchement des tables et du Storage, prestations, duplication d'une semaine, modification
+      d'une plage, annulation d'un RDV par le barber)_
+- [x] Disponibilités : afficher au barber quand les clients pourront réserver (consigne 18 :
+      période réservable calculée depuis les règles 48 h / 4 semaines lues en base).
 
 ## Phase 7 — Animations et effets
 
@@ -188,6 +200,11 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       validation de la réservation par le barber. Depuis la consigne 15, plus aucune RPC ne la
       renvoie : il reste à DÉCIDER et coder la règle de révélation (risque n° 1 de l'ADR 0002).
       **Bloquant pour la mise en ligne.**
+- [ ] **Messages d'erreur du parcours client** (point 8 de la revue de la consigne 18) :
+      `src/features/booking/data.ts:139` (`getServices`) et `:159` (`getAvailableSlots`)
+      recopient `error.message` de Supabase dans l'`Error` levée. Ce texte brut (détails SQL,
+      noms de colonnes ou de fonctions) ne doit plus en sortir : message fixe en français, comme
+      les codes stables des autres fonctions. **Bloquant pour la mise en ligne.**
 - [ ] **Anti-abus des réservations** (revue sécurité de la consigne 15, décision 2026-10-10 :
       pas maintenant, mais **bloquant pour la mise en ligne**). Deux risques :
   - **Créneaux saturés** : un script qui appelle `create_booking` directement (le honeypot ne
