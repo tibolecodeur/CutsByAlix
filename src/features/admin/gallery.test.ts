@@ -5,6 +5,7 @@ import {
   cleanAltText,
   deleteGalleryItem,
   getAdminGallery,
+  hideGalleryItem,
   moveGalleryItem,
   setGalleryItemPublished,
   sweepGalleryOrphans,
@@ -84,6 +85,7 @@ describe("getAdminGallery", () => {
     await expect(getAdminGallery()).resolves.toEqual([
       {
         id: ROW.id,
+        imagePath: ROW.image_path,
         imageUrl: "https://example.test/s",
         altText: "Dégradé court",
         width: 1200,
@@ -233,6 +235,95 @@ describe("écritures admin", () => {
     const promise = moveGalleryItem(ROW.id, "down");
     await expectAdminError(promise, "unknown");
     await expect(promise).rejects.toHaveProperty("message", "unknown");
+  });
+});
+
+describe("hideGalleryItem", () => {
+  const ITEM = {
+    id: ROW.id,
+    imagePath: ROW.image_path,
+    imageUrl: "https://example.test/ancien",
+    altText: ROW.alt_text,
+    width: 1200,
+    height: 900,
+    sortOrder: 1,
+    published: true,
+    consentAt: ROW.consent_at,
+    createdAt: ROW.created_at,
+  };
+
+  it("copie sous un nouvel uuid, pointe la ligne dessus, PUIS efface l'ancien fichier", async () => {
+    const calls = mockSupabase(
+      { admin_hide_gallery_item: { data: ROW.image_path, error: null } },
+      {
+        copy: { data: { path: "x" }, error: null },
+        remove: { data: [{ name: ROW.image_path }], error: null },
+        createSignedUrls: { data: [], error: null },
+      },
+    );
+    const result = await hideGalleryItem(ITEM);
+
+    expect(methods(calls)).toEqual([
+      "storage.copy",
+      "rpc",
+      "storage.remove",
+      "storage.createSignedUrls",
+    ]);
+    const [from, to] = calls.find((c) => c.method === "storage.copy")!.args as string[];
+    expect(from).toBe(ROW.image_path);
+    expect(to).toMatch(UUID_PATH);
+    expect(to).not.toBe(ROW.image_path);
+    expect(calls.find((c) => c.method === "rpc")!.args).toEqual([
+      "admin_hide_gallery_item",
+      { p_id: ROW.id, p_new_path: to },
+    ]);
+    expect(calls.find((c) => c.method === "storage.remove")!.args[0]).toEqual([ROW.image_path]);
+    expect(result).toMatchObject({ imagePath: to, linksRevoked: true });
+  });
+
+  it("garde l'extension d'un JPEG", async () => {
+    const calls = mockSupabase(
+      { admin_hide_gallery_item: { data: "a.jpg", error: null } },
+      { copy: { data: {}, error: null }, remove: { data: [], error: null } },
+    );
+    await hideGalleryItem({ ...ITEM, imagePath: "a0000000-0000-4000-8000-00000000000a.jpg" });
+    expect(calls.find((c) => c.method === "storage.copy")!.args[1]).toMatch(/.jpg$/);
+  });
+
+  it("copie impossible : masque quand même, en signalant que les liens ne sont pas coupés", async () => {
+    const calls = mockSupabase(
+      { admin_set_gallery_item_published: { data: null, error: null } },
+      { copy: { data: null, error: { message: "réseau" } } },
+    );
+    await expect(hideGalleryItem(ITEM)).resolves.toEqual({
+      imagePath: ITEM.imagePath,
+      imageUrl: ITEM.imageUrl,
+      linksRevoked: false,
+    });
+    expect(calls.find((c) => c.method === "rpc")!.args).toEqual([
+      "admin_set_gallery_item_published",
+      { p_id: ROW.id, p_published: false, p_consent: false },
+    ]);
+  });
+
+  it("refus de la base : la copie est effacée, l'ancien fichier reste", async () => {
+    const calls = mockSupabase(
+      { admin_hide_gallery_item: { data: null, error: { code: "P0001", message: "not_found" } } },
+      { copy: { data: {}, error: null } },
+    );
+    await expectAdminError(hideGalleryItem(ITEM), "not_found");
+    const copied = calls.find((c) => c.method === "storage.copy")!.args[1];
+    expect(calls.filter((c) => c.method === "storage.remove").map((c) => c.args[0])).toEqual([
+      [copied],
+    ]);
+  });
+
+  it("ancien fichier non effacé : linksRevoked false (ramassé plus tard)", async () => {
+    mockSupabase(
+      { admin_hide_gallery_item: { data: ROW.image_path, error: null } },
+      { copy: { data: {}, error: null }, remove: { data: null, error: { message: "panne" } } },
+    );
+    await expect(hideGalleryItem(ITEM)).resolves.toMatchObject({ linksRevoked: false });
   });
 });
 

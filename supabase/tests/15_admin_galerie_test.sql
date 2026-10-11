@@ -1,6 +1,7 @@
 -- Galerie côté admin (consigne 20) : bucket privé, règles de chemin des fichiers, lecture
 -- anon des seules photos publiées, fonctions admin (ajout, publication avec accord, texte
--- alternatif, ordre, suppression), limite de 60 photos, plafond du bucket, fichiers orphelins.
+-- alternatif, ordre, suppression, masquage avec changement de nom du fichier), limite de
+-- 60 photos, plafond du bucket, fichiers orphelins.
 -- « Maintenant » est FIXE pour les orphelins : private.admin_gallery_orphans_at reçoit
 -- lundi 4 mars 2030, 9 h à Paris, et les dates de création des fichiers sont écrites à la main.
 -- Aucune vraie photo : les objets Storage sont de simples lignes (aucun contenu).
@@ -19,7 +20,7 @@ begin
   end loop;
 end $$;
 
-select plan(77);
+select plan(88);
 
 -- Simule l'API Storage, seule autorisée à supprimer (trigger storage.protect_delete).
 set local storage.allow_delete_query = 'true';
@@ -169,6 +170,9 @@ select throws_ok(
   '42501', 'forbidden', 'non-admin : admin_delete_gallery_item → forbidden');
 select throws_ok('select * from public.admin_gallery_orphans()', '42501', 'forbidden',
   'non-admin : admin_gallery_orphans → forbidden');
+select throws_ok(
+  $$select public.admin_hide_gallery_item('c1500000-0000-4000-8000-000000000001', 'b1500000-0000-4000-8000-0000000000c1.webp')$$,
+  '42501', 'forbidden', 'non-admin : admin_hide_gallery_item → forbidden');
 reset role;
 
 -- ---------------------------------------------------------------------------
@@ -381,6 +385,55 @@ select throws_ok(
   $$insert into storage.objects (bucket_id, name, metadata) values ('gallery', 'b1500000-0000-4000-8000-0000000000b3.webp', '{"mimetype": "image/webp"}')$$,
   '42501', null, 'plafond : 66e fichier refusé par Storage (protège le quota)');
 reset role;
+
+-- ---------------------------------------------------------------------------
+-- 11. Masquer en changeant le nom du fichier (les URL signées de l'ancien meurent avec lui).
+--     D (0d.jpg) est publiée ; c1.jpg est sa copie, c2.webp un fichier d'un autre format.
+-- ---------------------------------------------------------------------------
+insert into storage.objects (bucket_id, name, metadata) values
+  ('gallery', 'b1500000-0000-4000-8000-0000000000c1.jpg', '{"mimetype": "image/jpeg"}'),
+  ('gallery', 'b1500000-0000-4000-8000-0000000000c2.webp', '{"mimetype": "image/webp"}');
+create temp table d_item as
+  select id from public.gallery_items where image_path = 'b1500000-0000-4000-8000-00000000000d.jpg';
+grant select on d_item to authenticated;
+
+select pg_temp.as_admin();
+select throws_ok(
+  $$select public.admin_hide_gallery_item((select id from d_item), '../b1500000-0000-4000-8000-0000000000c1.jpg')$$,
+  'P0001', 'invalid_path', 'masquer : nouveau chemin hors format → invalid_path');
+select throws_ok(
+  $$select public.admin_hide_gallery_item((select id from d_item), 'b1500000-0000-4000-8000-0000000000c2.webp')$$,
+  'P0001', 'invalid_path', 'masquer : autre extension que l''original → invalid_path');
+select throws_ok(
+  $$select public.admin_hide_gallery_item((select id from d_item), 'b1500000-0000-4000-8000-0000000000c9.jpg')$$,
+  'P0001', 'file_missing', 'masquer : copie absente du bucket → file_missing');
+select throws_ok(
+  $$select public.admin_hide_gallery_item('c1500000-0000-4000-8000-000000000001', 'b1500000-0000-4000-8000-00000000000c.webp')$$,
+  'P0001', 'already_exists', 'masquer : chemin déjà utilisé par une autre photo → already_exists');
+select throws_ok(
+  $$select public.admin_hide_gallery_item('c1500000-0000-4000-8000-0000000000ff', 'b1500000-0000-4000-8000-0000000000c1.jpg')$$,
+  'P0001', 'not_found', 'masquer : photo inconnue → not_found');
+select is(
+  public.admin_hide_gallery_item((select id from d_item), 'b1500000-0000-4000-8000-0000000000c1.jpg'),
+  'b1500000-0000-4000-8000-00000000000d.jpg',
+  'masquer : renvoie l''ancien chemin, à effacer par le front');
+select results_eq(
+  $$select image_path, published from public.admin_list_gallery_items() where id = (select id from d_item)$$,
+  $$values ('b1500000-0000-4000-8000-0000000000c1.jpg'::text, false)$$,
+  'masquer : la ligne pointe vers la copie et la photo est masquée');
+reset role;
+
+-- L'ancien fichier n'a plus de ligne : anon ne peut plus le signer (et le front l'efface).
+set local role anon;
+select is(
+  (select count(*) from storage.objects
+    where name in ('b1500000-0000-4000-8000-00000000000d.jpg', 'b1500000-0000-4000-8000-0000000000c1.jpg')),
+  0::bigint, 'anon : ni l''ancien fichier ni la copie masquée ne sont accessibles');
+reset role;
+select ok(not has_function_privilege('anon', 'public.admin_hide_gallery_item(uuid, text)', 'execute'),
+  'anon : admin_hide_gallery_item non exécutable');
+select is((select count(*) from public.gallery_items where published), 0::bigint,
+  'plus aucune photo publiée (B supprimée au § 8, D masquée ici)');
 
 select * from finish();
 rollback;

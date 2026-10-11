@@ -23,6 +23,8 @@ export const MAX_ALT_TEXT_LENGTH = 200;
 
 export type AdminGalleryItem = {
   id: string;
+  /** Nom du fichier dans le bucket (« <uuid>.webp|jpg »). */
+  imagePath: string;
   /** URL signée de l'image (1 h) ; null si la signature a échoué (aperçu indisponible). */
   imageUrl: string | null;
   altText: string;
@@ -57,6 +59,7 @@ type Row = {
 function toItem(row: Row, imageUrl: string | null): AdminGalleryItem {
   return {
     id: row.id,
+    imagePath: row.image_path,
     imageUrl,
     altText: row.alt_text,
     width: row.width,
@@ -85,7 +88,7 @@ function storage() {
 async function signedUrls(paths: string[]): Promise<Map<string, string>> {
   if (paths.length === 0) return new Map();
   const { data, error } = await storage().createSignedUrls(paths, SIGNED_URL_TTL_S);
-  if (error) return new Map();
+  if (error || !data) return new Map();
   return new Map(
     data.flatMap((entry) =>
       entry.path && entry.signedUrl && !entry.error ? [[entry.path, entry.signedUrl] as const] : [],
@@ -148,6 +151,46 @@ export async function setGalleryItemPublished(
     p_consent: consent,
   });
   if (error) throw toAdminError(error);
+}
+
+/** Résultat d'un masquage : nouvel aperçu, et si les anciens liens ont bien été coupés. */
+export type HideResult = { imagePath: string; imageUrl: string | null; linksRevoked: boolean };
+
+/**
+ * Masque une photo. Une URL signée vit aussi longtemps que l'a demandé celui qui l'a créée
+ * (n'importe qui pouvait en demander une de 10 ans tant que la photo était publiée), et Storage
+ * ne revérifie rien quand on s'en sert. Pour couper TOUS les liens déjà distribués, on change
+ * le nom du fichier : copie sous un nouvel uuid, la ligne pointe vers la copie, l'ancien est
+ * effacé. Si la copie échoue (réseau), on masque quand même, sans couper les anciens liens :
+ * `linksRevoked: false`, l'écran le dit à Alix.
+ */
+export async function hideGalleryItem(item: AdminGalleryItem): Promise<HideResult> {
+  const extension = item.imagePath.endsWith(".jpg") ? "jpg" : "webp";
+  const newPath = `${randomUuid().toLowerCase()}.${extension}`;
+
+  const copy = await storage().copy(item.imagePath, newPath);
+  if (copy.error) {
+    await setGalleryItemPublished(item.id, false, false);
+    return { imagePath: item.imagePath, imageUrl: item.imageUrl, linksRevoked: false };
+  }
+
+  const { data: oldPath, error } = await adminClient().rpc("admin_hide_gallery_item", {
+    p_id: item.id,
+    p_new_path: newPath,
+  });
+  if (error) {
+    await storage()
+      .remove([newPath])
+      .catch(() => undefined);
+    throw toAdminError(error);
+  }
+  // Ancien fichier effacé : ses URL signées ne mènent plus à rien. Un échec ici laisse un
+  // orphelin (inaccessible au public), ramassé par sweepGalleryOrphans.
+  const removed = await storage()
+    .remove([oldPath])
+    .catch(() => ({ error: new Error("remove") }));
+  const urls = await signedUrls([newPath]);
+  return { imagePath: newPath, imageUrl: urls.get(newPath) ?? null, linksRevoked: !removed.error };
 }
 
 export async function updateGalleryItemAltText(id: string, altText: string): Promise<void> {

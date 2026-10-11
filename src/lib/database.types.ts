@@ -273,6 +273,14 @@ type AdminUpdateGalleryItemAltFunction = {
   Args: { p_id: string; p_alt_text: string };
   Returns: undefined;
 };
+/**
+ * Masque une photo en pointant sa ligne vers une COPIE du fichier (nouveau nom) ; renvoie
+ * l'ancien chemin, que le front efface : les URL signées déjà émises meurent avec lui.
+ */
+type AdminHideGalleryItemFunction = {
+  Args: { p_id: string; p_new_path: string };
+  Returns: string;
+};
 /** `false` : déjà en tête (ou en queue), rien n'a bougé. */
 type AdminMoveGalleryItemFunction = {
   Args: { p_id: string; p_direction: "up" | "down" };
@@ -315,6 +323,7 @@ export type Database = {
       admin_set_gallery_item_published: AdminSetGalleryItemPublishedFunction;
       admin_update_gallery_item_alt: AdminUpdateGalleryItemAltFunction;
       admin_move_gallery_item: AdminMoveGalleryItemFunction;
+      admin_hide_gallery_item: AdminHideGalleryItemFunction;
       admin_delete_gallery_item: AdminDeleteGalleryItemFunction;
       admin_gallery_orphans: AdminGalleryOrphansFunction;
     };

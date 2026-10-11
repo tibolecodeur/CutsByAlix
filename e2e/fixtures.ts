@@ -283,6 +283,8 @@ export type StorageCalls = {
   signings: string[][];
   /** Images téléchargées par URL signée. */
   downloads: string[];
+  /** Copies [source, destination] (masquage d'une photo : nouveau nom de fichier). */
+  copies: [string, string][];
 };
 
 /**
@@ -293,7 +295,13 @@ export async function mockStorage(
   page: Page,
   { refuse = [], uploadStatus = 200 }: { refuse?: string[]; uploadStatus?: number } = {},
 ): Promise<StorageCalls> {
-  const calls: StorageCalls = { uploads: [], removals: [], signings: [], downloads: [] };
+  const calls: StorageCalls = {
+    uploads: [],
+    removals: [],
+    signings: [],
+    downloads: [],
+    copies: [],
+  };
   const json = (route: Route, status: number, body: unknown) =>
     route.fulfill({
       status,
@@ -310,6 +318,11 @@ export async function mockStorage(
     }
     const path = new URL(request.url()).pathname.replace(/^.*\/storage\/v1\/object\//, "");
 
+    if (method === "POST" && path === "copy") {
+      const body = request.postDataJSON() as { sourceKey: string; destinationKey: string };
+      calls.copies.push([body.sourceKey, body.destinationKey]);
+      return json(route, 200, { Key: `gallery/${body.destinationKey}` });
+    }
     if (method === "POST" && path === "sign/gallery") {
       const { paths } = request.postDataJSON() as { paths: string[] };
       calls.signings.push(paths);

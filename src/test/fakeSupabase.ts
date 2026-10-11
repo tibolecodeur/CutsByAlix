@@ -43,7 +43,7 @@ export function fakeSupabaseClient(
   }
   // API Storage : `storage.from(bucket).upload(...)` etc., notée « storage.upload ».
   const bucket: Record<string, unknown> = {};
-  for (const method of ["upload", "remove", "createSignedUrls"] as const) {
+  for (const method of ["upload", "remove", "createSignedUrls", "copy"] as const) {
     bucket[method] = (...args: unknown[]) => {
       calls.push({ method: `storage.${method}`, args });
       return Promise.resolve(storageResults[method] ?? { data: null, error: null });
@@ -60,7 +60,7 @@ export function fakeSupabaseClient(
 
 /** Réponses simulées de l'API Storage (par défaut : `{ data: null, error: null }`). */
 export type FakeStorageResults = Partial<
-  Record<"upload" | "remove" | "createSignedUrls", FakeQueryResult>
+  Record<"upload" | "remove" | "createSignedUrls" | "copy", FakeQueryResult>
 >;
 
 /** Deux prestations telles que les renvoie la table `services` (colonnes sélectionnées). */

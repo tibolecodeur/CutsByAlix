@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { PageMeta } from "@/components/PageMeta";
 import { Section } from "@/components/Section";
-import { EmptyMessage, ErrorMessage, LoadingMessage } from "@/components/StatusMessage";
+import {
+  EmptyMessage,
+  ErrorMessage,
+  LoadingMessage,
+  SuccessMessage,
+} from "@/components/StatusMessage";
 import {
   getAdminGallery,
   sweepGalleryOrphans,
@@ -27,11 +32,12 @@ export function AdminGalleryPage() {
       <Section variant="blush">
         <h1>Galerie</h1>
       </Section>
-      <Section>
+      <Section aria-labelledby="add-photo">
         <AdminGalleryUpload onAdded={items.reload} />
       </Section>
       <Section variant="blush" aria-labelledby="photos-title">
         <h2 id="photos-title">Photos</h2>
+        <p className="text-sm text-muted">Sur le site, les photos s'affichent en noir et blanc.</p>
         {items.status === "loading" && <LoadingMessage>Chargement des photos…</LoadingMessage>}
         {items.status === "error" && (
           <ErrorMessage onRetry={items.reload}>Impossible de charger les photos.</ErrorMessage>
@@ -52,6 +58,8 @@ function GalleryList({ initialItems }: { initialItems: AdminGalleryItem[] }) {
   const [list, setList] = useState(initialItems);
   const [lastMoved, setLastMoved] = useState<{ id: string; direction: "up" | "down" }>();
   const [announce, setAnnounce] = useState("");
+  // Message visible (et annoncé) après un masquage : Alix doit savoir si les liens sont coupés.
+  const [notice, setNotice] = useState("");
   const titleRef = useRef<HTMLParagraphElement>(null);
 
   function handleChange(item: AdminGalleryItem, change: GalleryCardChange) {
@@ -68,8 +76,22 @@ function GalleryList({ initialItems }: { initialItems: AdminGalleryItem[] }) {
         break;
       }
       case "published":
-        setList(list.map((i) => (i.id === item.id ? { ...i, published: change.published } : i)));
-        setAnnounce(change.published ? "Photo publiée." : "Photo masquée du site.");
+        setList(list.map((i) => (i.id === item.id ? { ...i, published: true } : i)));
+        setAnnounce("Photo publiée.");
+        break;
+      case "hidden":
+        setList(
+          list.map((i) =>
+            i.id === item.id
+              ? { ...i, published: false, imagePath: change.imagePath, imageUrl: change.imageUrl }
+              : i,
+          ),
+        );
+        setNotice(
+          change.linksRevoked
+            ? "Photo masquée du site. Les liens vers elle qui auraient été copiés ne fonctionnent plus."
+            : "Photo masquée du site, mais des liens copiés avant peuvent encore l'afficher. Si la personne a retiré son accord, supprime la photo.",
+        );
         break;
       case "alt":
         setList(list.map((i) => (i.id === item.id ? { ...i, altText: change.altText } : i)));
@@ -97,6 +119,7 @@ function GalleryList({ initialItems }: { initialItems: AdminGalleryItem[] }) {
       <p role="status" className="sr-only">
         {announce}
       </p>
+      {notice && <SuccessMessage>{notice}</SuccessMessage>}
       {list.length === 0 ? (
         <EmptyMessage>
           <p>Ajoute ta première photo avec les boutons ci-dessus.</p>

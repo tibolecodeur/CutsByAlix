@@ -13,8 +13,13 @@
 --      JPEG). 2 Mo max (le navigateur envoie une image ré-encodée de 1200 px au plus).
 --   5. Policies Storage : dépôt admin limité au format de nom et au nombre de fichiers, plus
 --      de remplacement (update), lecture anon des seuls objets publiés.
---   6. Fonctions admin : liste, ajout, publication, texte alternatif, ordre, suppression,
---      fichiers orphelins.
+--   6. Fonctions admin : liste, ajout, publication, masquage avec changement de nom du fichier,
+--      texte alternatif, ordre, suppression, fichiers orphelins.
+--
+-- URL signées : c'est l'APPELANT qui choisit leur durée (anon peut demander 10 ans) et Storage
+-- ne relit pas la RLS quand on s'en sert. Masquer une photo publiée change donc le nom de son
+-- fichier (copie sous un nouvel uuid, puis l'ancien est effacé par le front) : toutes les URL
+-- déjà émises meurent. Supprimer la photo a le même effet.
 -- Les fonctions publiques : security definer, réservées à un utilisateur listé dans admins
 -- (sinon 42501 « forbidden »), exécutables par authenticated seulement, « volatile » (jamais
 -- appelables en GET par PostgREST).
@@ -171,7 +176,7 @@ create policy gallery_public_select_published on storage.objects
   for select to anon
   using (
     bucket_id = 'gallery'
-    and exists (select 1 from public.gallery_items g where g.image_path = name)
+    and exists (select 1 from public.gallery_items g where g.image_path = objects.name)
   );
 
 -- gallery_admin_select et gallery_admin_delete (admin) restent inchangées.
@@ -361,6 +366,61 @@ revoke all on function public.admin_set_gallery_item_published(uuid, boolean, bo
   from public, anon, authenticated;
 grant execute on function public.admin_set_gallery_item_published(uuid, boolean, boolean)
   to authenticated;
+
+-- Masquer une photo PUBLIÉE en changeant le nom de son fichier. Le front a d'abord copié le
+-- fichier sous p_new_path (API Storage) ; ici on vérifie la copie, on pointe la ligne dessus
+-- et on renvoie l'ancien chemin, que le front efface : toute URL signée de l'ancien fichier,
+-- quelle que soit sa durée, ne mène plus à rien.
+create function public.admin_hide_gallery_item(p_id uuid, p_new_path text)
+returns text
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  v_old text;
+  v_mime text;
+begin
+  perform private.require_admin();
+  if p_id is null then
+    raise exception 'invalid_input' using errcode = 'P0001';
+  end if;
+  if not private.is_gallery_path(p_new_path) then
+    raise exception 'invalid_path' using errcode = 'P0001';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtextextended('gallery:items', 0));
+
+  select g.image_path into v_old from public.gallery_items g where g.id = p_id for update;
+  if not found then
+    raise exception 'not_found' using errcode = 'P0001';
+  end if;
+  -- Même format que l'original : une copie ne change pas le contenu.
+  if split_part(p_new_path, '.', 2) <> split_part(v_old, '.', 2) then
+    raise exception 'invalid_path' using errcode = 'P0001';
+  end if;
+  if exists (select 1 from public.gallery_items g where g.image_path = p_new_path) then
+    raise exception 'already_exists' using errcode = 'P0001';
+  end if;
+
+  select o.metadata ->> 'mimetype' into v_mime
+    from storage.objects o
+   where o.bucket_id = 'gallery' and o.name = p_new_path;
+  if not found
+     or v_mime is distinct from (case when p_new_path like '%.webp' then 'image/webp'
+                                      else 'image/jpeg' end) then
+    raise exception 'file_missing' using errcode = 'P0001';
+  end if;
+
+  update public.gallery_items g
+     set image_path = p_new_path, published = false
+   where g.id = p_id;
+  return v_old;
+end;
+$$;
+revoke all on function public.admin_hide_gallery_item(uuid, text) from public, anon, authenticated;
+grant execute on function public.admin_hide_gallery_item(uuid, text) to authenticated;
 
 -- Modifier le texte alternatif.
 create function public.admin_update_gallery_item_alt(p_id uuid, p_alt_text text)

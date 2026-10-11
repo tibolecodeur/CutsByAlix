@@ -168,6 +168,7 @@ select set_eq(
         'public.admin_list_gallery_items', 'public.admin_add_gallery_item',
         'public.admin_set_gallery_item_published', 'public.admin_update_gallery_item_alt',
         'public.admin_move_gallery_item', 'public.admin_delete_gallery_item',
+        'public.admin_hide_gallery_item',
         'public.admin_gallery_orphans'],
   'authenticated n''exécute que les fonctions admin et les 4 aides des policies');
 select is(

@@ -73,6 +73,14 @@ async function ouvrirGalerie(page: Page, rows: Record<string, unknown>[] = []) {
     record("admin_move_gallery_item")(args);
     return { body: true };
   });
+  await mockRpc(page, "admin_hide_gallery_item", (args) => {
+    record("admin_hide_gallery_item")(args);
+    const old = list.find((r) => r.id === args.p_id);
+    list = list.map((r) =>
+      r.id === args.p_id ? { ...r, image_path: args.p_new_path, published: false } : r,
+    );
+    return { body: old?.image_path ?? null };
+  });
   await mockRpc(page, "admin_delete_gallery_item", (args) => {
     record("admin_delete_gallery_item")(args);
     return { body: list.find((r) => r.id === args.p_id)?.image_path ?? null };
@@ -180,9 +188,14 @@ test("ajout : photo réduite à 1200 px, redressée, sans EXIF ni GPS, nom uuid,
   const image = await lireBlob(page, (await apercu.getAttribute("src"))!);
 
   const publier = page.getByRole("button", { name: "Publier", exact: true });
-  await expect(publier).toBeDisabled();
+  // Sans l'accord, rien ne part : message relié à la case, qui reçoit le focus.
+  await publier.click();
+  await expect(
+    page.getByText("Coche l'accord de la personne photographiée pour publier."),
+  ).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: /d'accord/ })).toBeFocused();
+  expect(storage.uploads).toEqual([]);
   await page.getByText("La personne photographiée est d'accord pour la publication.").click();
-  await expect(publier).toBeEnabled();
   await page.getByLabel("Texte alternatif (obligatoire)").fill("Dégradé bas, côtés rasés");
   await publier.click();
   await expect(page.getByText("Photo publiée dans la galerie.")).toBeVisible();
@@ -301,28 +314,37 @@ test("liste : monter / descendre, publier avec accord, masquer, supprimer avec c
   expect(audit.violations.map((v) => v.id)).toEqual([]);
 
   // Monter / descendre : boutons de 44 px au moins, focus conservé après le déplacement.
-  const descendre = page.getByRole("button", { name: "Descendre la photo 1 « Dégradé court »" });
+  const descendre = page.getByRole("button", { name: "Descendre la photo 1" });
   const box = await descendre.boundingBox();
   expect(box!.height).toBeGreaterThanOrEqual(44);
   await descendre.click();
-  await expect(
-    page.getByRole("button", { name: "Descendre la photo 2 « Dégradé court »" }),
-  ).toBeFocused();
+  await expect(page.getByRole("button", { name: "Descendre la photo 2" })).toBeFocused();
   const photos = page.getByRole("region", { name: "Photos" }).getByRole("listitem");
   await expect(photos.nth(1)).toContainText("Dégradé court");
 
   // Publier une photo masquée : l'accord est exigé.
-  await page.getByRole("button", { name: /^Publier la photo 1 « Contours nets »/ }).click();
+  await page.getByRole("button", { name: "Publier la photo 1" }).click();
   const confirmer = page.getByRole("button", { name: "Publier", exact: true });
-  await expect(confirmer).toBeDisabled();
+  await expect(page.getByRole("checkbox", { name: /d'accord/ })).toBeFocused();
   await page.getByText("La personne photographiée est d'accord pour la publication.").click();
   await confirmer.click();
   await expect(page.getByText("3 photos, dont 3 publiées.")).toBeVisible();
 
   // Supprimer : confirmation, puis la ligne, puis le fichier.
-  await page.getByRole("button", { name: "Supprimer la photo 3 « Barbe taillée »" }).click();
+  await page.getByRole("button", { name: "Supprimer la photo 3" }).click();
   await page.getByRole("button", { name: "Oui, supprimer" }).click();
   await expect(page.getByText("2 photos, dont 2 publiées.")).toBeVisible();
+
+  // Masquer une photo publiée : copie sous un nouveau nom, la ligne pointe dessus, l'ancien
+  // fichier est effacé (les URL signées déjà distribuées meurent avec lui).
+  await page.getByRole("button", { name: "Masquer la photo 1" }).click();
+  await expect(page.getByText(/ne fonctionnent plus/)).toBeVisible();
+  await expect(page.getByText("2 photos, dont 1 publiée.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Publier la photo 1" })).toBeFocused();
+  expect(storage.copies).toHaveLength(1);
+  const [source, copie] = storage.copies[0]!;
+  expect(source).toBe(rows[1]!.image_path);
+  expect(copie).toMatch(UUID_FILE);
 
   expect(rpcCalls).toEqual([
     {
@@ -334,6 +356,7 @@ test("liste : monter / descendre, publier avec accord, masquer, supprimer avec c
       args: { p_id: rows[1]!.id, p_published: true, p_consent: true },
     },
     { name: "admin_delete_gallery_item", args: { p_id: rows[2]!.id } },
+    { name: "admin_hide_gallery_item", args: { p_id: rows[1]!.id, p_new_path: copie } },
   ]);
-  expect(storage.removals).toEqual([[rows[2]!.image_path]]);
+  expect(storage.removals).toEqual([[rows[2]!.image_path], [rows[1]!.image_path]]);
 });

@@ -6,9 +6,10 @@ import { getSupabase } from "@/lib/supabase";
  * - Table `gallery_items` : la RLS ne montre que les photos publiées, et anon ne lit que les
  *   colonnes d'affichage (chemin, texte alternatif, dimensions, ordre).
  * - Bucket « gallery » PRIVÉ : chaque photo s'affiche par une URL signée, valable
- *   `SIGNED_URL_TTL_S` secondes. Storage ne signe que les fichiers dont la ligne est publiée :
- *   une photo masquée par Alix n'est plus accessible (au plus tard à l'expiration des URL déjà
- *   distribuées).
+ *   `SIGNED_URL_TTL_S` secondes. Storage ne signe que les fichiers dont la ligne est publiée.
+ *   Attention : la durée est choisie par l'appelant (n'importe qui peut demander une URL de
+ *   plusieurs années pour une photo publiée). C'est pourquoi masquer une photo change le nom
+ *   de son fichier (`hideGalleryItem`) : toutes les URL déjà émises meurent avec l'ancien.
  * - Une seule requête de signature pour toutes les photos.
  *
  * Gestion côté admin : `src/features/admin/gallery.ts`.
@@ -50,7 +51,7 @@ export async function getPublishedGallery(): Promise<GalleryPhoto[]> {
     data.map((row) => row.image_path),
     SIGNED_URL_TTL_S,
   );
-  if (signed.error) throw new Error("gallery_unavailable");
+  if (signed.error || !signed.data) throw new Error("gallery_unavailable");
 
   const urls = new Map(
     signed.data.flatMap((entry) =>

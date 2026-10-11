@@ -6,6 +6,7 @@ import { Field } from "@/components/Field";
 import { ErrorMessage } from "@/components/StatusMessage";
 import {
   deleteGalleryItem,
+  hideGalleryItem,
   MAX_ALT_TEXT_LENGTH,
   moveGalleryItem,
   setGalleryItemPublished,
@@ -16,7 +17,8 @@ import { galleryErrorMessage } from "@/pages/admin/galleryMessages";
 
 export type GalleryCardChange =
   | { type: "moved"; direction: "up" | "down" }
-  | { type: "published"; published: boolean }
+  | { type: "published"; published: true }
+  | { type: "hidden"; imagePath: string; imageUrl: string | null; linksRevoked: boolean }
   | { type: "alt"; altText: string }
   | { type: "deleted" };
 
@@ -37,12 +39,26 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [consent, setConsent] = useState(false);
+  const [consentError, setConsentError] = useState<string>();
   const [altDraft, setAltDraft] = useState(item.altText);
   const upButton = useRef<HTMLButtonElement>(null);
   const downButton = useRef<HTMLButtonElement>(null);
+  // Boutons qui ouvrent un panneau, et premier élément de chaque panneau (gestion du focus).
+  const publishToggle = useRef<HTMLButtonElement>(null);
+  const editButton = useRef<HTMLButtonElement>(null);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  const consentInput = useRef<HTMLInputElement>(null);
+  const altInput = useRef<HTMLInputElement>(null);
+  const keepButton = useRef<HTMLButtonElement>(null);
+  const openedFrom = useRef<Mode | null>(null);
+  // Focus à rendre dès que la carte n'est plus occupée : pendant une requête, les boutons
+  // sont désactivés, et un bouton désactivé ne peut pas recevoir le focus (le navigateur
+  // le retire même à celui qui l'avait).
+  const pendingFocus = useRef<(() => HTMLElement | null) | null>(null);
   // Garde contre le double appui (le bouton n'est désactivé qu'au rendu suivant).
   const sending = useRef(false);
-  const label = `photo ${position} « ${item.altText} »`;
+  // Libellé court : répéter le texte alternatif sur 5 boutons serait très long à l'écoute.
+  const label = `photo ${position}`;
   const isFirst = position === 1;
   const isLast = position === total;
 
@@ -55,6 +71,45 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
     const other = focusMove === "up" ? downButton.current : upButton.current;
     (wanted && !wanted.disabled ? wanted : other)?.focus();
   }, [focusMove, position]);
+
+  // Changement de panneau : le bouton touché disparaît, le focus tomberait sur la page. On
+  // le place sur le premier élément du panneau ouvert (« Garder la photo », l'option sûre,
+  // pour la suppression), puis, au retour, sur le bouton qui l'avait ouvert.
+  useEffect(() => {
+    if (openedFrom.current === null) return;
+    if (mode === "publishing") consentInput.current?.focus();
+    else if (mode === "editing") altInput.current?.focus();
+    else if (mode === "deleting") keepButton.current?.focus();
+    else {
+      const trigger = {
+        publishing: publishToggle,
+        editing: editButton,
+        deleting: deleteButton,
+        idle: null,
+      }[openedFrom.current];
+      pendingFocus.current = () => trigger?.current ?? null;
+      openedFrom.current = null;
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    if (busy || !pendingFocus.current) return;
+    const target = pendingFocus.current();
+    pendingFocus.current = null;
+    target?.focus();
+  }, [busy, mode, item.published]);
+
+  function open(next: Exclude<Mode, "idle">) {
+    openedFrom.current = next;
+    setError(undefined);
+    setMode(next);
+  }
+
+  function close() {
+    setConsent(false);
+    setConsentError(undefined);
+    setMode("idle");
+  }
 
   async function run(action: () => Promise<void>) {
     if (sending.current) return;
@@ -76,24 +131,31 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
       if (await moveGalleryItem(item.id, direction)) onChange({ type: "moved", direction });
     });
 
-  const publish = () =>
-    run(async () => {
-      await setGalleryItemPublished(item.id, true, consent);
-      setMode("idle");
-      setConsent(false);
+  const publish = () => {
+    if (!consent) {
+      setConsentError("Coche l'accord de la personne photographiée pour publier.");
+      consentInput.current?.focus();
+      return;
+    }
+    return run(async () => {
+      await setGalleryItemPublished(item.id, true, true);
+      close();
       onChange({ type: "published", published: true });
     });
+  };
 
   const hide = () =>
     run(async () => {
-      await setGalleryItemPublished(item.id, false, false);
-      onChange({ type: "published", published: false });
+      const result = await hideGalleryItem(item);
+      // Même emplacement, devenu « Publier ».
+      pendingFocus.current = () => publishToggle.current;
+      onChange({ type: "hidden", ...result });
     });
 
   const saveAlt = () =>
     run(async () => {
       await updateGalleryItemAltText(item.id, altDraft);
-      setMode("idle");
+      close();
       onChange({ type: "alt", altText: altDraft.trim() });
     });
 
@@ -140,7 +202,8 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
               {item.published ? "Publiée" : "Masquée"}
             </span>
           </p>
-          <p className="break-words">{item.altText}</p>
+          {/* line-clamp : un long texte ne repousse pas les boutons hors de l'écran. */}
+          <p className="line-clamp-3 break-words">{item.altText}</p>
         </div>
       </div>
 
@@ -170,6 +233,7 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
           </Button>
           {item.published ? (
             <Button
+              ref={publishToggle}
               variant="secondary"
               className="px-3"
               disabled={busy}
@@ -180,32 +244,35 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
             </Button>
           ) : (
             <Button
+              ref={publishToggle}
               className="px-3"
               disabled={busy}
               aria-label={`Publier la ${label}`}
-              onClick={() => setMode("publishing")}
+              onClick={() => open("publishing")}
             >
               Publier
             </Button>
           )}
           <Button
+            ref={editButton}
             variant="secondary"
             className="px-3"
             disabled={busy}
             aria-label={`Modifier le texte de la ${label}`}
             onClick={() => {
               setAltDraft(item.altText);
-              setMode("editing");
+              open("editing");
             }}
           >
             Modifier
           </Button>
           <Button
+            ref={deleteButton}
             variant="secondary"
             className="col-span-2 px-3"
             disabled={busy}
             aria-label={`Supprimer la ${label}`}
-            onClick={() => setMode("deleting")}
+            onClick={() => open("deleting")}
           >
             Supprimer
           </Button>
@@ -215,32 +282,30 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
       {mode === "publishing" && (
         <div className="flex flex-col gap-3">
           <Choice
+            ref={consentInput}
             type="checkbox"
             id={`consent-${item.id}`}
             checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
+            aria-invalid={consentError ? true : undefined}
+            aria-describedby={consentError ? `consent-error-${item.id}` : undefined}
+            onChange={(e) => {
+              setConsent(e.target.checked);
+              setConsentError(undefined);
+            }}
           >
             La personne photographiée est d'accord pour la publication.
           </Choice>
-          <div className="flex flex-col gap-3">
-            <Button
-              onClick={() => void publish()}
-              disabled={!consent || busy}
-              aria-busy={busy || undefined}
-            >
-              {busy ? "Publication…" : "Publier"}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={busy}
-              onClick={() => {
-                setMode("idle");
-                setConsent(false);
-              }}
-            >
-              Annuler
-            </Button>
-          </div>
+          {consentError && (
+            <p id={`consent-error-${item.id}`} className="text-sm font-bold text-accent">
+              {consentError}
+            </p>
+          )}
+          <Button onClick={() => void publish()} disabled={busy} aria-busy={busy || undefined}>
+            {busy ? "Publication…" : "Publier"}
+          </Button>
+          <Button variant="secondary" disabled={busy} onClick={close}>
+            Annuler
+          </Button>
         </div>
       )}
 
@@ -254,6 +319,7 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
           }}
         >
           <Field
+            ref={altInput}
             id={`alt-${item.id}`}
             type="text"
             label="Texte alternatif"
@@ -265,21 +331,28 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
           <Button type="submit" disabled={busy} aria-busy={busy || undefined}>
             {busy ? "Enregistrement…" : "Enregistrer"}
           </Button>
-          <Button variant="secondary" disabled={busy} onClick={() => setMode("idle")}>
+          <Button variant="secondary" disabled={busy} onClick={close}>
             Annuler
           </Button>
         </form>
       )}
 
       {mode === "deleting" && (
-        <div className="flex flex-col gap-3">
+        // Action définitive : l'option sûre est le bouton principal, en premier, et un écart
+        // plus grand sépare « Oui, supprimer » pour éviter la mauvaise touche.
+        <div className="flex flex-col gap-4">
           <p className="font-semibold">
             Supprimer cette photo ? Elle disparaît du site et de l'espace admin, définitivement.
           </p>
-          <Button variant="secondary" disabled={busy} onClick={() => setMode("idle")}>
+          <Button ref={keepButton} disabled={busy} onClick={close}>
             Garder la photo
           </Button>
-          <Button onClick={() => void remove()} disabled={busy} aria-busy={busy || undefined}>
+          <Button
+            variant="secondary"
+            onClick={() => void remove()}
+            disabled={busy}
+            aria-busy={busy || undefined}
+          >
             {busy ? "Suppression…" : "Oui, supprimer"}
           </Button>
         </div>

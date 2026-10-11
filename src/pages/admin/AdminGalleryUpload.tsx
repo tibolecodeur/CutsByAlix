@@ -23,15 +23,19 @@ export function AdminGalleryUpload({ onAdded }: { onAdded: () => void }) {
   const [altText, setAltText] = useState("");
   const [consent, setConsent] = useState(false);
   const [altError, setAltError] = useState<string>();
+  const [consentError, setConsentError] = useState<string>();
   const [error, setError] = useState<string>();
   const [success, setSuccess] = useState<string>();
   const cameraInput = useRef<HTMLInputElement>(null);
   const libraryInput = useRef<HTMLInputElement>(null);
   const altInput = useRef<HTMLInputElement>(null);
+  const consentInput = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
   // Garde contre le double appui (le bouton n'est désactivé qu'au rendu suivant).
   const sending = useRef(false);
   const consentHintId = useId();
+  const consentErrorId = useId();
 
   // L'aperçu est une URL « blob: » qui garde l'image en mémoire : on la libère quand elle
   // change ou quand l'écran se ferme. La fonction renvoyée par un effet est son « nettoyage »,
@@ -46,6 +50,13 @@ export function AdminGalleryUpload({ onAdded }: { onAdded: () => void }) {
     if (success) successRef.current?.focus();
   }, [success]);
 
+  // Photo prête : sur 375 px, le formulaire apparaît sous les boutons, hors de l'écran. Le
+  // focus l'y amène (le navigateur fait défiler jusqu'à lui) et le lecteur d'écran l'annonce.
+  // Pas sur le champ texte : sur iPhone, le clavier masquerait l'aperçu.
+  useEffect(() => {
+    if (phase === "ready" && !sending.current) formRef.current?.focus();
+  }, [phase, image]);
+
   function reset() {
     setPhase("empty");
     setImage(null);
@@ -53,6 +64,7 @@ export function AdminGalleryUpload({ onAdded }: { onAdded: () => void }) {
     setAltText("");
     setConsent(false);
     setAltError(undefined);
+    setConsentError(undefined);
     setError(undefined);
   }
 
@@ -80,6 +92,13 @@ export function AdminGalleryUpload({ onAdded }: { onAdded: () => void }) {
   async function save(publish: boolean) {
     if (!image || sending.current) return;
     setError(undefined);
+    // Publier sans l'accord : erreur reliée à la case (un bouton désactivé ne dirait pas
+    // pourquoi aux lecteurs d'écran).
+    if (publish && !consent) {
+      setConsentError("Coche l'accord de la personne photographiée pour publier.");
+      consentInput.current?.focus();
+      return;
+    }
     if (altText.trim() === "") {
       setAltError("Décris la photo en quelques mots : c'est obligatoire.");
       altInput.current?.focus();
@@ -105,7 +124,7 @@ export function AdminGalleryUpload({ onAdded }: { onAdded: () => void }) {
   const busy = phase === "processing" || phase === "sending";
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5" aria-busy={busy || undefined}>
       <h2 id="add-photo">Ajouter une photo</h2>
 
       {/* Champs fichier invisibles, ouverts par les deux boutons. `capture` ouvre directement
@@ -154,6 +173,8 @@ export function AdminGalleryUpload({ onAdded }: { onAdded: () => void }) {
 
       {image && previewUrl && (phase === "ready" || phase === "sending") && (
         <form
+          ref={formRef}
+          tabIndex={-1}
           onSubmit={(event) => {
             event.preventDefault();
             void save(true);
@@ -167,7 +188,7 @@ export function AdminGalleryUpload({ onAdded }: { onAdded: () => void }) {
             alt="Aperçu de la photo choisie"
             width={image.width}
             height={image.height}
-            className="h-auto max-h-80 w-auto max-w-full self-start border border-ink/15"
+            className="max-h-80 w-full border border-ink/15 object-contain"
           />
           <Field
             ref={altInput}
@@ -187,26 +208,33 @@ export function AdminGalleryUpload({ onAdded }: { onAdded: () => void }) {
           />
           <div className="flex flex-col gap-2">
             <Choice
+              ref={consentInput}
               type="checkbox"
               id="photo-consent"
               name="consent"
               checked={consent}
-              onChange={(e) => setConsent(e.target.checked)}
+              aria-invalid={consentError ? true : undefined}
+              aria-describedby={consentError ? `${consentHintId} ${consentErrorId}` : consentHintId}
+              onChange={(e) => {
+                setConsent(e.target.checked);
+                setConsentError(undefined);
+              }}
             >
               La personne photographiée est d'accord pour la publication.
             </Choice>
-            {!consent && (
-              <p id={consentHintId} className="text-sm text-muted">
-                Coche la case pour pouvoir publier. Sans accord, tu peux enregistrer la photo
-                masquée.
+            <p id={consentHintId} className="text-sm text-muted">
+              Obligatoire pour publier. Sans accord, tu peux enregistrer la photo masquée.
+            </p>
+            {consentError && (
+              <p id={consentErrorId} className="text-sm font-bold text-accent">
+                {consentError}
               </p>
             )}
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button
               type="submit"
-              disabled={!consent || busy}
-              aria-describedby={consent ? undefined : consentHintId}
+              disabled={busy}
               aria-busy={(phase === "sending" && consent) || undefined}
             >
               {phase === "sending" ? "Envoi en cours…" : "Publier"}
@@ -214,9 +242,16 @@ export function AdminGalleryUpload({ onAdded }: { onAdded: () => void }) {
             <Button variant="secondary" onClick={() => void save(false)} disabled={busy}>
               Enregistrer sans publier
             </Button>
-            <Button variant="secondary" onClick={reset} disabled={busy}>
+            {/* Simple lien d'action : trois pilules empilées repousseraient « Publier » hors de
+                l'écran sur 375 px. */}
+            <button
+              type="button"
+              onClick={reset}
+              disabled={busy}
+              className="link inline-flex min-h-tap items-center self-center disabled:opacity-60"
+            >
               Annuler
-            </Button>
+            </button>
           </div>
         </form>
       )}

@@ -18,6 +18,7 @@ vi.mock("@/features/admin/gallery", async (importOriginal) => ({
   getAdminGallery: vi.fn(),
   addGalleryItem: vi.fn(),
   setGalleryItemPublished: vi.fn(),
+  hideGalleryItem: vi.fn(),
   updateGalleryItemAltText: vi.fn(),
   moveGalleryItem: vi.fn(),
   deleteGalleryItem: vi.fn(),
@@ -31,6 +32,7 @@ vi.mock("@/features/gallery/processImage", async (importOriginal) => ({
 function item(id: string, altText: string, fields: Partial<AdminGalleryItem> = {}) {
   return {
     id,
+    imagePath: `${id}.webp`,
     imageUrl: `https://example.test/${id}`,
     altText,
     width: 1200,
@@ -61,6 +63,9 @@ beforeEach(() => {
   vi.mocked(gallery.getAdminGallery).mockReset().mockResolvedValue(ITEMS);
   vi.mocked(gallery.addGalleryItem).mockReset().mockResolvedValue(ITEMS[0]!);
   vi.mocked(gallery.setGalleryItemPublished).mockReset().mockResolvedValue();
+  vi.mocked(gallery.hideGalleryItem)
+    .mockReset()
+    .mockResolvedValue({ imagePath: "neuf.webp", imageUrl: "https://example.test/neuf", linksRevoked: true });
   vi.mocked(gallery.updateGalleryItemAltText).mockReset().mockResolvedValue();
   vi.mocked(gallery.moveGalleryItem).mockReset().mockResolvedValue(true);
   vi.mocked(gallery.deleteGalleryItem).mockReset().mockResolvedValue();
@@ -131,14 +136,19 @@ describe("AdminGalleryPage : ajout", () => {
     await screen.findByText("3 photos, dont 2 publiées.");
     await choosePhoto(user);
 
+    // Le formulaire est amené à l'écran (focus) dès que la photo est prête.
+    expect(screen.getByRole("form", { name: "Détails de la photo" })).toHaveFocus();
     const publish = screen.getByRole("button", { name: "Publier" });
-    expect(publish).toBeDisabled();
-    expect(publish).toHaveAccessibleDescription(/Coche la case pour pouvoir publier/);
+    const consent = screen.getByRole("checkbox", {
+      name: /La personne photographiée est d'accord/,
+    });
+    // Sans l'accord : erreur reliée à la case, focus dessus, rien n'est envoyé.
+    await user.click(publish);
+    expect(consent).toHaveFocus();
+    expect(consent).toHaveAccessibleDescription(/Coche l'accord de la personne photographiée/);
+    expect(gallery.addGalleryItem).not.toHaveBeenCalled();
 
-    await user.click(
-      screen.getByRole("checkbox", { name: /La personne photographiée est d'accord/ }),
-    );
-    expect(publish).toBeEnabled();
+    await user.click(consent);
     // Texte alternatif vide : refus, focus sur le champ.
     await user.click(publish);
     expect(screen.getByText(/Décris la photo en quelques mots/)).toBeInTheDocument();
@@ -207,7 +217,7 @@ describe("AdminGalleryPage : actions sur une photo", () => {
     const cards = await screen.findAllByRole("listitem");
     expect(within(cards[1]!).getByText("Dégradé court")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /Descendre la photo 2 « Dégradé court »/ }),
+      screen.getByRole("button", { name: "Descendre la photo 2" }),
     ).toHaveFocus();
     expect(screen.getByText("Photo déplacée en position 2 sur 3.")).toBeInTheDocument();
   });
@@ -216,20 +226,43 @@ describe("AdminGalleryPage : actions sur une photo", () => {
     const user = userEvent.setup();
     renderPage();
     await user.click(await screen.findByRole("button", { name: /Publier la photo 2/ }));
+    const consent = screen.getByRole("checkbox", { name: /d'accord/ });
+    expect(consent).toHaveFocus();
     const confirm = screen.getByRole("button", { name: "Publier" });
-    expect(confirm).toBeDisabled();
-    await user.click(screen.getByRole("checkbox", { name: /d'accord/ }));
+    await user.click(confirm);
+    expect(gallery.setGalleryItemPublished).not.toHaveBeenCalled();
+    expect(screen.getByText(/Coche l'accord/)).toBeInTheDocument();
+    await user.click(consent);
     await user.click(confirm);
     expect(gallery.setGalleryItemPublished).toHaveBeenCalledWith("p2", true, true);
     expect(await screen.findByText("3 photos, dont 3 publiées.")).toBeInTheDocument();
   });
 
-  it("masquer une photo publiée", async () => {
+  it("masquer une photo publiée change son fichier : les anciens liens sont coupés", async () => {
     const user = userEvent.setup();
     renderPage();
     await user.click(await screen.findByRole("button", { name: /Masquer la photo 1/ }));
-    expect(gallery.setGalleryItemPublished).toHaveBeenCalledWith("p1", false, false);
+    expect(gallery.hideGalleryItem).toHaveBeenCalledWith(ITEMS[0]);
     expect(await screen.findByText("3 photos, dont 1 publiée.")).toBeInTheDocument();
+    expect(screen.getByText(/liens vers elle qui auraient été copiés ne fonctionnent plus/)).toBeInTheDocument();
+    // Le focus revient sur le même emplacement (devenu « Publier »).
+    expect(screen.getByRole("button", { name: "Publier la photo 1" })).toHaveFocus();
+    expect(screen.getByRole("img", { name: "Dégradé court" })).toHaveAttribute(
+      "src",
+      "https://example.test/neuf",
+    );
+  });
+
+  it("masquage sans changement de fichier (copie ratée) : Alix est prévenue", async () => {
+    vi.mocked(gallery.hideGalleryItem).mockResolvedValue({
+      imagePath: "p1.webp",
+      imageUrl: "https://example.test/p1",
+      linksRevoked: false,
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /Masquer la photo 1/ }));
+    expect(await screen.findByText(/des liens copiés avant peuvent encore l'afficher/)).toBeInTheDocument();
   });
 
   it("modifier le texte alternatif", async () => {
@@ -250,8 +283,11 @@ describe("AdminGalleryPage : actions sur une photo", () => {
     const user = userEvent.setup();
     renderPage();
     await user.click(await screen.findByRole("button", { name: /Supprimer la photo 1/ }));
+    // Focus sur l'option sûre, puis retour sur « Supprimer » si on garde la photo.
+    expect(screen.getByRole("button", { name: "Garder la photo" })).toHaveFocus();
     await user.click(screen.getByRole("button", { name: "Garder la photo" }));
     expect(gallery.deleteGalleryItem).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Supprimer la photo 1" })).toHaveFocus();
 
     await user.click(screen.getByRole("button", { name: /Supprimer la photo 1/ }));
     await user.click(screen.getByRole("button", { name: "Oui, supprimer" }));
