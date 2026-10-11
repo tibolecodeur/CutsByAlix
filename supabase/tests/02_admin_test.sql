@@ -102,9 +102,11 @@ select throws_ok(
 select throws_ok(
   $$update public.bookings set status = 'cancelled', cancelled_by = 'barber'$$, '42501', null,
   'admin : n''annule pas en direct (contournerait admin_cancel_booking)');
-select lives_ok(
-  $$insert into public.gallery_items (image_path, caption, published) values ('coupe.jpg', 'Dégradé', true)$$,
-  'admin : ajoute une photo');
+-- Depuis la consigne 20 : photos gérées par les fonctions admin seulement (testées dans 15).
+select throws_ok(
+  $$insert into public.gallery_items (image_path, alt_text, width, height)
+    values ('a1000000-0000-4000-8000-000000000003.webp', 'Dégradé', 800, 600)$$,
+  '42501', null, 'admin : n''ajoute pas de photo en direct (consigne 20)');
 select is((select count(*) from public.admins), 1::bigint,
   'admin : lit la liste des admins');
 select throws_ok(

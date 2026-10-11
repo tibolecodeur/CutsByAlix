@@ -162,8 +162,14 @@ select set_eq(
   array['private.is_admin', 'private.is_safe_text', 'public.admin_booking_rules',
         'public.admin_cancel_booking', 'public.admin_create_availability',
         'public.admin_delete_availability', 'public.admin_get_booking',
-        'public.admin_list_availabilities', 'public.admin_list_bookings'],
-  'authenticated n''exécute que les fonctions admin et les 2 aides des policies');
+        'public.admin_list_availabilities', 'public.admin_list_bookings',
+        -- Consigne 20 : galerie (fonctions admin et 2 aides des policies Storage).
+        'private.is_gallery_path', 'private.gallery_bucket_has_room',
+        'public.admin_list_gallery_items', 'public.admin_add_gallery_item',
+        'public.admin_set_gallery_item_published', 'public.admin_update_gallery_item_alt',
+        'public.admin_move_gallery_item', 'public.admin_delete_gallery_item',
+        'public.admin_gallery_orphans'],
+  'authenticated n''exécute que les fonctions admin et les 4 aides des policies');
 select is(
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
