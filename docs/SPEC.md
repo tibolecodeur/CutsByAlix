@@ -77,15 +77,19 @@ Détail et justification : `docs/adr/0002-modele-de-donnees-et-securite.md`.
 
 ## Règles de gestion
 
-Valeurs confirmées par le barber le 2026-10-10 (sauf conservation des données), centralisées
+Valeurs confirmées par le barber le 2026-10-10 (sauf conservation des données ; délai minimum passé de 48 h à 5 h le 2026-10-11, consigne 21),
+centralisées
 dans `private.settings()` (une migration suffit pour les changer) :
 
 - Créneaux proposés = disponibilités découpées toutes les **70 min** à partir du début de chaque
   dispo, selon la durée de la prestation, moins les RDV confirmés (tous lieux), moins les créneaux
-  passés ou à moins de **48 h** (réservation au plus tard 48 h avant ; un créneau devient visible
-  des clients à J+2).
+  passés ou à moins de **5 h** (réservation au plus tard 5 h avant ; un créneau devient visible
+  des clients dès qu'il est à plus de « maintenant + 5 h » : il n'y a pas de règle « J+2 »
+  séparée).
 - Pas de réservation au-delà de **4 semaines**.
-- Annulation client possible jusqu'à **24 h** avant le RDV.
+- Annulation client possible jusqu'à **24 h** avant le RDV. Un RDV réservé à moins de 24 h
+  n'est donc pas annulable en ligne : l'écran de confirmation et la page `/annuler` le disent et
+  renvoient vers Alix directement.
 - Limite anti-abus : **2 RDV futurs** max par téléphone ou par email, + champ honeypot.
 - Conservation des données clients : suppression **6 mois** après le RDV (purge à coder avant la
   mise en ligne).
@@ -96,7 +100,8 @@ dans `private.settings()` (une migration suffit pour les changer) :
 - [x] Durée standard d'un créneau → 70 min
 - [x] Où il coupe → deux lieux, « Chez ses parents » et « Chez lui », adresse révélée après réservation
 - [ ] Vraies adresses des deux lieux (à saisir en production, jamais dans le dépôt)
-- [x] Délai d'annulation client → 24 h, délai minimum → 48 h, horizon → 4 semaines
+- [x] Délai d'annulation client → 24 h, délai minimum → 5 h (48 h jusqu'à la consigne 21),
+      horizon → 4 semaines
 - [ ] Nom, logo, couleurs, ambiance, photos disponibles
 - [ ] Réseaux sociaux à mettre en avant
 

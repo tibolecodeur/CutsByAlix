@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as bookingData from "@/features/booking/data";
 import { firstBookableDay } from "@/features/booking/notice";
-import { formatDayKey, parisDayKey } from "@/lib/dates";
+import { formatDayKey } from "@/lib/dates";
 import { BookingPage } from "@/pages/BookingPage";
 
 /**
@@ -44,7 +44,7 @@ function renderPage() {
   );
 }
 
-/** Case du calendrier du premier jour réservable (au-delà des 48 h). */
+/** Case du calendrier du premier jour réservable (au-delà du délai de 5 h). */
 function firstBookableDayRadio() {
   return screen.getByRole("radio", { name: formatDayKey(firstBookableDay(new Date())) });
 }
@@ -117,25 +117,114 @@ describe("BookingPage : chargement et erreurs", () => {
   });
 });
 
-describe("BookingPage : délai de 48 h", () => {
-  it("explique la règle, et n'interroge pas la base pour un jour à moins de 48 h", async () => {
-    const user = userEvent.setup();
+describe("BookingPage : délai de 5 h", () => {
+  // Seule `Date` est figée (userEvent et findBy gardent leurs vrais timers).
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function openSlotStep(user: ReturnType<typeof userEvent.setup>) {
     vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
     renderPage();
-
     await user.click(await screen.findByRole("radio", { name: /Coupe/ }));
     await user.click(screen.getByRole("button", { name: "Continuer" }));
-    expect(screen.getByText(/On réserve au plus tard 48 h avant le rendez-vous/)).toBeVisible();
+  }
 
-    const today = parisDayKey(new Date());
-    await user.click(screen.getByRole("radio", { name: formatDayKey(today) }));
-    expect(screen.getByText(`Trop tard pour réserver le ${formatDayKey(today)}.`)).toBeVisible();
+  it("19 h 01 : explique la règle, aujourd'hui est refusé sans interroger la base", async () => {
+    const user = userEvent.setup();
+    vi.setSystemTime(new Date("2026-10-13T17:01:00Z")); // mardi 13, 19 h 01 à Paris
+    await openSlotStep(user);
+    expect(screen.getByText(/On réserve au plus tard 5 h avant le rendez-vous/)).toBeVisible();
+
+    await user.click(screen.getByRole("radio", { name: formatDayKey("2026-10-13") }));
     expect(
-      screen.getByText(
-        new RegExp(`Choisis un jour à partir du ${formatDayKey(firstBookableDay(new Date()))}`),
-      ),
+      screen.getByText(`Trop tard pour réserver le ${formatDayKey("2026-10-13")}.`),
+    ).toBeVisible();
+    expect(
+      screen.getByText(new RegExp(`Choisis un jour à partir du ${formatDayKey("2026-10-14")}`)),
     ).toBeVisible();
     expect(bookingData.getAvailableSlots).not.toHaveBeenCalled();
+  });
+
+  it("18 h 59 : aujourd'hui reste réservable, la base est interrogée", async () => {
+    const user = userEvent.setup();
+    vi.setSystemTime(new Date("2026-10-13T16:59:00Z")); // mardi 13, 18 h 59 à Paris
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([]);
+    await openSlotStep(user);
+
+    await user.click(screen.getByRole("radio", { name: formatDayKey("2026-10-13") }));
+    expect(screen.queryByText(/Trop tard pour réserver/)).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(bookingData.getAvailableSlots).toHaveBeenCalled());
+  });
+});
+
+describe("BookingPage : rendez-vous à moins de 24 h", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-13T10:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const SOON = {
+    ...SLOT,
+    startsAt: "2026-10-13T12:00:00.000Z", // 14 h à Paris, dans 2 h
+    endsAt: "2026-10-13T13:00:00.000Z",
+  };
+
+  it("le récapitulatif et la confirmation préviennent : annulation en ligne impossible", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([SOON]);
+    vi.mocked(bookingData.createBooking).mockResolvedValue({
+      startsAt: SOON.startsAt,
+      endsAt: SOON.endsAt,
+      serviceName: "Coupe",
+      locationLabel: SOON.locationLabel,
+      cancelToken: TOKEN,
+    });
+    renderPage();
+    await goToSummary(user);
+
+    // Pas de fausse promesse avant de confirmer.
+    expect(screen.getByText(/tu ne pourras pas l'annuler en ligne/)).toBeVisible();
+    expect(screen.queryByText(/Tu pourras annuler en ligne/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
+    expect(await screen.findByRole("heading", { name: "C'est réservé !" })).toBeVisible();
+    expect(
+      screen.getByText(/dans moins de 24 h : tu ne pourras pas l'annuler en ligne/),
+    ).toBeVisible();
+    expect(screen.getByText(/contacte Alix directement/)).toBeVisible();
+  });
+
+  it("à plus de 24 h : aucun avertissement, promesse d'annulation conservée", async () => {
+    const user = userEvent.setup();
+    const LATER = {
+      ...SOON,
+      startsAt: "2026-10-14T12:00:00.000Z", // dans 26 h
+      endsAt: "2026-10-14T13:00:00.000Z",
+    };
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([LATER]);
+    vi.mocked(bookingData.createBooking).mockResolvedValue({
+      startsAt: LATER.startsAt,
+      endsAt: LATER.endsAt,
+      serviceName: "Coupe",
+      locationLabel: LATER.locationLabel,
+      cancelToken: TOKEN,
+    });
+    renderPage();
+    await goToSummary(user);
+    expect(screen.getByText(/Tu pourras annuler en ligne jusqu'à 24 h avant/)).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
+    await screen.findByRole("heading", { name: "C'est réservé !" });
+    expect(screen.queryByText(/dans moins de 24 h/)).not.toBeInTheDocument();
   });
 });
 

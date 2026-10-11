@@ -78,6 +78,16 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       Pont `syncFakeServices` supprimé. Appliqué en local seulement. Ordre pour la production :
       migration (`db push`) PUIS front.
 - [x] ~~`src/lib/fakeDb.ts`~~ : supprimé avec la galerie fictive (consigne 20).
+- [x] **Délai minimum de réservation à 5 h** (consigne 21, issue #30) : migration
+      `…_delai_reservation_5h.sql` (seule `min_notice` de `private.settings()` passe de 48 h à
+      5 h ; annulation à 24 h inchangée ; aucune donnée touchée ; corps de la fonction comparé
+      avant/après par `pg_get_functiondef`). Le front suit via `src/lib/bookingRules.ts` (la règle
+      « visible à J+2 » découlait des 48 h : aucune règle séparée). Un RDV réservé à moins de
+      24 h n'est pas annulable en ligne : avertissement au récapitulatif et à la confirmation,
+      message « contacte Alix directement » sur `/annuler` (TODO contact : coordonnées d'Alix à
+      fournir). pgTAP 16 + 05, 08, 09, 13 adaptés (4 h 59 refusé / 5 h 01 accepté, 23 h 59 /
+      24 h 01), Vitest et Playwright (horloge figée). Appliqué en local seulement. Ordre pour la
+      production : fusionner la PR PUIS `db push`.
 - [ ] Poids du bundle : supabase-js ajoute ~56 kB gzip (107 → 163 kB, avertissement Vite
       « chunk > 500 kB »). Piste à valider : charger le client par import dynamique.
 
@@ -216,7 +226,7 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       contrôle serveur du contenu des fichiers (Edge Function, V2) ; vue détail en couleur
       prévue par DESIGN.md (non faite).
 - [x] Disponibilités : afficher au barber quand les clients pourront réserver (consigne 18 :
-      période réservable calculée depuis les règles 48 h / 4 semaines lues en base).
+      période réservable calculée depuis les règles lues en base : 48 h / 4 semaines à l'époque, 5 h depuis la consigne 21).
 
 ## Phase 7 — Animations et effets
 

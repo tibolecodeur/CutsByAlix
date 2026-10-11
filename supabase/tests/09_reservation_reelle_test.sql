@@ -1,7 +1,7 @@
 -- Réservation réelle (consigne 15) : règles aux limites, lieu, honeypot, limite anti-abus,
 -- absence de fuite, droits d'exécution.
 -- « Maintenant » est FIXE pour les règles : private.create_booking_at(p_now, …) reçoit
--- dimanche 18 octobre 2026, 8 h 30 à Paris (heure d'été). Limite des 48 h : mardi 20/10 8 h 30.
+-- dimanche 18 octobre 2026, 8 h 30 à Paris (heure d'été). Limite des 5 h : le même jour, 13 h 30.
 -- Horizon de 4 semaines : dimanche 15/11 8 h 30 (heure d'hiver : le passage du 25/10 est
 -- traversé). Rien ne dépend de la date du jour, sauf la dernière partie (vraies RPC en anonyme,
 -- avec now()), qui repart de tables vides et place ses dispos par rapport à now().
@@ -20,7 +20,7 @@ begin
   end loop;
 end $$;
 
-select plan(38);
+select plan(39);
 
 truncate public.bookings, public.availabilities, public.locations, public.services,
          public.gallery_items, public.admins;
@@ -57,23 +57,34 @@ language sql as $$
 $$;
 
 -- ---------------------------------------------------------------------------
--- 1. Délai de 48 h : 47 h 59 refusé, 48 h pile accepté (la dispo existe dans les deux cas :
---    c'est bien le délai qui refuse, pas l'absence de créneau).
+-- 1. Délai de 5 h : 4 h 59 refusé, 5 h 01 accepté, 5 h pile accepté (la dispo existe dans tous
+--    les cas : c'est bien le délai qui refuse, pas l'absence de créneau).
+--    Maintenant = dim. 18/10 8 h 30 → limite à 13 h 30 le même jour.
 -- ---------------------------------------------------------------------------
 insert into public.availabilities (location_id, starts_at, ends_at) values
-  ('20000000-0000-4000-8000-000000000001', '2026-10-20 08:29 Europe/Paris', '2026-10-20 09:29 Europe/Paris');
+  ('20000000-0000-4000-8000-000000000001', '2026-10-18 13:29 Europe/Paris', '2026-10-18 14:29 Europe/Paris');
 select throws_ok(
-  $$select * from pg_temp.book('2026-10-20 08:29 Europe/Paris', '20000000-0000-4000-8000-000000000001')
+  $$select * from pg_temp.book('2026-10-18 13:29 Europe/Paris', '20000000-0000-4000-8000-000000000001')
       as (s timestamptz, e timestamptz, n text, l text, t uuid)$$,
-  'P0001', 'too_soon', '47 h 59 avant : refusé (too_soon)');
-delete from public.availabilities where starts_at = '2026-10-20 08:29 Europe/Paris';
+  'P0001', 'too_soon', '4 h 59 avant : refusé (too_soon)');
+delete from public.availabilities where starts_at = '2026-10-18 13:29 Europe/Paris';
 
 insert into public.availabilities (location_id, starts_at, ends_at) values
-  ('20000000-0000-4000-8000-000000000001', '2026-10-20 08:30 Europe/Paris', '2026-10-20 09:30 Europe/Paris');
+  ('20000000-0000-4000-8000-000000000001', '2026-10-18 13:31 Europe/Paris', '2026-10-18 14:31 Europe/Paris');
 select lives_ok(
-  $$select * from pg_temp.book('2026-10-20 08:30 Europe/Paris', '20000000-0000-4000-8000-000000000001',
+  $$select * from pg_temp.book('2026-10-18 13:31 Europe/Paris', '20000000-0000-4000-8000-000000000001',
+      'Ana', 'Petit', '0600000011') as (s timestamptz, e timestamptz, n text, l text, t uuid)$$,
+  '5 h 01 avant : accepté');
+-- On repart d'une base nette pour la limite exacte (le RDV de 13 h 31 chevaucherait celui de 13 h 30).
+delete from public.bookings where phone = '0600000011';
+delete from public.availabilities where starts_at = '2026-10-18 13:31 Europe/Paris';
+
+insert into public.availabilities (location_id, starts_at, ends_at) values
+  ('20000000-0000-4000-8000-000000000001', '2026-10-18 13:30 Europe/Paris', '2026-10-18 14:30 Europe/Paris');
+select lives_ok(
+  $$select * from pg_temp.book('2026-10-18 13:30 Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Ana', 'Petit', '0600000001') as (s timestamptz, e timestamptz, n text, l text, t uuid)$$,
-  '48 h pile avant : accepté');
+  '5 h pile avant : accepté');
 
 -- ---------------------------------------------------------------------------
 -- 2. Horizon de 4 semaines (heure de Paris, changement d'heure traversé).
@@ -244,7 +255,7 @@ select is(
 -- ---------------------------------------------------------------------------
 -- 9. Les vraies RPC, en anonyme, avec now() : on repart de tables vides et on place une dispo
 --    d'une heure (un seul créneau)
---    à J+3 (toujours au-delà des 48 h, toujours dans les 4 semaines).
+--    à J+3 (toujours au-delà des 5 h, toujours dans les 4 semaines).
 -- ---------------------------------------------------------------------------
 delete from public.bookings;
 delete from public.availabilities;

@@ -72,6 +72,13 @@ pour qu'il ne dépende ni du changement d'heure ni du fuseau de la session.
 > d'heure. Ajouts : contrainte « lieu actif = vraie adresse » et lecture de `services` par
 > colonne pour anon.
 
+> Mise à jour du 2026-10-11 (migration `…_delai_reservation_5h`, consigne 21) : délai minimum de
+> réservation ramené de 48 h à **5 h** (seule `min_notice` change dans `private.settings()` ;
+> annulation toujours à 24 h). Conséquence : un RDV peut être pris à moins de 24 h de son début,
+> et il n'est alors pas annulable en ligne (`cancel_booking` refuse `too_late`) ; le client en est
+> prévenu avant et après la réservation, et doit contacter Alix directement. Il n'existe pas de
+> règle « visible à partir de J+2 » à part : l'affichage suit `min_notice`.
+
 ## Alternatives étudiées
 
 - **Lecture directe de `bookings` par l'anon avec une RLS filtrante**
