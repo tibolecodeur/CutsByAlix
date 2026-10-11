@@ -2,30 +2,25 @@ import { ButtonLink } from "@/components/Button";
 import { PageMeta } from "@/components/PageMeta";
 import { Section } from "@/components/Section";
 import { EmptyMessage, ErrorMessage, LoadingMessage } from "@/components/StatusMessage";
+import { splitForDashboard } from "@/features/admin/bookings";
 import { getAdminBookings, type AdminBooking } from "@/features/admin/data";
-import { addDaysToKey, formatDayKey, parisDateTime, parisDayKey } from "@/lib/dates";
+import { formatDayKey, parisDayKey } from "@/lib/dates";
 import { useAsync, type AsyncResult } from "@/lib/useAsync";
 import { AdminBookingCard } from "@/pages/admin/AdminBookingCard";
 
-/** Nombre de jours affichés dans « À venir ». */
+/** Nombre de jours affichés après aujourd'hui. */
 const UPCOMING_DAYS = 7;
 
-/** Tableau de bord : RDV du jour, puis ceux des 7 prochains jours. */
+/**
+ * Tableau de bord : RDV confirmés du jour, puis ceux des 7 prochains jours. Une seule requête
+ * (« À venir », sans contact client), découpée côté écran.
+ */
 export function AdminDashboardPage() {
-  const today = parisDayKey(new Date());
-  const startOfToday = parisDateTime(today, "00:00").toISOString();
-  const startOfTomorrow = parisDateTime(addDaysToKey(today, 1), "00:00").toISOString();
-  const endOfUpcoming = parisDateTime(
-    addDaysToKey(today, UPCOMING_DAYS + 1),
-    "00:00",
-  ).toISOString();
-
-  const todayBookings = useAsync(`today|${today}`, () =>
-    getAdminBookings({ from: startOfToday, to: startOfTomorrow }),
-  );
-  const upcomingBookings = useAsync(`upcoming|${today}`, () =>
-    getAdminBookings({ from: startOfTomorrow, to: endOfUpcoming }),
-  );
+  const now = new Date();
+  const today = parisDayKey(now);
+  const bookings = useAsync(`dashboard|${today}`, () => getAdminBookings("upcoming"));
+  const split =
+    bookings.status === "success" ? splitForDashboard(bookings.data, now, UPCOMING_DAYS) : null;
 
   return (
     <>
@@ -42,13 +37,15 @@ export function AdminDashboardPage() {
       <Section>
         <BookingList
           title="Aujourd'hui"
-          state={todayBookings}
+          state={bookings}
+          list={split?.today}
           empty="Aucun rendez-vous aujourd'hui."
         />
         <BookingList
           title={`Les ${UPCOMING_DAYS} prochains jours`}
-          state={upcomingBookings}
-          empty="Aucun rendez-vous dans les 7 prochains jours."
+          state={bookings}
+          list={split?.upcoming}
+          empty={`Aucun rendez-vous dans les ${UPCOMING_DAYS} prochains jours.`}
           showDay
         />
         <p>
@@ -64,11 +61,13 @@ export function AdminDashboardPage() {
 type BookingListProps = {
   title: string;
   state: AsyncResult<AdminBooking[]>;
+  /** Partie de la réponse à afficher (connue une fois la requête réussie). */
+  list: AdminBooking[] | undefined;
   empty: string;
   showDay?: boolean;
 };
 
-function BookingList({ title, state, empty, showDay = false }: BookingListProps) {
+function BookingList({ title, state, list, empty, showDay = false }: BookingListProps) {
   return (
     <section className="flex flex-col gap-4">
       <h2 className="text-3xl">{title}</h2>
@@ -76,14 +75,14 @@ function BookingList({ title, state, empty, showDay = false }: BookingListProps)
       {state.status === "error" && (
         <ErrorMessage onRetry={state.reload}>Impossible de charger les rendez-vous.</ErrorMessage>
       )}
-      {state.status === "success" &&
-        (state.data.length === 0 ? (
+      {list &&
+        (list.length === 0 ? (
           <EmptyMessage>
             <p>{empty}</p>
           </EmptyMessage>
         ) : (
           <ul className="flex flex-col gap-3">
-            {state.data.map((booking) => (
+            {list.map((booking) => (
               <AdminBookingCard key={booking.id} booking={booking} showDay={showDay} />
             ))}
           </ul>

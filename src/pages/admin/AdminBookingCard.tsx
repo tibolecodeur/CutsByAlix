@@ -1,15 +1,13 @@
+import { Link } from "react-router";
 import { Card } from "@/components/Card";
+import { cancelledLabel } from "@/features/admin/bookings";
 import type { AdminBooking } from "@/features/admin/data";
 import { formatLongDay, formatTime } from "@/lib/dates";
 
-/** « 0612345678 » → « 06 12 34 56 78 » ; les numéros internationaux restent tels quels. */
-function formatPhone(phone: string): string {
-  return /^0\d{9}$/.test(phone) ? phone.replace(/(\d{2})(?=\d)/g, "$1 ") : phone;
-}
-
-const CONTACT_LINK_CLASS = "link inline-flex min-h-tap items-center break-all";
-
-/** Un rendez-vous côté admin : heure, prestation, client et liens pour le joindre. */
+/**
+ * Un rendez-vous dans une liste : heure, client, prestation et ville. Pas de téléphone ni
+ * d'e-mail ici (ils ne sont chargés qu'au détail) ; toute la ligne du haut mène au détail.
+ */
 export function AdminBookingCard({
   booking,
   showDay = false,
@@ -18,34 +16,33 @@ export function AdminBookingCard({
   showDay?: boolean;
 }) {
   const cancelled = booking.status === "cancelled";
+  const hours = `${formatTime(booking.startsAt)} – ${formatTime(booking.endsAt)}`;
   return (
     <Card as="li">
-      <p className="flex flex-wrap items-baseline gap-x-3">
+      <Link
+        to={`/admin/rendez-vous/${booking.id}`}
+        className="link flex min-h-tap flex-col justify-center"
+      >
         <span className={cancelled ? "text-xl font-bold line-through" : "text-xl font-bold"}>
-          {showDay && `${formatLongDay(booking.startsAt)}, `}
-          {formatTime(booking.startsAt)} – {formatTime(booking.endsAt)}
+          {showDay && (
+            <span className="first-letter:uppercase">{formatLongDay(booking.startsAt)}, </span>
+          )}
+          {hours}
         </span>
-        {/* Statut écrit en toutes lettres : jamais signalé par la seule couleur. */}
-        {cancelled && <span className="border border-ink px-2 text-sm font-semibold">Annulé</span>}
-      </p>
-      <p className="font-semibold">
-        {booking.firstName} {booking.lastName}
-      </p>
+        <span className="font-semibold">
+          {booking.firstName} {booking.lastName}
+        </span>
+      </Link>
       <p className="text-muted">
         {booking.serviceName} · {booking.locationLabel}
       </p>
-      <p className="flex flex-col">
-        {booking.phone && (
-          <a href={`tel:${booking.phone}`} className={CONTACT_LINK_CLASS}>
-            Appeler le {formatPhone(booking.phone)}
-          </a>
-        )}
-        {booking.email && (
-          <a href={`mailto:${booking.email}`} className={CONTACT_LINK_CLASS}>
-            {booking.email}
-          </a>
-        )}
-      </p>
+      {cancelled && (
+        <p>
+          <span className="border border-ink px-2 text-sm font-semibold">
+            {cancelledLabel(booking.cancelledBy)}
+          </span>
+        </p>
+      )}
     </Card>
   );
 }
