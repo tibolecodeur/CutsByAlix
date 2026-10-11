@@ -1,13 +1,14 @@
 /**
- * Identifiant aléatoire au format uuid v4, pour la fausse base de données.
+ * Identifiant aléatoire au format uuid v4 : nom des fichiers envoyés dans la galerie
+ * (`src/features/admin/gallery.ts`), jamais le nom d'origine de la photo.
  *
  * `crypto.randomUUID()` n'existe que dans un contexte sécurisé (https ou localhost) : ouvert
  * en http sur l'adresse du réseau local (http://192.168.x.x:5173, test sur téléphone), il est
  * absent et son appel plante. `crypto.getRandomValues()`, lui, existe partout : on construit
  * le même format à partir de 16 octets aléatoires.
  *
- * TODO: brancher Supabase. En production, les identifiants et le cancel_token sont générés
- * par la base (gen_random_uuid), pas par le navigateur.
+ * Les identifiants des lignes et le cancel_token, eux, sont générés par la base
+ * (gen_random_uuid), jamais par le navigateur.
  */
 export function randomUuid(): string {
   if (typeof globalThis.crypto?.randomUUID === "function") {
@@ -17,7 +18,8 @@ export function randomUuid(): string {
   if (typeof globalThis.crypto?.getRandomValues === "function") {
     globalThis.crypto.getRandomValues(bytes);
   } else {
-    // Dernier recours (navigateur très ancien) : suffisant pour des données factices.
+    // Dernier recours (navigateur très ancien, hors de ceux supportés) : un nom de fichier
+    // n'est pas un secret (la base refuse les doublons), l'imprévisibilité n'est pas requise.
     for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
   }
   // Version 4 (aléatoire) et variante RFC 4122, comme randomUUID.

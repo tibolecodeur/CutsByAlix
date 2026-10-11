@@ -43,9 +43,9 @@ values (
   'Léa', 'Martin', '0612345678'
 );
 
-insert into public.gallery_items (image_path, caption, published) values
-  ('visible.jpg', 'Publiée', true),
-  ('brouillon.jpg', 'Masquée', false);
+insert into public.gallery_items (image_path, alt_text, width, height, published, consent_at) values
+  ('a1000000-0000-4000-8000-000000000001.webp', 'Publiée', 800, 600, true, now()),
+  ('a1000000-0000-4000-8000-000000000002.webp', 'Masquée', 800, 600, false, null);
 
 -- ---------------------------------------------------------------------------
 -- À partir d'ici : visiteur anonyme.
@@ -120,7 +120,7 @@ select results_eq(
   'anon ne voit que les prestations actives');
 select results_eq(
   'select image_path from public.gallery_items order by image_path',
-  $$values ('visible.jpg'::text)$$,
+  $$values ('a1000000-0000-4000-8000-000000000001.webp'::text)$$,
   'anon ne voit que les photos publiées');
 -- Colonnes internes de services : illisibles (droit par colonne), même pour filtrer.
 select throws_ok('select created_at from public.services', '42501', null,

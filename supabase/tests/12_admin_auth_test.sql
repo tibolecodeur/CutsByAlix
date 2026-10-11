@@ -33,9 +33,9 @@ insert into public.admins (user_id) values ('30000000-0000-4000-8000-00000000000
 insert into public.services (id, name, duration_min, active) values
   ('10000000-0000-4000-8000-000000000001', 'Coupe', 60, true),
   ('10000000-0000-4000-8000-000000000002', 'Prestation masquée', 60, false);
-insert into public.gallery_items (image_path, caption, published) values
-  ('publiee.jpg', 'Publiée', true),
-  ('masquee.jpg', 'Masquée', false);
+insert into public.gallery_items (image_path, alt_text, width, height, published, consent_at) values
+  ('a1200000-0000-4000-8000-000000000001.webp', 'Publiée', 800, 600, true, now()),
+  ('a1200000-0000-4000-8000-000000000002.webp', 'Masquée', 800, 600, false, null);
 insert into public.locations (id, public_label, private_address) values
   ('20000000-0000-4000-8000-000000000001', 'Lieu un', '1 rue Secrète, 00000 Testville');
 insert into public.availabilities (location_id, starts_at, ends_at) values
@@ -43,14 +43,14 @@ insert into public.availabilities (location_id, starts_at, ends_at) values
 insert into public.bookings (service_id, location_id, starts_at, ends_at, first_name, last_name, phone)
 values ('10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001',
         '2030-06-12 10:00 Europe/Paris', '2030-06-12 11:00 Europe/Paris', 'Léa', 'Martin', '0612345678');
-insert into storage.objects (bucket_id, name) values ('gallery', 'photo.jpg');
+insert into storage.objects (bucket_id, name) values ('gallery', 'a1200000-0000-4000-8000-000000000001.webp');
 
--- Raccourci : nombre de lignes visibles dans 5 tables, pour le rôle courant. bookings n'y est
--- plus : depuis la consigne 19, authenticated n'a plus aucun droit dessus (testé à part).
+-- Raccourci : nombre de lignes visibles dans 4 tables, pour le rôle courant. bookings et
+-- gallery_items n'y sont plus : authenticated n'a plus aucun droit dessus (consignes 19 et 20).
 create function pg_temp.visible() returns text
 language sql as $$
-  select format('services=%s gallery_items=%s locations=%s availabilities=%s admins=%s',
-    (select count(*) from public.services), (select count(*) from public.gallery_items),
+  select format('services=%s locations=%s availabilities=%s admins=%s',
+    (select count(*) from public.services),
     (select count(*) from public.locations), (select count(*) from public.availabilities),
     (select count(*) from public.admins));
 $$;
@@ -77,8 +77,8 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000002", "role": "authenticated"}';
 
 select is(pg_temp.visible(),
-  'services=0 gallery_items=0 locations=0 availabilities=0 admins=0',
-  'non-admin connecté : 0 ligne sur les 5 tables (même le catalogue public)');
+  'services=0 locations=0 availabilities=0 admins=0',
+  'non-admin connecté : 0 ligne sur les 4 tables (même le catalogue public)');
 select throws_ok('select count(*) from public.bookings', '42501', null,
   'non-admin connecté : aucun droit sur bookings (consigne 19)');
 select is((select count(*) from public.admins where user_id = auth.uid()), 0::bigint,
@@ -106,9 +106,8 @@ select throws_ok($$update public.bookings set first_name = 'Pirate'$$, '42501', 
 select results_eq(
   $$with u as (update public.services set active = true returning 1) select count(*) from u$$,
   $$values (0::bigint)$$, 'non-admin connecté : ne modifie aucune prestation');
-select results_eq(
-  $$with d as (delete from public.gallery_items returning 1) select count(*) from d$$,
-  $$values (0::bigint)$$, 'non-admin connecté : ne supprime aucune photo');
+select throws_ok($$delete from public.gallery_items$$, '42501', null,
+  'non-admin connecté : ne supprime aucune photo (aucun droit depuis la consigne 20)');
 select throws_ok($$insert into storage.objects (bucket_id, name) values ('gallery', 'pirate.jpg')$$,
   '42501', null, 'non-admin connecté : ne dépose rien dans le bucket gallery');
 select results_eq(
@@ -134,8 +133,8 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", "role": "authenticated"}';
 
 select is(pg_temp.visible(),
-  'services=2 gallery_items=2 locations=1 availabilities=1 admins=1',
-  'admin : voit toutes les lignes des 5 tables (masquées comprises)');
+  'services=2 locations=1 availabilities=1 admins=1',
+  'admin : voit toutes les lignes des 4 tables (masquées comprises)');
 select throws_ok('select count(*) from public.bookings', '42501', null,
   'admin : ne lit plus bookings en direct, seulement par les fonctions admin (consigne 19)');
 select is((select count(*) from public.admins where user_id = auth.uid()), 1::bigint,
@@ -146,9 +145,9 @@ select is((select count(*) from storage.objects where bucket_id = 'gallery'), 1:
   'admin : liste les objets du bucket gallery');
 select lives_ok($$insert into public.services (name, duration_min) values ('Barbe', 30)$$,
   'admin : ajoute une prestation');
-select lives_ok($$update public.gallery_items set published = true$$,
-  'admin : publie une photo');
-select lives_ok($$insert into storage.objects (bucket_id, name) values ('gallery', 'nouvelle.jpg')$$,
+select throws_ok($$update public.gallery_items set published = true$$, '42501', null,
+  'admin : ne publie pas en direct (fonctions admin, consigne 20)');
+select lives_ok($$insert into storage.objects (bucket_id, name) values ('gallery', 'a1200000-0000-4000-8000-000000000003.webp')$$,
   'admin : dépose une photo dans le bucket');
 select throws_ok($$insert into public.admins (user_id) values ('30000000-0000-4000-8000-000000000002')$$,
   '42501', null, 'admin : ne peut pas ajouter un admin via l''API');

@@ -67,22 +67,23 @@ select set_eq(
   'anon n''exécute que les 4 RPC publiques'
 );
 
--- anon lit gallery_items en entier...
-select set_eq(
-  $$select table_name::text from information_schema.role_table_grants
-     where table_schema = 'public' and grantee = 'anon' and privilege_type = 'SELECT'$$,
-  array['gallery_items'],
-  'anon lit gallery_items en entier, aucune autre table'
+-- anon ne lit aucune table en entier (consigne 20 : gallery_items passe aux colonnes)...
+select is(
+  (select count(*) from information_schema.role_table_grants
+    where table_schema = 'public' and grantee = 'anon' and privilege_type = 'SELECT'),
+  0::bigint,
+  'anon ne lit aucune table en entier'
 );
 
--- ... et services colonne par colonne : seulement ce que le site affiche.
+-- ... seulement, colonne par colonne, ce que le site affiche (prestations et galerie).
 select set_eq(
   $$select table_name::text || '.' || column_name::text from information_schema.column_privileges
-     where table_schema = 'public' and grantee = 'anon' and privilege_type = 'SELECT'
-       and table_name <> 'gallery_items'$$,
+     where table_schema = 'public' and grantee = 'anon' and privilege_type = 'SELECT'$$,
   array['services.id', 'services.name', 'services.duration_min', 'services.price_label',
-        'services.sort_order'],
-  'anon ne lit sur services que id, name, duration_min, price_label et sort_order'
+        'services.sort_order', 'gallery_items.id', 'gallery_items.image_path',
+        'gallery_items.alt_text', 'gallery_items.width', 'gallery_items.height',
+        'gallery_items.sort_order'],
+  'anon ne lit que les colonnes d''affichage de services et de gallery_items'
 );
 
 -- ... et n'écrit nulle part (ni table entière, ni colonne).

@@ -145,6 +145,19 @@ réserver, annuler, admin), sur iPhone **et** Android.
       « Slow 4G » ; iPhone via Réglages > Développeur > Network Link Conditioner (menu visible
       seulement après avoir branché l'iPhone à un Mac avec Xcode).
 
+### 2.11 Galerie admin : envoi de photos (iPhone ET Android, compte admin)
+
+- [ ] « Prendre une photo » ouvre l'appareil photo arrière ; « Choisir dans la galerie » ouvre
+      la photothèque. Une photo HEIC de l'iPhone est acceptée (iOS la convertit en JPEG).
+- [ ] Photo prise **en portrait** : l'aperçu et la photo publiée sont droits (pas couchés).
+- [ ] Photo d'une capture d'écran (PNG) et photo très grande (panorama) : acceptées, réduites.
+- [ ] Télécharger la photo publiée depuis l'accueil (appui long > Enregistrer), puis regarder
+      ses informations (iPhone : Photos > « i » ; Android : Google Photos > Détails) :
+      **aucune position, aucune date de prise de vue, aucun modèle de téléphone**.
+- [ ] « Publier » reste impossible tant que la case d'accord n'est pas cochée.
+- [ ] Couper le réseau pendant l'envoi : message clair ; réessayer fonctionne.
+- [ ] Masquer une photo : elle disparaît de l'accueil après rechargement.
+
 ## 3. Journal des passages
 
 | Date | Version / PR | Appareil et système | Navigateur | Résultat et remarques |

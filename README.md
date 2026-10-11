@@ -100,7 +100,7 @@ Schéma complet et justification : [`docs/adr/0002-modele-de-donnees-et-securite
 | `locations`      | lieux : libellé public, **adresse privée**    | aucun                             |
 | `availabilities` | plages de disponibilité, chacune dans un lieu | aucun (via `get_available_slots`) |
 | `bookings`       | réservations clients                          | aucun (via les RPC ci-dessous)    |
-| `gallery_items`  | photos de la galerie                          | lecture des photos publiées       |
+| `gallery_items`  | photos de la galerie (bucket Storage privé)   | photos publiées, par URL signée   |
 | `admins`         | utilisateurs Supabase Auth administrateurs    | aucun                             |
 
 Fonctions RPC publiques (`security definer`, validation complète en SQL) :
@@ -125,7 +125,8 @@ Durcissements : un lieu actif ne peut pas garder une adresse provisoire (« À R
 `duration_min`, `price_label` et `sort_order`.
 
 Tests : `supabase/tests/` (pgTAP), un fichier par thème — schéma, anonyme, admin,
-chevauchements, `create_booking`, créneaux (dont le changement d'heure), tokens, Storage.
+chevauchements, `create_booking`, créneaux (dont le changement d'heure), tokens, Storage,
+galerie (chemins, types, limite de 60 photos, accord avant publication).
 `supabase/seed.sql` : prestations et lieux de départ, relançable sans doublon, à lancer à la main
 dans le SQL Editor du projet distant. Il n'insère que ce qui manque, ne modifie et ne supprime
 rien. Les lieux sont créés **inactifs**, adresse « À RENSEIGNER » (jamais de vraie adresse dans
@@ -164,13 +165,14 @@ src/
 │   └── ui/           composants shadcn/ui (code copié, modifiable)
 ├── features/         logique métier, par fonctionnalité
 │   ├── booking/      créneaux, réservation, annulation (data.ts, validation.ts)
-│   ├── admin/        connexion et mot de passe (auth.ts), disponibilités, rendez-vous (data.ts)
-│   └── gallery/      affichage public des créations
+│   ├── admin/        connexion et mot de passe (auth.ts), disponibilités, rendez-vous (data.ts),
+│   │                 galerie (gallery.ts : envoi, publication, ordre, suppression)
+│   └── gallery/      galerie publique (data.ts, URL signées) et préparation des photos
+│                     dans le navigateur (processImage.ts : 1200 px, WebP/JPEG, sans EXIF)
 ├── lib/
 │   ├── supabase.ts   client Supabase public (getSupabase, sans session)
 │   ├── supabaseAdmin.ts  client Supabase admin (getSupabaseAdmin, session persistante)
 │   ├── database.types.ts  types des tables, écrits à la main d'après les migrations
-│   ├── fakeDb.ts     fausse base en mémoire (données admin et galerie : pas encore branchées)
 │   ├── dates.ts      dates : stockées en ISO, affichées en heure de Paris
 │   └── schemas.ts    schémas Zod partagés
 └── test/setup.ts     configuration des tests

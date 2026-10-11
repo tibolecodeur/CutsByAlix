@@ -4,7 +4,8 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 /**
  * Couche données de l'espace admin : les écrans n'importent QUE ces fonctions.
  *
- * Branché sur Supabase (client admin, session d'Alix) : lieux, disponibilités et rendez-vous.
+ * Branché sur Supabase (client admin, session d'Alix) : lieux, disponibilités et rendez-vous
+ * (la galerie est dans `gallery.ts`, qui réutilise `adminClient` et `toAdminError`).
  * Plages et rendez-vous passent par des RPC dédiées (`admin_*`, migrations
  * …_admin_disponibilites.sql et …_admin_reservations.sql) qui valident tout côté base ; l'admin
  * n'a plus aucun droit direct sur ces tables. L'authentification est dans `auth.ts`.
@@ -24,6 +25,13 @@ export type AdminErrorCode =
   | "availability_has_bookings"
   | "not_found"
   | "already_started"
+  // Galerie (migration …_admin_galerie.sql), plus l'envoi du fichier refusé par Storage.
+  | "invalid_path"
+  | "file_missing"
+  | "already_exists"
+  | "gallery_limit_reached"
+  | "consent_required"
+  | "upload_failed"
   | "forbidden"
   | "unknown";
 
@@ -37,6 +45,11 @@ const BUSINESS_ERROR_CODES: readonly AdminErrorCode[] = [
   "availability_has_bookings",
   "not_found",
   "already_started",
+  "invalid_path",
+  "file_missing",
+  "already_exists",
+  "gallery_limit_reached",
+  "consent_required",
 ];
 
 export class AdminError extends Error {
@@ -54,7 +67,7 @@ export class AdminError extends Error {
  * connue) et le refus de droits (42501) gardent leur sens ; le reste devient « unknown ». Le
  * message d'origine n'est jamais recopié ni écrit dans la console.
  */
-function toAdminError(error: { code?: string; message: string }): AdminError {
+export function toAdminError(error: { code?: string; message: string }): AdminError {
   if (error.code === "42501") return new AdminError("forbidden");
   const code = BUSINESS_ERROR_CODES.find((known) => known === error.message);
   return new AdminError(error.code === "P0001" && code ? code : "unknown");
@@ -69,8 +82,11 @@ function client() {
   }
 }
 
+/** Pour les autres couches données admin (`gallery.ts`) : même client, mêmes erreurs. */
+export const adminClient = client;
+
 /** Au-delà, on abandonne une LECTURE : en 4G instable, mieux vaut « Réessayer ». */
-const REQUEST_TIMEOUT_MS = 10_000;
+export const REQUEST_TIMEOUT_MS = 10_000;
 
 // ---------------------------------------------------------------------------------------
 // Règles de réservation (RPC `admin_booking_rules`, lues dans private.settings())

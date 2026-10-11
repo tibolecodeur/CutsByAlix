@@ -1,4 +1,4 @@
--- Bucket « gallery » : lecture publique par URL, mais ni listage ni écriture hors admin.
+-- Bucket « gallery » : privé (consigne 20), ni listage ni écriture hors admin. Détail : 15.
 begin;
 create extension if not exists pgtap with schema extensions;
 -- Rend l'EXECUTE des fonctions pgTAP aux rôles de l'API, le temps du test.
@@ -25,16 +25,16 @@ insert into auth.users (id, email) values
   ('30000000-0000-4000-8000-000000000002', 'curieux@example.test');
 insert into public.admins (user_id) values ('30000000-0000-4000-8000-000000000001');
 
-insert into storage.objects (bucket_id, name) values ('gallery', 'existante.jpg');
+insert into storage.objects (bucket_id, name) values ('gallery', 'a7000000-0000-4000-8000-000000000001.webp');
 
 select ok(
-  exists (select 1 from storage.buckets where id = 'gallery' and public),
-  'le bucket gallery existe et est public en lecture');
+  exists (select 1 from storage.buckets where id = 'gallery' and not public),
+  'le bucket gallery existe et est privé (URL signées, consigne 20)');
 select ok(
   exists (select 1 from storage.buckets where id = 'gallery'
-            and file_size_limit = 5242880
-            and allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp']),
-  'le bucket gallery limite la taille (5 Mo) et le type des fichiers');
+            and file_size_limit = 2097152
+            and allowed_mime_types = array['image/webp', 'image/jpeg']),
+  'le bucket gallery limite la taille (2 Mo) et le type (webp, jpeg)');
 
 -- ---------------------------------------------------------------------------
 -- Anonyme
@@ -71,12 +71,12 @@ reset role;
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", "role": "authenticated"}';
 select lives_ok(
-  $$insert into storage.objects (bucket_id, name) values ('gallery', 'nouvelle.jpg')$$,
+  $$insert into storage.objects (bucket_id, name) values ('gallery', 'a7000000-0000-4000-8000-000000000002.jpg')$$,
   'admin : dépose un fichier');
 select is((select count(*) from storage.objects where bucket_id = 'gallery'), 2::bigint,
   'admin : liste les fichiers du bucket');
 select results_eq(
-  $$with d as (delete from storage.objects where bucket_id = 'gallery' and name = 'existante.jpg' returning 1)
+  $$with d as (delete from storage.objects where bucket_id = 'gallery' and name = 'a7000000-0000-4000-8000-000000000001.webp' returning 1)
     select count(*) from d$$,
   $$values (1::bigint)$$,
   'admin : supprime un fichier');

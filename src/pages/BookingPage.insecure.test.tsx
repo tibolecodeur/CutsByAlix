@@ -1,13 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetFakeDb } from "@/lib/fakeDb";
 import { getSupabase } from "@/lib/supabase";
 import { BookingPage } from "@/pages/BookingPage";
 import { fakeSupabaseClient, SERVICE_ROWS } from "@/test/fakeSupabase";
 
-// Les prestations viennent de Supabase (client simulé) ; la fausse base sert encore aux
-// créneaux et reçoit ces prestations : c'est sa création qui plantait.
+// Les prestations viennent de Supabase (client simulé). La fausse base, dont la création
+// plantait, a disparu (consigne 20) : ce test garde l'écran à l'abri d'une régression.
 vi.mock("@/lib/supabase", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/supabase")>()),
   getSupabase: vi.fn(),
@@ -29,7 +28,6 @@ describe("BookingPage en contexte non sécurisé (http)", () => {
     vi.stubGlobal("crypto", { getRandomValues: realCrypto.getRandomValues.bind(realCrypto) });
     // Le stub ci-dessus n'a pas randomUUID : on le vérifie avant d'aller plus loin.
     expect("randomUUID" in globalThis.crypto).toBe(false);
-    resetFakeDb(); // la base est recréée AVEC ce crypto réduit
     vi.mocked(getSupabase).mockReturnValue(
       fakeSupabaseClient({ data: SERVICE_ROWS, error: null }).client,
     );
