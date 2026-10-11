@@ -7,6 +7,27 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Ajouté
 
+- Galerie réelle (consigne 20, ADR 0006) : Alix ajoute ses photos depuis l'appareil photo ou
+  la galerie du téléphone. Chaque photo est préparée sur le téléphone avant l'envoi : réduite
+  à 1200 px, redressée, ré-encodée en WebP (JPEG sur Safari), **sans aucune métadonnée** (ni
+  GPS, ni date, ni modèle). Texte alternatif obligatoire ; publication seulement après avoir
+  confirmé l'accord de la personne photographiée ; publier / masquer, monter / descendre,
+  modifier, supprimer avec confirmation. Masquer une photo publiée change le nom de son
+  fichier : tous les liens déjà distribués cessent de fonctionner. 60 photos au plus. L'accueil affiche les photos
+  publiées (noir et blanc, chargement différé, dimensions réservées).
+
+### Modifié
+
+- Bucket « gallery » **privé** : les photos s'affichent par URL signées d'1 h, une photo
+  masquée n'est plus accessible. Fichiers nommés par un uuid (jamais le nom d'origine), WebP
+  ou JPEG, 2 Mo max, aucun remplacement. `gallery_items.caption` remplacée par `alt_text`.
+- Écritures de la galerie par fonctions admin uniquement ; le public ne lit plus que les
+  colonnes d'affichage des photos publiées.
+
+### Supprimé
+
+- Fausse base en mémoire (`src/lib/fakeDb.ts`) et emplacements photo provisoires.
+
 - Socle technique : Vite 8, React 19, TypeScript strict, React Router 8, Tailwind CSS v4.
   shadcn/ui est installable mais volontairement non initialisé : son preset impose une police
   et un thème, décision reportée à la phase 3.

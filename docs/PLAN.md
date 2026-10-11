@@ -77,8 +77,7 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       changement d'heure, décompte des 2 RDV, fuites, droits), Vitest, Playwright (3 projets).
       Pont `syncFakeServices` supprimé. Appliqué en local seulement. Ordre pour la production :
       migration (`db push`) PUIS front.
-- [ ] `src/lib/fakeDb.ts` ne sert plus qu'à la galerie (fictive) depuis la consigne 19 : à
-      supprimer avec elle, phase 6.
+- [x] ~~`src/lib/fakeDb.ts`~~ : supprimé avec la galerie fictive (consigne 20).
 - [ ] Poids du bundle : supabase-js ajoute ~56 kB gzip (107 → 163 kB, avertissement Vite
       « chunk > 500 kB »). Piste à valider : charger le client par import dynamique.
 
@@ -143,8 +142,7 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       `noindex` sur /admin (meta + `_headers`). Procédure : `docs/ADMIN-COMPTE.md`.
 - [ ] **Avant de donner l'accès à Alix** : faire les réglages Supabase de
       `docs/ADMIN-COMPTE.md` (§1), créer son compte (§2) et l'ajouter à `admins`. Et surtout
-      brancher les DONNÉES admin restantes (galerie, prestations ; dispos et RDV sont faits) :
-      la galerie est encore factice (`src/lib/fakeDb.ts`).
+      brancher les DONNÉES admin restantes (prestations ; dispos, RDV et galerie sont faits).
 - [ ] **Mot de passe oublié** : pas de réinitialisation par e-mail (SMTP gratuit limité) ;
       Thibault fixe un mot de passe temporaire dans le SQL Editor (`docs/ADMIN-COMPTE.md`, §5),
       Alix le change ensuite dans « Mon compte ».
@@ -154,7 +152,7 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       Content-Security-Policy stricte à TOUT le site dans `public/_headers`, **bloquant avant la
       mise en ligne de l'admin**. Proposition de la revue (consigne 17), à tester sur le site
       déployé : `default-src 'self'; connect-src 'self' https://<ref>.supabase.co
-  wss://<ref>.supabase.co; img-src 'self' https://<ref>.supabase.co data:;
+  wss://<ref>.supabase.co; img-src 'self' https://<ref>.supabase.co data: blob:;
   frame-ancestors 'none'; base-uri 'self'; form-action 'self'`. Déjà fait : anti-iframe
       (`X-Frame-Options` + `frame-ancestors`) sur `/admin*`.
 - [ ] **Changement de mot de passe vérifié côté serveur** : l'ancien mot de passe n'est
@@ -194,15 +192,40 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       (date fixe), Vitest, Playwright (3 projets). Appliqué en local seulement. Ordre pour la
       production : migration (`db push`) PUIS front. **Rappel : la purge RGPD à 6 mois reste
       bloquante avant la mise en ligne** (phase 8) : ces écrans montrent des données clients.
-- [ ] Données admin : Galerie · Prestations sur Supabase
-      _(maquette de la galerie sur fausse base, sans envoi. Restent : branchement de la table et
-      du Storage, prestations, duplication d'une semaine, modification d'une plage)_
+- [x] **Galerie et envoi de photos** (consigne 20, issue #28) : migration `…_admin_galerie.sql`
+      (ADR 0006). Bucket « gallery » **privé** (webp/jpeg, 2 Mo, nom `<uuid v4>.webp|jpg`
+      imposé par la policy, aucun remplacement, plafond de 65 fichiers) ; le public n'obtient
+      une URL signée (1 h) que pour une photo publiée. `gallery_items` : `alt_text`
+      obligatoire (remplace `caption`), `width`/`height`, `consent_at` (publiée ⇒ accord
+      daté) ; anon ne lit que les colonnes d'affichage, `authenticated` plus rien. RPC admin :
+      liste, ajout (fichier vérifié, limite `private.settings().gallery_max_items` = 60),
+      publication (accord redemandé à chaque fois), **masquage avec nouveau nom de fichier**
+      (une URL signée peut être demandée pour des années par n'importe qui : changer le nom
+      coupe tous les liens émis), texte alternatif, ordre, suppression, orphelins. Traitement
+      dans le navigateur (`processImage.ts`) : type + octets d'en-tête (SVG refusé),
+      orientation, 1200 px, ré-encodage canvas WebP (repli JPEG Safari) sans EXIF ni GPS.
+      Écran mobile (appareil photo / galerie, aperçu, accord obligatoire, monter / descendre,
+      focus géré) ; accueil branché (N&B, lazy, dimensions). pgTAP 15 (date fixe), Vitest,
+      Playwright 3 projets (photo dessinée par canvas + EXIF fabriqué : part redressée, sans
+      EXIF, nom uuid). Appliqué en local seulement. Ordre pour la production : migration
+      (`db push`) PUIS front.
+- [ ] Données admin : Prestations sur Supabase · duplication d'une semaine · modification
+      d'une plage.
+- [ ] Galerie, suites mineures (revue de la consigne 20) : refuser avant décodage une image
+      aux dimensions démesurées (PNG de 30 000 px qui ferait planter le navigateur d'Alix) ;
+      contrôle serveur du contenu des fichiers (Edge Function, V2) ; vue détail en couleur
+      prévue par DESIGN.md (non faite).
 - [x] Disponibilités : afficher au barber quand les clients pourront réserver (consigne 18 :
       période réservable calculée depuis les règles 48 h / 4 semaines lues en base).
 
 ## Phase 7 — Animations et effets
 
 - [ ] Choix des librairies et des effets (docs/DESIGN.md) · Mise en place
+- [ ] **Carrousel WebGL de la galerie (si retenu)** : les photos chargées comme **textures**
+      exigent l'en-tête CORS côté Storage (`Access-Control-Allow-Origin` pour notre domaine)
+      et `crossOrigin="anonymous"` sur l'image, sinon le canvas WebGL est « contaminé » et
+      refuse de les lire. URL signées d'1 h : prévoir de les renouveler pour une page restée
+      ouverte.
 
 ## Phase 8 — Mise en ligne
 
