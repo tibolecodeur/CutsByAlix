@@ -37,6 +37,17 @@ jobs:
       - name: Build de production
         run: npm run build
 
+      # Cloudflare Pages : le repli SPA (index.html pour toute URL qui n'est pas un fichier) ne
+      # marche que sans 404.html ; pas de _redirects (une règle /* serait vue comme une boucle) ;
+      # _headers et robots.txt doivent être copiés dans le build (docs/DEPLOIEMENT.md).
+      - name: Fichiers d'hébergement dans dist/
+        run: |
+          test ! -e dist/404.html || { echo "::error::dist/404.html casserait le repli SPA de Cloudflare Pages"; exit 1; }
+          test ! -e dist/_redirects || { echo "::error::dist/_redirects ne doit pas exister"; exit 1; }
+          test -f dist/_headers || { echo "::error::dist/_headers manquant"; exit 1; }
+          test -f dist/robots.txt || { echo "::error::dist/robots.txt manquant"; exit 1; }
+          echo "dist/ prêt pour Cloudflare Pages : _headers et robots.txt présents, ni 404.html ni _redirects."
+
   base-de-donnees:
     name: Tests SQL (pgTAP)
     runs-on: ubuntu-latest

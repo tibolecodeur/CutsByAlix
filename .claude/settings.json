@@ -43,15 +43,15 @@
       "Edit(./.env.local)",
       "Edit(./.env.production)",
       "Bash(git push --force *)",
-      "Bash(git push -f *)"
+      "Bash(git push -f *)",
+      "Bash(npx wrangler* pages deploy*)",
+      "Bash(wrangler* pages deploy*)"
     ],
     "ask": [
       "Bash(npm install *)",
       "Bash(npx supabase db push *)",
       "Bash(npx supabase db reset *)",
       "Bash(git push *)",
-      "Bash(vercel *)",
-      "Bash(npx vercel *)",
       "Bash(gh pr merge *)",
       "Bash(gh issue create *)",
       "Bash(git merge *)"

@@ -158,3 +158,5 @@ pour qu'il ne dépende ni du changement d'heure ni du fuseau de la session.
   neutraliser ces valeurs (injection de formule dans un tableur).
 - Côté front (phase 5), le `cancel_token` est dans l'URL de `/annuler`. Il faudra ajouter
   `Referrer-Policy: no-referrer` dans `vercel.json`.
+  _Correction du 2026-10-11 : l'hébergeur est Cloudflare Pages (ADR 0007) ; cet en-tête est
+  posé dans `public/_headers`, `vercel.json` a été supprimé._

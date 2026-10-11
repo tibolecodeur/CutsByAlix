@@ -8,7 +8,7 @@ dist
 coverage
 test-results
 playwright-report
-.vercel
+.wrangler
 .DS_Store
 setup-windows.ps1
 

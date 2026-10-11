@@ -1,24 +1,64 @@
 # En-têtes HTTP pour Cloudflare Pages (copié dans le build : dist/_headers).
-# Hébergeur retenu : Cloudflare Pages. Rien n'est déployé pour l'instant.
+# Hébergeur : Cloudflare Pages (ADR 0007). Détails et vérifications : docs/DEPLOIEMENT.md.
 #
-# /annuler porte le jeton d'annulation dans le FRAGMENT de l'URL (/annuler#<jeton>) : il n'est
-# jamais envoyé au serveur ni recopié dans un Referer. Ces en-têtes sont une protection en plus :
-#   · jamais de Referer vers un autre site ;
-#   · jamais dans un moteur de recherche.
-# La page pose aussi ces consignes dans son HTML (<meta>) : double protection.
-/annuler*
-  Referrer-Policy: no-referrer
-  X-Robots-Tag: noindex
+# ATTENTION : quand plusieurs règles correspondent à une URL, Cloudflare les CUMULE, et un même
+# en-tête posé deux fois est envoyé avec les deux valeurs séparées par une virgule
+# (« DENY, DENY »). Une règle qui veut REMPLACER une valeur de `/*` la retire d'abord avec
+# « ! Nom-De-L-En-Tete », puis pose la sienne. Un test (src/test/hosting.test.ts) vérifie
+# qu'aucune URL ne reçoit deux fois le même en-tête.
+#
+# Pas de fichier _redirects : sans 404.html, Pages sert index.html pour tout chemin qui n'est
+# pas un fichier (repli d'application sur une seule page).
 
-# Espace admin (et ses fichiers : manifeste, icônes) : jamais dans un moteur de recherche, et
-# jamais affiché dans le cadre (iframe) d'un autre site (anti-« clickjacking » sur la connexion).
-# Aucun lien public n'y mène ; les pages posent aussi <meta name="robots" content="noindex">.
-# TODO avant la mise en ligne de l'admin : Content-Security-Policy complète (docs/PLAN.md).
-/admin*
-  X-Robots-Tag: noindex
+# --- Tout le site ------------------------------------------------------------------------------
+# · noindex, nofollow : le site n'est pas encore public. À RETIRER de cette règle à la mise en
+#   ligne (les aperçus *.pages.dev, /annuler et /admin gardent leur propre noindex plus bas).
+# · CSP en mode « Report-Only » : elle ne bloque rien, elle signale dans la console du
+#   navigateur ce qu'elle bloquerait. Passage en blocage après validation sur l'aperçu
+#   (docs/DEPLOIEMENT.md). Pas de « frame-ancestors » ici : ignoré en Report-Only (posé en
+#   blocage sur /admin*, et X-Frame-Options couvre le reste).
+/*
+  X-Robots-Tag: noindex, nofollow
+  X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: accelerometer=(), bluetooth=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), hid=(), magnetometer=(), microphone=(), midi=(), payment=(), serial=(), usb=()
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://ffamilzutmiukspofcmf.supabase.co; media-src 'self'; font-src 'self'; connect-src https://ffamilzutmiukspofcmf.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'
+
+# --- Aperçus *.pages.dev : jamais indexés, même après la mise en ligne du domaine ---------------
+https://:project.pages.dev/*
+  ! X-Robots-Tag
+  X-Robots-Tag: noindex, nofollow
+
+https://:version.:project.pages.dev/*
+  ! X-Robots-Tag
+  X-Robots-Tag: noindex, nofollow
+
+# --- /annuler ----------------------------------------------------------------------------------
+# Le jeton est dans le FRAGMENT de l'URL (/annuler#<jeton>) : il n'est jamais envoyé au serveur
+# ni recopié dans un Referer. Protection en plus : aucun Referer du tout, jamais indexé. La page
+# pose aussi ces consignes dans son HTML (<meta>) : double protection.
+/annuler*
+  ! Referrer-Policy
+  Referrer-Policy: no-referrer
+  ! X-Robots-Tag
+  X-Robots-Tag: noindex, nofollow
+
+# --- Espace admin (et ses fichiers : manifeste, icônes) ----------------------------------------
+# Jamais indexé, jamais affiché dans le cadre (iframe) d'un autre site : X-Frame-Options vient de
+# /*, et frame-ancestors (en blocage) le double pour les navigateurs récents. Les pages posent
+# aussi <meta name="robots" content="noindex">.
+/admin*
+  ! X-Robots-Tag
+  X-Robots-Tag: noindex, nofollow
   Content-Security-Policy: frame-ancestors 'none'
 
 # Manifeste de la PWA admin, servi avec son type exact.
 /admin.webmanifest
   Content-Type: application/manifest+json
+
+# --- Fichiers du build à nom haché (dist/assets) -----------------------------------------------
+# Leur nom change à chaque modification : on peut les garder en cache un an. Jamais index.html,
+# qui est à la racine et doit toujours être relu (il pointe vers les nouveaux noms).
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

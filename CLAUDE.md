@@ -21,7 +21,8 @@ Décisions de design validées : @docs/DESIGN.md
 - Validation : Zod (+ react-hook-form pour les formulaires) · Dates : date-fns (locale fr)
 - Tests : Vitest + Testing Library (unitaires et composants), Playwright (end-to-end),
   tests SQL de la base (pgTAP via `supabase test db`)
-- Hébergement : Vercel (SPA avec rewrite vers index.html) · CI : GitHub Actions
+- Hébergement : Cloudflare Pages (repli SPA par défaut : ni `_redirects` ni `404.html` ;
+  en-têtes dans `public/_headers`, ADR 0007, `docs/DEPLOIEMENT.md`) · CI : GitHub Actions
 
 ## Commandes
 

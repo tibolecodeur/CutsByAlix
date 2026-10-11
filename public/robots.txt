@@ -1,0 +1,5 @@
+# Aucun Disallow, volontairement : un robot qui n'a pas le droit de lire une page ne voit pas
+# son en-tête « X-Robots-Tag: noindex » (public/_headers), et peut alors indexer l'URL seule si
+# un lien y mène. Tant que le site n'est pas public, c'est ce noindex qui l'écarte des moteurs.
+User-agent: *
+Allow: /
