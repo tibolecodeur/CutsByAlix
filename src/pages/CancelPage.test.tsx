@@ -27,6 +27,7 @@ const ROW = {
   location_label: "Angers",
   first_name: "Lucas",
   can_cancel: true,
+  cancelled_by: null,
 };
 
 type Reply = { data: unknown; error: { code?: string; message: string } | null };
@@ -176,10 +177,38 @@ describe("CancelPage : trop tard et déjà annulé", () => {
   });
 
   it("affiche « Rendez-vous déjà annulé » sans bouton d'annulation", async () => {
-    mockRpc({ get_booking: () => ok([{ ...ROW, status: "cancelled", can_cancel: false }]) });
+    mockRpc({
+      get_booking: () =>
+        ok([{ ...ROW, status: "cancelled", can_cancel: false, cancelled_by: "client" }]),
+    });
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Rendez-vous déjà annulé" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Annuler mon rendez-vous" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("annulé par Alix : message distinct de « déjà annulé », avec « Réserver un créneau »", async () => {
+    mockRpc({
+      get_booking: () =>
+        ok([{ ...ROW, status: "cancelled", can_cancel: false, cancelled_by: "barber" }]),
+    });
+    renderPage();
+
+    expect(
+      await screen.findByRole("heading", { name: "Rendez-vous annulé par Alix" }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/Alix a annulé ton rendez-vous du mardi 20 octobre à 14:00/),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: "Rendez-vous déjà annulé" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Réserver un créneau" })).toHaveAttribute(
+      "href",
+      "/reserver",
+    );
     expect(
       screen.queryByRole("button", { name: "Annuler mon rendez-vous" }),
     ).not.toBeInTheDocument();

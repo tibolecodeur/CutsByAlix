@@ -20,6 +20,7 @@ const ROW = {
   location_label: "Angers",
   first_name: "Lucas",
   can_cancel: true,
+  cancelled_by: null,
 };
 
 /** Simule get_booking et cancel_booking ; renvoie ce que le site a envoyé. */
@@ -111,13 +112,28 @@ test("trop tard au moment d'annuler : la base refuse (too_late)", async ({ page 
 
 test("RDV déjà annulé", async ({ page }) => {
   await mockBooking(page, {
-    booking: { body: [{ ...ROW, status: "cancelled", can_cancel: false }] },
+    booking: { body: [{ ...ROW, status: "cancelled", can_cancel: false, cancelled_by: "client" }] },
   });
   await page.goto(`/annuler#${TOKEN}`);
 
   await expect(
     page.getByRole("heading", { level: 2, name: "Rendez-vous déjà annulé" }),
   ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Annuler mon rendez-vous" })).toHaveCount(0);
+  await expectNoAxeViolation(page);
+});
+
+test("RDV annulé par Alix : message distinct, invitation à réserver", async ({ page }) => {
+  await mockBooking(page, {
+    booking: { body: [{ ...ROW, status: "cancelled", can_cancel: false, cancelled_by: "barber" }] },
+  });
+  await page.goto(`/annuler#${TOKEN}`);
+
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Rendez-vous annulé par Alix" }),
+  ).toBeVisible();
+  await expect(page.getByText("Rendez-vous déjà annulé")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Réserver un créneau" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Annuler mon rendez-vous" })).toHaveCount(0);
   await expectNoAxeViolation(page);
 });

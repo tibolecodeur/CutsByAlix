@@ -228,6 +228,7 @@ describe("getBooking", () => {
     location_label: "Angers",
     first_name: "Lucas",
     can_cancel: true,
+    cancelled_by: null,
   };
 
   it("envoie le jeton dans le corps de la RPC et convertit la ligne reçue", async () => {
@@ -241,6 +242,7 @@ describe("getBooking", () => {
       locationLabel: "Angers",
       firstName: "Lucas",
       canCancel: true,
+      cancelledBy: null,
     });
     expect(calls.map(({ method, args }) => [method, ...args])).toEqual([
       ["rpc", "get_booking", { p_token: TOKEN }],
@@ -252,6 +254,7 @@ describe("getBooking", () => {
     mockSupabase({ data: [ROW], error: null });
     expect(Object.keys((await getBooking(TOKEN))!).sort()).toEqual([
       "canCancel",
+      "cancelledBy",
       "endsAt",
       "firstName",
       "locationLabel",
@@ -261,9 +264,16 @@ describe("getBooking", () => {
     ]);
   });
 
-  it("renvoie un RDV annulé tel quel (« déjà annulé »)", async () => {
-    mockSupabase({ data: [{ ...ROW, status: "cancelled", can_cancel: false }], error: null });
-    expect(await getBooking(TOKEN)).toMatchObject({ status: "cancelled", canCancel: false });
+  it("renvoie un RDV annulé tel quel, avec qui l'a annulé", async () => {
+    mockSupabase({
+      data: [{ ...ROW, status: "cancelled", can_cancel: false, cancelled_by: "barber" }],
+      error: null,
+    });
+    expect(await getBooking(TOKEN)).toMatchObject({
+      status: "cancelled",
+      canCancel: false,
+      cancelledBy: "barber",
+    });
   });
 
   it("renvoie null quand la base ne renvoie aucune ligne (inconnu ou expiré)", async () => {
