@@ -56,7 +56,7 @@ export function SlotStep(props: SlotStepProps) {
     }
   }
   const now = new Date();
-  // Jour entièrement à moins de 48 h : inutile d'interroger la base, on explique pourquoi.
+  // Jour entièrement passé ou à moins de 5 h : inutile d'interroger la base, on explique pourquoi.
   const tooSoon = day !== null && isTooSoonDay(day, now);
   const slots = useAsync(day === null || tooSoon ? null : `slots|${serviceId}|${day}`, () =>
     getAvailableSlots(serviceId, day ?? ""),
@@ -153,7 +153,7 @@ export function SlotStep(props: SlotStepProps) {
 
 type SlotListProps = {
   day: DayKey | null;
-  /** Renseigné quand le jour choisi est à moins de 48 h : premier jour possible. */
+  /** Renseigné quand le jour choisi est déjà passé ou trop proche : premier jour possible. */
   firstDay: DayKey | null;
   state: AsyncResult<AvailableSlot[]>;
   selected: AvailableSlot | null;

@@ -95,6 +95,8 @@ test("trop tard : moins de 24 h avant le RDV", async ({ page }) => {
     page.getByRole("heading", { level: 2, name: "Trop tard pour annuler en ligne" }),
   ).toBeVisible();
   await expect(page.getByText(/jusqu'à 24 h avant/)).toBeVisible();
+  await expect(page.getByText(/contacte Alix directement/)).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Annuler mon rendez-vous" })).toHaveCount(0);
   await expectNoAxeViolation(page);
 });
@@ -108,6 +110,7 @@ test("trop tard au moment d'annuler : la base refuse (too_late)", async ({ page 
   await expect(
     page.getByRole("heading", { level: 2, name: "Trop tard pour annuler en ligne" }),
   ).toBeFocused();
+  await expect(page.getByText(/contacte Alix directement/)).toBeVisible();
 });
 
 test("RDV déjà annulé", async ({ page }) => {

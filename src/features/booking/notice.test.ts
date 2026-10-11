@@ -1,34 +1,61 @@
 import { describe, expect, it } from "vitest";
-import { firstBookableDay, isTooSoonDay } from "@/features/booking/notice";
+import { firstBookableDay, isTooSoonDay, isWithinCancelNotice } from "@/features/booking/notice";
 
-describe("firstBookableDay", () => {
-  it("donne le jour (à Paris) qui tombe 48 h plus tard", () => {
-    // Mardi 13 octobre 2026, 8 h à Paris → jeudi 15.
-    expect(firstBookableDay(new Date("2026-10-13T06:00:00Z"))).toBe("2026-10-15");
+// Octobre 2026 : heure d'été à Paris (UTC+2) jusqu'au dimanche 25.
+
+describe("firstBookableDay (délai de 5 h)", () => {
+  it("le matin, le jour même reste réservable", () => {
+    // Mardi 13 octobre, 8 h à Paris + 5 h = 13 h : encore mardi.
+    expect(firstBookableDay(new Date("2026-10-13T06:00:00Z"))).toBe("2026-10-13");
+  });
+
+  it("limite nette : 18 h 59 → ce soir encore possible, 19 h 01 → dès demain", () => {
+    // 18 h 59 à Paris (16 h 59 UTC) + 5 h = 23 h 59 : mardi.
+    expect(firstBookableDay(new Date("2026-10-13T16:59:00Z"))).toBe("2026-10-13");
+    // 19 h 01 à Paris (17 h 01 UTC) + 5 h = 0 h 01 : mercredi.
+    expect(firstBookableDay(new Date("2026-10-13T17:01:00Z"))).toBe("2026-10-14");
   });
 
   it("raisonne en heure de Paris, pas en UTC", () => {
-    // Mardi 13, 23 h 30 à Paris (21 h 30 UTC) → jeudi 15 à 23 h 30 : jeudi 15.
-    expect(firstBookableDay(new Date("2026-10-13T21:30:00Z"))).toBe("2026-10-15");
-    // Mercredi 14, 0 h 30 à Paris (mardi 22 h 30 UTC) → vendredi 16.
-    expect(firstBookableDay(new Date("2026-10-13T22:30:00Z"))).toBe("2026-10-16");
+    // 23 h 30 à Paris (21 h 30 UTC) + 5 h = mercredi 4 h 30 à Paris, mardi 2 h 30 UTC.
+    expect(firstBookableDay(new Date("2026-10-13T21:30:00Z"))).toBe("2026-10-14");
+    // 0 h 30 à Paris mercredi (mardi 22 h 30 UTC) + 5 h = mercredi 5 h 30 à Paris.
+    expect(firstBookableDay(new Date("2026-10-13T22:30:00Z"))).toBe("2026-10-14");
   });
 
-  it("compte 48 h réelles au passage à l'heure d'hiver (25 octobre)", () => {
-    // Samedi 24, 1 h 30 à Paris (été, UTC+2) + 48 h = lundi 26, 0 h 30 (hiver, UTC+1).
-    expect(firstBookableDay(new Date("2026-10-23T23:30:00Z"))).toBe("2026-10-26");
-    // Samedi 24, 0 h 30 à Paris + 48 h = dimanche 25, 23 h 30 : encore dimanche.
-    expect(firstBookableDay(new Date("2026-10-23T22:30:00Z"))).toBe("2026-10-25");
+  it("compte 5 h réelles autour du changement d'heure (24 → 25 octobre)", () => {
+    // Avant le changement (UTC+2) : 18 h 59 à Paris + 5 h = 23 h 59 le 24 ; 19 h 01 → le 25.
+    expect(firstBookableDay(new Date("2026-10-24T16:59:00Z"))).toBe("2026-10-24");
+    expect(firstBookableDay(new Date("2026-10-24T17:01:00Z"))).toBe("2026-10-25");
+    // Après (UTC+1) : minuit à Paris tombe à 23 h UTC. 18 h 59 + 5 h = 23 h 59 le 25 ; 19 h 01 → le 26.
+    expect(firstBookableDay(new Date("2026-10-25T17:59:00Z"))).toBe("2026-10-25");
+    expect(firstBookableDay(new Date("2026-10-25T18:01:00Z"))).toBe("2026-10-26");
   });
 });
 
 describe("isTooSoonDay", () => {
-  const now = new Date("2026-10-13T06:00:00Z"); // mardi 13, 8 h à Paris
+  it("avant 19 h, aujourd'hui n'est pas trop tôt ; les jours passés le sont", () => {
+    const now = new Date("2026-10-13T16:59:00Z"); // mardi 13, 18 h 59 à Paris
+    expect(isTooSoonDay("2026-10-12", now)).toBe(true);
+    expect(isTooSoonDay("2026-10-13", now)).toBe(false);
+    expect(isTooSoonDay("2026-10-14", now)).toBe(false);
+  });
 
-  it("vrai pour aujourd'hui et demain, faux à partir du premier jour réservable", () => {
+  it("à partir de 19 h 01, aujourd'hui est trop tôt, demain non", () => {
+    const now = new Date("2026-10-13T17:01:00Z"); // mardi 13, 19 h 01 à Paris
     expect(isTooSoonDay("2026-10-13", now)).toBe(true);
-    expect(isTooSoonDay("2026-10-14", now)).toBe(true);
-    expect(isTooSoonDay("2026-10-15", now)).toBe(false);
+    expect(isTooSoonDay("2026-10-14", now)).toBe(false);
     expect(isTooSoonDay("2026-11-02", now)).toBe(false);
+  });
+});
+
+describe("isWithinCancelNotice (délai d'annulation de 24 h)", () => {
+  const now = new Date("2026-10-13T10:00:00Z");
+
+  it("vrai à moins de 24 h, faux à 24 h pile et au-delà (même bord que la base)", () => {
+    expect(isWithinCancelNotice("2026-10-13T15:00:00Z", now)).toBe(true); // dans 5 h
+    expect(isWithinCancelNotice("2026-10-14T09:59:00Z", now)).toBe(true); // 23 h 59
+    expect(isWithinCancelNotice("2026-10-14T10:00:00Z", now)).toBe(false); // 24 h pile
+    expect(isWithinCancelNotice("2026-10-14T10:01:00Z", now)).toBe(false); // 24 h 01
   });
 });

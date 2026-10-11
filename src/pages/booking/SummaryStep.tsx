@@ -8,6 +8,7 @@ import {
   type BookingReceipt,
 } from "@/features/booking/data";
 import type { ContactForm } from "@/features/booking/validation";
+import { isWithinCancelNotice } from "@/features/booking/notice";
 import { BOOKING_RULES } from "@/lib/bookingRules";
 import { formatLongDay, formatTime } from "@/lib/dates";
 import { BookingSummary } from "@/pages/booking/BookingSummary";
@@ -103,8 +104,10 @@ export function SummaryStep(props: SummaryStepProps) {
         ]}
       />
       <p>
-        Paiement en liquide, sur place. Tu pourras annuler en ligne jusqu'à{" "}
-        {BOOKING_RULES.cancelNoticeHours} h avant le rendez-vous.
+        Paiement en liquide, sur place.{" "}
+        {isWithinCancelNotice(slot.startsAt, new Date())
+          ? `Ce rendez-vous est dans moins de ${BOOKING_RULES.cancelNoticeHours} h : tu ne pourras pas l'annuler en ligne.`
+          : `Tu pourras annuler en ligne jusqu'à ${BOOKING_RULES.cancelNoticeHours} h avant le rendez-vous.`}
       </p>
       {error && <ErrorMessage>{error}</ErrorMessage>}
       <form onSubmit={handleSubmit}>

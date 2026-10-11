@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { Button, ButtonLink } from "@/components/Button";
 import type { BookingReceipt } from "@/features/booking/data";
+import { isWithinCancelNotice } from "@/features/booking/notice";
 import { BOOKING_RULES } from "@/lib/bookingRules";
 import { formatLongDay, formatTime } from "@/lib/dates";
 import { BookingSummary } from "@/pages/booking/BookingSummary";
@@ -37,6 +38,15 @@ export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProp
           ["Paiement", "En liquide, sur place"],
         ]}
       />
+
+      {isWithinCancelNotice(receipt.startsAt, new Date()) && (
+        // Pas d'alerte : l'information est donnée à la lecture de la page, sans interrompre.
+        <p className="font-semibold">
+          Ton rendez-vous est dans moins de {BOOKING_RULES.cancelNoticeHours} h : tu ne pourras pas
+          l'annuler en ligne. Si tu as un empêchement, contacte Alix directement.
+          {/* TODO contact : ajouter le téléphone ou l'Instagram du barber dès qu'ils sont fournis. */}
+        </p>
+      )}
 
       <section aria-labelledby="cancel-link-title" className="flex flex-col gap-3">
         <h3 id="cancel-link-title">Ton lien d'annulation</h3>

@@ -156,6 +156,10 @@ describe("CancelPage : trop tard et déjà annulé", () => {
       await screen.findByRole("heading", { name: "Trop tard pour annuler en ligne" }),
     ).toBeVisible();
     expect(screen.getByText(/jusqu'à 24 h avant/)).toBeVisible();
+    expect(screen.getByText(/Il est trop tard pour annuler en ligne/)).toBeVisible();
+    expect(screen.getByText(/contacte Alix directement/)).toBeVisible();
+    // Message clair, pas une erreur technique.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Annuler mon rendez-vous" }),
     ).not.toBeInTheDocument();
@@ -174,6 +178,8 @@ describe("CancelPage : trop tard et déjà annulé", () => {
 
     const title = await screen.findByRole("heading", { name: "Trop tard pour annuler en ligne" });
     expect(title).toHaveFocus();
+    expect(screen.getByText(/contacte Alix directement/)).toBeVisible();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("affiche « Rendez-vous déjà annulé » sans bouton d'annulation", async () => {

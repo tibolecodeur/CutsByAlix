@@ -129,6 +129,7 @@ describe("bookableWindow", () => {
 
 describe("formatDelay", () => {
   it("affiche les heures rondes en heures, le reste en minutes", () => {
+    expect(formatDelay(300)).toBe("5 h"); // délai de réservation actuel (affiché côté admin)
     expect(formatDelay(2880)).toBe("48 h");
     expect(formatDelay(90)).toBe("90 min");
   });

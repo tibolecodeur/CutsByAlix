@@ -135,7 +135,8 @@ function BookingCancellation({ token, booking }: { token: string; booking: Booki
         <p>
           L'annulation en ligne est possible jusqu'à {BOOKING_RULES.cancelNoticeHours} h avant le
           rendez-vous. Ton rendez-vous du {formatLongDay(booking.startsAt)} à{" "}
-          {formatTime(booking.startsAt)} est donc maintenu.
+          {formatTime(booking.startsAt)} est donc maintenu. Il est trop tard pour annuler en ligne :
+          contacte Alix directement.
         </p>
       </StateBlock>
     );

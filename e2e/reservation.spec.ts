@@ -14,8 +14,8 @@ import { expect, mockRpc, rpcError, test, type RpcResponse } from "./fixtures.ts
  * Parcours /reserver (Android, iPhone, desktop) contre des RPC Supabase INTERCEPTÉES : aucune
  * requête n'atteint une vraie base (e2e/fixtures.ts coupe tout ce qui n'est pas simulé).
  * Créneaux simulés : chaque jour sauf le lundi, 14:00 « Angers » et 15:10
- * « Saint-Christophe-du-Bois » (heure de Paris). Règle affichée : rien à moins de 48 h, le site
- * n'interroge même pas la base pour ces jours-là.
+ * « Saint-Christophe-du-Bois » (heure de Paris). Règle affichée : rien à moins de 5 h (jour entièrement
+ * trop proche : le site n'interroge même pas la base).
  */
 
 const ANGERS = "a11ce000-0000-4000-8000-000000000101";
@@ -42,7 +42,7 @@ function slotsFor(day: DayKey): SlotRow[] {
   ];
 }
 
-/** Premier jour (à Paris) au-delà des 48 h qui a des créneaux simulés (pas un lundi). */
+/** Premier jour (à Paris) 48 h plus tard avec des créneaux simulés (pas un lundi) : au-delà de 24 h, donc sans avertissement. */
 function firstDayWithSlots(): DayKey {
   let day = parisDayKey(new Date(Date.now() + 48 * HOUR_MS));
   while (isoWeekday(day) === 1) day = addDaysToKey(day, 1);
@@ -238,16 +238,75 @@ test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation 
   expect(erreurs).toEqual([]);
 });
 
-test("délai de 48 h : expliqué, et aucun appel à la base pour aujourd'hui", async ({ page }) => {
+test("délai de 5 h : expliqué ; à 19 h 01 aujourd'hui est refusé sans appel à la base", async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date("2026-10-13T17:01:00Z")); // mardi 13, 19 h 01 à Paris
   const requested = await mockSlots(page);
   await allerAuxCreneaux(page);
-  await expect(page.getByText(/On réserve au plus tard 48 h avant le rendez-vous/)).toBeVisible();
+  await expect(page.getByText(/On réserve au plus tard 5 h avant le rendez-vous/)).toBeVisible();
 
-  const today = parisDayKey(new Date());
-  await toucherJour(page, today);
-  await expect(page.getByText(`Trop tard pour réserver le ${formatDayKey(today)}.`)).toBeVisible();
+  await toucherJour(page, "2026-10-13");
+  await expect(
+    page.getByText(`Trop tard pour réserver le ${formatDayKey("2026-10-13")}.`),
+  ).toBeVisible();
   await expect(page.getByText(/Choisis un jour à partir du/)).toBeVisible();
-  expect(requested).not.toContain(today);
+  expect(requested).not.toContain("2026-10-13");
+});
+
+test("délai de 5 h : à 18 h 59, aujourd'hui reste réservable", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-10-13T16:59:00Z")); // mardi 13, 18 h 59 à Paris
+  const requested = await mockSlots(page);
+  await allerAuxCreneaux(page);
+
+  await toucherJour(page, "2026-10-13");
+  await expect(page.getByText(/Trop tard pour réserver/)).toHaveCount(0);
+  await expect(groupeCreneaux(page).getByRole("radio")).toHaveCount(2);
+  expect(requested).toContain("2026-10-13");
+});
+
+test("RDV à moins de 24 h : récapitulatif et confirmation préviennent, sans rien bloquer", async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date("2026-10-13T10:00:00Z")); // mardi 13, 12 h à Paris
+  await mockSlots(page);
+  // Créneau de 14 h le jour même : dans 2 h, donc à moins de 24 h.
+  await mockRpc(page, "create_booking", () => ({
+    body: receiptFor(slotsFor("2026-10-13")[0]!),
+  }));
+  await allerAuxCreneaux(page);
+  await toucherJour(page, "2026-10-13");
+  await groupeCreneaux(page).getByRole("radio").first().check();
+  await continuer(page);
+  await remplirCoordonnees(page);
+
+  await expect(page.getByText(/tu ne pourras pas l'annuler en ligne/)).toBeVisible();
+  await expect(page.getByText(/Tu pourras annuler en ligne/)).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Confirmer la réservation" }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "C'est réservé !" })).toBeVisible();
+  await expect(page.getByText(/dans moins de 24 h : tu ne pourras pas l'annuler/)).toBeVisible();
+  await expect(page.getByText(/contacte Alix directement/)).toBeVisible();
+  // Le lien reste affiché : l'avertissement ne bloque rien.
+  await expect(page.locator("#cancel-link-url")).toHaveText(new RegExp(`/annuler#${TOKEN}$`));
+});
+
+test("RDV à plus de 24 h : aucun avertissement", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-10-13T10:00:00Z"));
+  await mockSlots(page);
+  await mockRpc(page, "create_booking", () => ({
+    body: receiptFor(slotsFor("2026-10-15")[0]!),
+  }));
+  await allerAuxCreneaux(page);
+  await toucherJour(page, "2026-10-15");
+  await groupeCreneaux(page).getByRole("radio").first().check();
+  await continuer(page);
+  await remplirCoordonnees(page);
+  await expect(page.getByText(/Tu pourras annuler en ligne jusqu'à 24 h avant/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Confirmer la réservation" }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "C'est réservé !" })).toBeVisible();
+  await expect(page.getByText(/dans moins de 24 h/)).toHaveCount(0);
 });
 
 test("aucun créneau un lundi ; « Retour » ramène à la prestation", async ({ page }) => {
@@ -264,7 +323,7 @@ test("aucun créneau un lundi ; « Retour » ramène à la prestation", async ({
   await expect(page.getByRole("heading", { level: 2, name: "Quelle prestation ?" })).toBeFocused();
 });
 
-/** Le dernier lundi du calendrier (toujours au-delà des 48 h). */
+/** Le dernier lundi du calendrier (toujours au-delà du délai de 5 h). */
 async function lastMonday(page: Page): Promise<DayKey | undefined> {
   const valeurs = await page
     .getByRole("radio", { name: /^lundi / })
