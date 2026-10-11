@@ -107,10 +107,11 @@ Refused to… »). Aucun service de collecte n'est branché.
 `_headers`, toute la suite e2e rejouée (Android, iPhone, desktop), violations collectées :
 
 1. `script-src` / `eval` sur toutes les pages : **Zod 4** teste au démarrage s'il peut compiler
-   ses validations (`new Function("")`), puis se rabat sur un mode sans compilation si c'est
-   interdit. **En blocage, rien ne casse**, mais chaque page afficherait cette fausse alerte. Pour
-   une console propre avant le blocage : `z.config({ jitless: true })` au démarrage (à décider,
-   non fait).
+   ses validations (`new Function("")`). **En blocage, rien ne casserait** (il se rabat sur un
+   mode sans compilation), mais chaque page afficherait cette fausse alerte. **Corrigé** :
+   `z.config({ jitless: true })` en tête de `src/lib/schemas.ts` (seul fichier qui importe Zod),
+   avec un test qui simule une CSP interdisant `Function`. La mesure ci-dessus date d'avant cette
+   correction : sur l'aperçu, la console doit être **vide**.
 2. Rien d'autre côté site : polices, styles, scripts, images `blob:` (aperçu de photo) et
    appels Supabase passent. (Les seuls autres rapports venaient d'un test e2e qui lit l'aperçu
    par `fetch(blob:…)`, pas du site.)

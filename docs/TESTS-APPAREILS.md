@@ -195,7 +195,7 @@ dans le journal (section 3).
       public, aucune proposition d'installation (pas de manifeste hors admin).
 - [ ] **Console ouverte** (`chrome://inspect` sur Android, section 1) : relever les messages
       « [Report Only] Refused to… » de la CSP sur chaque page parcourue, et les reporter dans la
-      PR (`docs/DEPLOIEMENT.md` §5). Attendu : seulement l'`eval` de Zod.
+      PR (`docs/DEPLOIEMENT.md` §5). Attendu : **aucun** message (Zod est configuré sans `eval`, `src/lib/schemas.ts`).
 - [ ] En-têtes : `curl -sI <aperçu>/`, `<aperçu>/annuler`, `<aperçu>/admin` depuis le PC ;
       chaque en-tête présent **une seule fois**, `x-robots-tag: noindex, nofollow` partout.
 - [ ] Nettoyage : annuler toutes les réservations de test, supprimer les photos de test.

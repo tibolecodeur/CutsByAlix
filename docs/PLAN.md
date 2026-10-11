@@ -170,7 +170,8 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
   frame-ancestors 'none'; base-uri 'self'; form-action 'self'`. Déjà fait : anti-iframe
       (`X-Frame-Options` + `frame-ancestors`) sur `/admin*`. **Consigne 22** : CSP posée sur
       tout le site en `Report-Only` (sans `wss:`, aucun temps réel utilisé) ; mesure locale :
-      seule l'`eval` de Zod serait signalée (`docs/DEPLOIEMENT.md` §5). Passage en blocage après
+      seule l'`eval` de Zod était signalée, supprimée par `z.config({ jitless: true })`
+      (`docs/DEPLOIEMENT.md` §5). Passage en blocage après
       les tests sur l'aperçu, avec ta validation.
 - [ ] **Changement de mot de passe vérifié côté serveur** : l'ancien mot de passe n'est
       redemandé que par le site ; un jeton volé de moins de 24 h permettrait de le changer via
