@@ -251,6 +251,12 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 
 ## Phase 8 — Mise en ligne
 
+- [x] **Audit complet avant le design** (consigne 23) : rapport `docs/AUDIT-2026-10.md` (constats
+      par gravité, ordre de correction proposé), 84 tests pgTAP et des tests e2e (robustesse, connexion admin, axe) ajoutés, schéma de
+      production comparé au local (identique). Aucune correction faite : elles viendront en
+      consignes séparées, triées avec Thibault. Décision en attente : déclasser ou non la recopie
+      de `error.message` (C-01) hors des bloquants.
+
 - [ ] Version 1.0.0 : tag Git, CHANGELOG, README avec captures
 - [ ] `/check-deploiement` · Données de test supprimées · Compte admin du barber · Domaine
 - [ ] **Purge RGPD codée et planifiée** : suppression des données clients 6 mois après le RDV

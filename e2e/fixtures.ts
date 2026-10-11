@@ -167,7 +167,14 @@ function base64url(value: object): string {
  */
 export async function mockAdminAuth(
   page: Page,
-  { isAdmin = true }: { isAdmin?: boolean } = {},
+  {
+    isAdmin = true,
+    revoked = false,
+  }: {
+    isAdmin?: boolean;
+    /** Jeton de rafraîchissement révoqué (déconnexion ailleurs, mot de passe changé) : refus 400. */
+    revoked?: boolean;
+  } = {},
 ): Promise<AdminAuthCalls> {
   const nowSeconds = Math.floor(ADMIN_TEST_NOW.getTime() / 1000);
   // Jeton au format JWT, signature factice : supabase-js ne le vérifie pas, le serveur simulé non plus.
@@ -220,7 +227,15 @@ export async function mockAdminAuth(
   await page.route(/\/auth\/v1\/token(\?|$)/, async (route) => {
     if (route.request().method() === "OPTIONS") return preflight(route);
     const grant = new URL(route.request().url()).searchParams.get("grant_type");
-    if (grant === "refresh_token") return json(route, 200, session);
+    if (grant === "refresh_token") {
+      return revoked
+        ? json(route, 400, {
+            code: 400,
+            error_code: "refresh_token_not_found",
+            msg: "Invalid Refresh Token: Refresh Token Not Found",
+          })
+        : json(route, 200, session);
+    }
     const body = route.request().postDataJSON() as { email: string; password: string };
     calls.passwordLogins.push(body.password);
     if (body.email !== FAKE_ADMIN.email || body.password !== currentPassword) {
@@ -372,6 +387,103 @@ export async function mockStorage(
     return route.abort("blockedbyclient");
   });
   return calls;
+}
+
+// ---------------------------------------------------------------------------------------
+// Pannes simulées (audit, consigne 23) : une même route répond normalement OU échoue selon
+// `fault.mode`, que le test change en cours de route (panne, puis « Réessayer » qui marche).
+// ---------------------------------------------------------------------------------------
+
+/** Toutes les façons dont un appel Supabase peut mal tourner vu du navigateur. */
+export const FAILURE_MODES = [
+  "network-error",
+  "timeout",
+  "500",
+  "401",
+  "403",
+  "empty",
+  "malformed",
+  "wrong-shape",
+  "paused",
+] as const;
+export type FailureMode = (typeof FAILURE_MODES)[number];
+
+/** Panne en cours (`null` = tout va bien) et nombre d'appels reçus (hors préflight CORS). */
+export type Fault = { mode: FailureMode | null; hits: number };
+
+/**
+ * Textes d'erreur volontairement TECHNIQUES, comme les renverrait PostgREST : si l'un d'eux
+ * apparaît à l'écran, c'est que le site recopie l'erreur brute (voir TECHNICAL_TEXT).
+ */
+const TECHNICAL_BODIES: Record<"500" | "401" | "403", unknown> = {
+  "500": {
+    code: "XX000",
+    message: 'relation "public.bookings" does not exist',
+    details: "SQLSTATE XX000",
+    hint: null,
+  },
+  "401": { code: "PGRST301", message: "JWT expired", details: null, hint: null },
+  "403": {
+    code: "42501",
+    message: "permission denied for function get_available_slots",
+    details: null,
+    hint: null,
+  },
+};
+
+/** Ce qui ne doit JAMAIS s'afficher à un utilisateur (détail Supabase, SQL, JS). */
+export const TECHNICAL_TEXT =
+  /PGRST|postgres|supabase|SQLSTATE|XX000|42501|JWT|relation "|permission denied|does not exist|Failed to fetch|NetworkError|Load failed|TypeError|SyntaxError|Unexpected token|JSON|is not a function|undefined|\[object|AbortError|signal is aborted|timed? ?out/i;
+
+/** Au-delà du délai d'abandon des lectures du site (10 s) : la réponse n'arrive jamais à temps. */
+const TIMEOUT_DELAY_MS = 15_000;
+
+/**
+ * Remplace une route (table ou RPC) : `success()` en temps normal, la panne `fault.mode`
+ * sinon. Appelée après le fixture, elle passe devant les simulations par défaut.
+ */
+export async function mockFaulty(
+  page: Page,
+  pattern: RegExp,
+  success: (route: Route) => unknown,
+  fault: Fault,
+): Promise<void> {
+  await page.route(pattern, async (route) => {
+    if (route.request().method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(route) });
+    }
+    fault.hits += 1;
+    const send = (status: number, body: string, contentType = "application/json") =>
+      route.fulfill({ status, headers: corsHeaders(route), contentType, body });
+    switch (fault.mode) {
+      case null:
+        return send(200, JSON.stringify(success(route)));
+      case "network-error":
+        return route.abort("internetdisconnected");
+      case "timeout":
+        await new Promise((resolve) => setTimeout(resolve, TIMEOUT_DELAY_MS));
+        // La page a pu être fermée ou la requête abandonnée entre-temps : sans importance.
+        return route.abort("timedout").catch(() => undefined);
+      case "500":
+      case "401":
+      case "403":
+        return send(Number(fault.mode), JSON.stringify(TECHNICAL_BODIES[fault.mode]));
+      case "empty":
+        return send(200, "");
+      case "malformed":
+        return send(200, '{"oops": [1, 2,');
+      case "wrong-shape":
+        return send(200, JSON.stringify({ unexpected: true }));
+      case "paused":
+        // Projet Supabase en pause (offre gratuite, 7 jours sans activité) : la passerelle
+        // répond par une page HTML, pas par du JSON.
+        return send(
+          503,
+          "<!doctype html><title>Project paused</title><h1>This project is paused</h1>",
+          "text/html",
+        );
+    }
+  });
 }
 
 export const test = base.extend<{ supabaseMock: void }>({
