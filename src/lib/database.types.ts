@@ -5,8 +5,8 @@
  *
  * À mettre à jour à chaque migration qui touche une table ou une fonction listée ici. Seules
  * celles réellement utilisées par le front y figurent (pour l'instant : les tables `services`,
- * `admins` et `locations` (vue admin), les RPC publiques `get_available_slots`,
- * `create_booking`, `get_booking`, `cancel_booking` et les 4 RPC `admin_*` des disponibilités).
+ * `admins`, `locations` (vue admin) et `gallery_items` (vue anon), les RPC publiques
+ * `get_available_slots`, `create_booking`, `get_booking`, `cancel_booking` et les RPC `admin_*`).
  */
 
 /** Table `public.services` (migration …_tables.sql). */
@@ -34,6 +34,28 @@ type ServicesTable = {
     created_at?: string;
   };
   Update: Partial<ServicesTable["Insert"]>;
+  Relationships: [];
+};
+
+/**
+ * Table `public.gallery_items` (migration …_admin_galerie.sql), VUE ANONYME : anon ne lit que
+ * ces colonnes, et seulement les photos publiées (RLS). Aucune écriture par l'API : l'admin
+ * passe par les RPC `admin_*_gallery_*`.
+ */
+type GalleryItemsTable = {
+  Row: {
+    id: string;
+    /** « <uuid v4>.webp » ou « .jpg », à la racine du bucket privé « gallery ». */
+    image_path: string;
+    /** 1 à 200 caractères, obligatoire. */
+    alt_text: string;
+    /** Pixels, 1 à 1200. */
+    width: number;
+    height: number;
+    sort_order: number;
+  };
+  Insert: never;
+  Update: never;
   Relationships: [];
 };
 
@@ -209,12 +231,71 @@ type AdminCancelBookingFunction = {
   Returns: boolean;
 };
 
+/** Ligne renvoyée par les RPC admin de la galerie (migration …_admin_galerie.sql). */
+type AdminGalleryItemRow = {
+  id: string;
+  image_path: string;
+  alt_text: string;
+  width: number;
+  height: number;
+  sort_order: number;
+  published: boolean;
+  /** Dernier accord confirmé par Alix (timestamptz ISO), null si jamais publiée. */
+  consent_at: string | null;
+  created_at: string;
+};
+
+/**
+ * RPC admin de la galerie, réservées à un utilisateur listé dans `admins` (sinon 42501
+ * « forbidden »). Erreurs P0001 : invalid_input, invalid_path, file_missing, already_exists,
+ * gallery_limit_reached, consent_required, not_found.
+ */
+type AdminListGalleryItemsFunction = {
+  Args: Record<string, never>;
+  Returns: AdminGalleryItemRow[];
+};
+type AdminAddGalleryItemFunction = {
+  Args: {
+    p_image_path: string;
+    p_alt_text: string;
+    p_width: number;
+    p_height: number;
+    /** `true` : accord confirmé, la photo est publiée tout de suite. */
+    p_consent: boolean;
+  };
+  Returns: AdminGalleryItemRow[];
+};
+type AdminSetGalleryItemPublishedFunction = {
+  Args: { p_id: string; p_published: boolean; p_consent: boolean };
+  Returns: undefined;
+};
+type AdminUpdateGalleryItemAltFunction = {
+  Args: { p_id: string; p_alt_text: string };
+  Returns: undefined;
+};
+/** `false` : déjà en tête (ou en queue), rien n'a bougé. */
+type AdminMoveGalleryItemFunction = {
+  Args: { p_id: string; p_direction: "up" | "down" };
+  Returns: boolean;
+};
+/** Renvoie le chemin du fichier, que le front efface ensuite par l'API Storage. */
+type AdminDeleteGalleryItemFunction = {
+  Args: { p_id: string };
+  Returns: string;
+};
+/** Noms des fichiers sans ligne, de plus d'1 h. */
+type AdminGalleryOrphansFunction = {
+  Args: Record<string, never>;
+  Returns: string[];
+};
+
 export type Database = {
   public: {
     Tables: {
       services: ServicesTable;
       admins: AdminsTable;
       locations: LocationsTable;
+      gallery_items: GalleryItemsTable;
     };
     Views: Record<never, never>;
     Functions: {
@@ -229,6 +310,13 @@ export type Database = {
       admin_list_bookings: AdminListBookingsFunction;
       admin_get_booking: AdminGetBookingFunction;
       admin_cancel_booking: AdminCancelBookingFunction;
+      admin_list_gallery_items: AdminListGalleryItemsFunction;
+      admin_add_gallery_item: AdminAddGalleryItemFunction;
+      admin_set_gallery_item_published: AdminSetGalleryItemPublishedFunction;
+      admin_update_gallery_item_alt: AdminUpdateGalleryItemAltFunction;
+      admin_move_gallery_item: AdminMoveGalleryItemFunction;
+      admin_delete_gallery_item: AdminDeleteGalleryItemFunction;
+      admin_gallery_orphans: AdminGalleryOrphansFunction;
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;

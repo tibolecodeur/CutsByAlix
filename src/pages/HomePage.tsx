@@ -2,14 +2,11 @@ import { ButtonLink } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { HeroVideo } from "@/components/HeroVideo";
 import { PageMeta } from "@/components/PageMeta";
-import { PhotoPlaceholder } from "@/components/PhotoPlaceholder";
 import { Section } from "@/components/Section";
 import { EmptyMessage, ErrorMessage, LoadingMessage } from "@/components/StatusMessage";
 import { getServices } from "@/features/booking/data";
+import { getPublishedGallery, type GalleryPhoto } from "@/features/gallery/data";
 import { useAsync } from "@/lib/useAsync";
-
-/** Nombre d'emplacements de la galerie, en attendant les vraies photos. */
-const GALLERY_SLOTS = 6;
 
 /**
  * Médias du hero, à déposer dans public/media/ (servis tels quels à la racine du site).
@@ -28,6 +25,7 @@ const BOOKING_STEPS = [
 /** Accueil : une seule longue page, chaque section a une ancre (#prestations, #galerie…). */
 export function HomePage() {
   const services = useAsync("services", getServices);
+  const gallery = useAsync("gallery", getPublishedGallery);
 
   return (
     <>
@@ -101,21 +99,17 @@ export function HomePage() {
       {/* Bloc noir : les photos en noir et blanc y ressortent. */}
       <Section id="galerie" aria-labelledby="galerie-titre" variant="ink">
         <h2 id="galerie-titre">Galerie</h2>
-        <p>Photos bientôt disponibles.</p>
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {Array.from({ length: GALLERY_SLOTS }, (_, index) => (
-            // L'index suffit comme `key` : liste fixe, jamais réordonnée.
-            <li key={index}>
-              <figure>
-                <PhotoPlaceholder
-                  alt={`Création n° ${index + 1} (provisoire)`}
-                  width={800}
-                  height={800}
-                />
-              </figure>
-            </li>
+        {/* Messages en texte blanc hérité : les StatusMessage sont faits pour fond clair. */}
+        {gallery.status === "loading" && <p role="status">Chargement des photos…</p>}
+        {gallery.status === "error" && (
+          <p role="status">Les photos ne sont pas disponibles pour le moment.</p>
+        )}
+        {gallery.status === "success" &&
+          (gallery.data.length === 0 ? (
+            <p>Photos bientôt disponibles.</p>
+          ) : (
+            <GalleryGrid photos={gallery.data} />
           ))}
-        </ul>
       </Section>
 
       {/* pb-32 sur mobile : place pour le bouton collé en bas quand il revient à sa position. */}
@@ -154,5 +148,30 @@ export function HomePage() {
         </ButtonLink>
       </div>
     </>
+  );
+}
+
+/**
+ * Grille de la galerie : photos en noir et blanc (docs/DESIGN.md), carrées. `width` et
+ * `height` réservent la place avant le chargement (pas de saut de mise en page) ;
+ * `loading="lazy"` : seules les photos proches de l'écran se téléchargent (4G).
+ */
+function GalleryGrid({ photos }: { photos: GalleryPhoto[] }) {
+  return (
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {photos.map((photo) => (
+        <li key={photo.id}>
+          <img
+            src={photo.url}
+            alt={photo.altText}
+            width={photo.width}
+            height={photo.height}
+            loading="lazy"
+            decoding="async"
+            className="aspect-square h-auto w-full object-cover grayscale"
+          />
+        </li>
+      ))}
+    </ul>
   );
 }

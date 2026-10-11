@@ -263,11 +263,111 @@ export async function mockAdminAuth(
   return calls;
 }
 
+// ---------------------------------------------------------------------------------------
+// Storage simulé (bucket privé « gallery ») : envoi, suppression, URL signées. Aucune vraie
+// photo : les images servies sont un PNG de 1 px généré, pas un fichier du dépôt.
+// ---------------------------------------------------------------------------------------
+
+/** PNG de 1 × 1 px (gris), construit octet par octet : sert de contenu à toute URL signée. */
+const ONE_PIXEL_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNoAAAAggCBd81ytgAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+export type StorageCalls = {
+  /** Fichiers reçus : chemin, en-tête x-upsert et corps multipart brut. */
+  uploads: { path: string; upsert: string | undefined; body: Buffer }[];
+  /** Listes de chemins à effacer, dans l'ordre des requêtes. */
+  removals: string[][];
+  /** Listes de chemins à signer. */
+  signings: string[][];
+  /** Images téléchargées par URL signée. */
+  downloads: string[];
+};
+
+/**
+ * Remplace l'API Storage du bucket « gallery ». `refuse` : chemins dont la signature échoue
+ * (photo masquée) ; `uploadStatus` : statut renvoyé à l'envoi (ex. 403 si refusé).
+ */
+export async function mockStorage(
+  page: Page,
+  { refuse = [], uploadStatus = 200 }: { refuse?: string[]; uploadStatus?: number } = {},
+): Promise<StorageCalls> {
+  const calls: StorageCalls = { uploads: [], removals: [], signings: [], downloads: [] };
+  const json = (route: Route, status: number, body: unknown) =>
+    route.fulfill({
+      status,
+      headers: corsHeaders(route),
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
+
+  await page.route(/\/storage\/v1\/object\//, async (route) => {
+    const request = route.request();
+    const method = request.method();
+    if (method === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(route) });
+    }
+    const path = new URL(request.url()).pathname.replace(/^.*\/storage\/v1\/object\//, "");
+
+    if (method === "POST" && path === "sign/gallery") {
+      const { paths } = request.postDataJSON() as { paths: string[] };
+      calls.signings.push(paths);
+      return json(
+        route,
+        200,
+        paths.map((p) =>
+          refuse.includes(p)
+            ? { path: p, error: "Object not found", signedURL: null }
+            : { path: p, error: null, signedURL: `/object/sign/gallery/${p}?token=jeton-e2e` },
+        ),
+      );
+    }
+    if (method === "GET" && path.startsWith("sign/gallery/")) {
+      calls.downloads.push(path.slice("sign/gallery/".length));
+      return route.fulfill({
+        status: 200,
+        headers: corsHeaders(route),
+        contentType: "image/png",
+        body: ONE_PIXEL_PNG,
+      });
+    }
+    if (method === "POST" && path.startsWith("gallery/")) {
+      const file = path.slice("gallery/".length);
+      calls.uploads.push({
+        path: file,
+        upsert: request.headers()["x-upsert"],
+        body: request.postDataBuffer() ?? Buffer.alloc(0),
+      });
+      return uploadStatus === 200
+        ? json(route, 200, { Id: "e2e", Key: `gallery/${file}` })
+        : json(route, uploadStatus, {
+            statusCode: String(uploadStatus),
+            error: "Unauthorized",
+            message: "new row violates row-level security policy",
+          });
+    }
+    if (method === "DELETE" && path === "gallery") {
+      const { prefixes } = request.postDataJSON() as { prefixes: string[] };
+      calls.removals.push(prefixes);
+      return json(
+        route,
+        200,
+        prefixes.map((name) => ({ name })),
+      );
+    }
+    return route.abort("blockedbyclient");
+  });
+  return calls;
+}
+
 export const test = base.extend<{ supabaseMock: void }>({
   supabaseMock: [
     async ({ context, page }, use) => {
       await context.route(SUPABASE_API, (route) => route.abort("blockedbyclient"));
       await mockServices(page, { body: E2E_SERVICES });
+      // Galerie de l'accueil : vide par défaut (un test la remplace avec mockTable).
+      await mockTable(page, "gallery_items", []);
       await use();
     },
     { auto: true },
