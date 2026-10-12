@@ -135,7 +135,9 @@ describe("CancelPage : lien valide", () => {
     expect(rpc.mock.calls.filter(([name]) => name === "cancel_booking")).toHaveLength(1);
   });
 
-  it("répond aussi « C'est annulé » si la base répond false (rejeu après coupure réseau)", async () => {
+  // Consigne 25 (C-02) : avant, `false` affichait « C'est annulé », même quand Alix avait
+  // annulé entre-temps. On dit désormais ce qui est vrai : le RDV était déjà annulé.
+  it("répond « déjà annulé » si la base répond false (rejeu après coupure, ou annulé entre-temps)", async () => {
     const user = userEvent.setup();
     mockRpc({ get_booking: () => ok([ROW]), cancel_booking: () => ok(false) });
     renderPage();
@@ -143,7 +145,50 @@ describe("CancelPage : lien valide", () => {
     await user.click(await screen.findByRole("button", { name: "Annuler mon rendez-vous" }));
     await user.click(screen.getByRole("button", { name: "Oui, annuler" }));
 
-    expect(await screen.findByRole("heading", { name: "C'est annulé" })).toBeVisible();
+    const title = await screen.findByRole("heading", { name: "Rendez-vous déjà annulé" });
+    expect(title).toHaveFocus();
+    expect(screen.getByText(/Tu n'as rien d'autre à faire/)).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "C'est annulé" })).not.toBeInTheDocument();
+  });
+});
+
+describe("CancelPage : réponses inattendues (C-02)", () => {
+  it.each([
+    ["vide", null],
+    ["de forme inattendue", { unexpected: true }],
+  ])(
+    "annulation, réponse %s : message d'erreur et nouvel essai, jamais « C'est annulé »",
+    async (_label, data) => {
+      const user = userEvent.setup();
+      let attempt = 0;
+      mockRpc({
+        get_booking: () => ok([ROW]),
+        cancel_booking: () => (attempt++ === 0 ? ok(data) : ok(true)),
+      });
+      renderPage();
+
+      await user.click(await screen.findByRole("button", { name: "Annuler mon rendez-vous" }));
+      await user.click(screen.getByRole("button", { name: "Oui, annuler" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        /L'annulation n'a pas pu être envoyée/,
+      );
+      expect(screen.queryByRole("heading", { name: "C'est annulé" })).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Oui, annuler" }));
+      expect(await screen.findByRole("heading", { name: "C'est annulé" })).toBeVisible();
+    },
+  );
+
+  it("chargement, réponse de forme inattendue : erreur et « Réessayer », pas « Lien invalide »", async () => {
+    const user = userEvent.setup();
+    let attempt = 0;
+    mockRpc({ get_booking: () => (attempt++ === 0 ? ok({ unexpected: true }) : ok([ROW])) });
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Impossible de charger/);
+    expect(screen.queryByRole("heading", { name: "Lien invalide" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Réessayer" }));
+    expect(await screen.findByRole("heading", { name: "Lucas, ton rendez-vous" })).toBeVisible();
   });
 });
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { randomUuid } from "@/lib/uuid";
+import { randomUuid, secureRandomUuid } from "@/lib/uuid";
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -31,6 +31,31 @@ describe("randomUuid", () => {
   it("produit des uuid v4 valides et distincts, même sans aucune API crypto", () => {
     vi.stubGlobal("crypto", undefined);
     const ids = new Set(Array.from({ length: 200 }, () => randomUuid()));
+    expect(ids.size).toBe(200);
+    for (const id of ids) expect(id).toMatch(UUID_V4);
+  });
+});
+
+describe("secureRandomUuid (clé d'idempotence, ADR 0009)", () => {
+  it("tire 16 octets de crypto.getRandomValues, même sans randomUUID (http)", () => {
+    const getRandomValues = vi.fn((bytes: Uint8Array) => bytes.fill(0xab));
+    vi.stubGlobal("crypto", { getRandomValues });
+    const id = secureRandomUuid();
+    expect(getRandomValues).toHaveBeenCalledOnce();
+    expect(id).toMatch(UUID_V4);
+    expect(id).toBe("abababab-abab-4bab-abab-abababababab");
+  });
+
+  it("renvoie null sans source aléatoire sûre : jamais de repli sur Math.random", () => {
+    const random = vi.spyOn(Math, "random");
+    vi.stubGlobal("crypto", undefined);
+    expect(secureRandomUuid()).toBeNull();
+    expect(random).not.toHaveBeenCalled();
+    random.mockRestore();
+  });
+
+  it("donne des clés différentes à chaque appel (vraie source du navigateur)", () => {
+    const ids = new Set(Array.from({ length: 200 }, () => secureRandomUuid()));
     expect(ids.size).toBe(200);
     for (const id of ids) expect(id).toMatch(UUID_V4);
   });

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes, useNavigate, type InitialEntry } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as bookingData from "@/features/booking/data";
 import { firstBookableDay } from "@/features/booking/notice";
@@ -330,5 +330,287 @@ describe("BookingPage : envoi de la réservation", () => {
     // Le jeton n'apparaît dans aucun lien, sauf celui de la page d'annulation.
     const hrefs = screen.getAllByRole("link").map((link) => link.getAttribute("href") ?? "");
     expect(hrefs.filter((href) => href.includes(TOKEN))).toEqual([`/annuler#${TOKEN}`]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Consigne 25 : clé d'idempotence (C-05), historique par étape (C-04), confirmation gardée le
+// temps de l'onglet (C-03).
+// ---------------------------------------------------------------------------------------------
+
+/** Boutons Retour / Suivant « du navigateur » : le MemoryRouter n'a pas de barre d'adresse. */
+function HistoryButtons() {
+  const navigate = useNavigate();
+  return (
+    <>
+      <button type="button" onClick={() => void navigate(-1)}>
+        Retour du navigateur
+      </button>
+      <button type="button" onClick={() => void navigate(1)}>
+        Suivant du navigateur
+      </button>
+    </>
+  );
+}
+
+function renderWithHistory(initialEntries: InitialEntry[] = ["/", "/reserver"]) {
+  return render(
+    <MemoryRouter initialEntries={initialEntries} initialIndex={initialEntries.length - 1}>
+      <HistoryButtons />
+      <Routes>
+        <Route path="/" element={<p>Accueil</p>} />
+        <Route path="/reserver" element={<BookingPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+const RECEIPT = {
+  startsAt: SLOT.startsAt,
+  endsAt: SLOT.endsAt,
+  serviceName: "Coupe",
+  locationLabel: "Saint-Christophe-du-Bois",
+  cancelToken: TOKEN,
+};
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+function requestKeys() {
+  return vi.mocked(bookingData.createBooking).mock.calls.map(([, key]) => key);
+}
+
+describe("BookingPage : clé d'idempotence (C-05)", () => {
+  beforeEach(() => sessionStorage.clear());
+
+  it("même clé pour un nouvel essai après une coupure : le rejeu récupère la réservation", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([SLOT]);
+    vi.mocked(bookingData.createBooking)
+      .mockRejectedValueOnce(new bookingData.BookingError("unknown"))
+      .mockResolvedValueOnce(RECEIPT);
+    renderPage();
+    await goToSummary(user);
+
+    await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Vérifie ta connexion/);
+    await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
+    expect(await screen.findByRole("heading", { name: "C'est réservé !" })).toBeVisible();
+
+    const keys = requestKeys();
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toMatch(UUID_SHAPE);
+    expect(keys[1]).toBe(keys[0]);
+  });
+
+  it("nouvelle clé si les coordonnées changent entre deux essais", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([SLOT]);
+    vi.mocked(bookingData.createBooking).mockRejectedValue(new bookingData.BookingError("unknown"));
+    renderPage();
+    await goToSummary(user);
+
+    await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
+    await screen.findByRole("alert");
+    await user.click(screen.getByRole("button", { name: "Retour" }));
+    await user.type(await screen.findByLabelText("Prénom"), "e");
+    await user.click(screen.getByRole("button", { name: "Continuer" }));
+    await user.click(await screen.findByRole("button", { name: "Confirmer la réservation" }));
+    await screen.findByRole("alert");
+
+    const keys = requestKeys();
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).toMatch(UUID_SHAPE);
+    expect(keys[1]).not.toBe(keys[0]);
+  });
+
+  it("retaper les mêmes coordonnées (même mise en forme près) garde la clé : le rejeu reste possible", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([SLOT]);
+    vi.mocked(bookingData.createBooking).mockRejectedValue(new bookingData.BookingError("unknown"));
+    renderPage();
+    await goToSummary(user);
+
+    await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
+    await screen.findByRole("alert");
+    await user.click(screen.getByRole("button", { name: "Retour" }));
+    // Efface puis retape le prénom, ajoute un espace au bord du téléphone : même réservation.
+    const firstName = await screen.findByLabelText("Prénom");
+    await user.clear(firstName);
+    await user.type(firstName, "Zoé");
+    await user.type(screen.getByLabelText("Téléphone"), " ");
+    await user.click(screen.getByRole("button", { name: "Continuer" }));
+    await user.click(await screen.findByRole("button", { name: "Confirmer la réservation" }));
+    await screen.findByRole("alert");
+
+    const keys = requestKeys();
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).toBe(keys[0]);
+  });
+
+  it("request_conflict : message sobre, puis une nouvelle clé au prochain essai", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([SLOT]);
+    vi.mocked(bookingData.createBooking)
+      .mockRejectedValueOnce(new bookingData.BookingError("request_conflict"))
+      .mockResolvedValueOnce(RECEIPT);
+    renderPage();
+    await goToSummary(user);
+
+    await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "La réservation n'a pas pu être confirmée. Réessaie dans un instant.",
+    );
+    await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
+    await screen.findByRole("heading", { name: "C'est réservé !" });
+
+    const keys = requestKeys();
+    expect(keys[1]).toMatch(UUID_SHAPE);
+    expect(keys[1]).not.toBe(keys[0]);
+  });
+});
+
+describe("BookingPage : bouton Retour du navigateur (C-04)", () => {
+  beforeEach(() => sessionStorage.clear());
+
+  it("revient d'une étape à la fois, sans perdre la saisie, puis Suivant y retourne", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([SLOT]);
+    renderWithHistory();
+    await goToSummary(user);
+
+    await user.click(screen.getByRole("button", { name: "Retour du navigateur" }));
+    expect(await screen.findByRole("heading", { name: "Tes coordonnées" })).toHaveFocus();
+    expect(screen.getByLabelText("Prénom")).toHaveValue("Zoé");
+    expect(screen.getByLabelText("Téléphone")).toHaveValue("0639980010");
+
+    await user.click(screen.getByRole("button", { name: "Retour du navigateur" }));
+    expect(await screen.findByRole("radio", { name: /14:00 – 15:00/ })).toBeChecked();
+
+    await user.click(screen.getByRole("button", { name: "Retour du navigateur" }));
+    expect(await screen.findByRole("radio", { name: /Coupe/ })).toBeChecked();
+
+    await user.click(screen.getByRole("button", { name: "Suivant du navigateur" }));
+    await user.click(screen.getByRole("button", { name: "Suivant du navigateur" }));
+    await user.click(screen.getByRole("button", { name: "Suivant du navigateur" }));
+    expect(await screen.findByRole("heading", { name: "Vérifie et confirme" })).toBeVisible();
+
+    // Depuis l'étape 1, le Retour quitte la page, comme attendu.
+    for (let i = 0; i < 4; i++) {
+      await user.click(screen.getByRole("button", { name: "Retour du navigateur" }));
+    }
+    expect(await screen.findByText("Accueil")).toBeVisible();
+  });
+
+  it("revenir à la toute première entrée déplace le focus sur le titre de l'étape 1", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([SLOT]);
+    // /reserver est la PREMIÈRE entrée (clé « default », celle de l'arrivée sur la page) : y
+    // revenir ne doit pas être pris pour « le client n'a jamais navigué ».
+    renderWithHistory(["/reserver"]);
+    await user.click(await screen.findByRole("radio", { name: /Coupe/ }));
+    await user.click(screen.getByRole("button", { name: "Continuer" }));
+    await screen.findByRole("heading", { name: "Quel jour, quelle heure ?" });
+
+    await user.click(screen.getByRole("button", { name: "Retour du navigateur" }));
+    expect(await screen.findByRole("heading", { name: "Quelle prestation ?" })).toHaveFocus();
+  });
+
+  it("le bouton « Retour » du site recule aussi dans l'historique (les deux restent alignés)", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([SLOT]);
+    renderWithHistory();
+    await goToSummary(user);
+
+    await user.click(screen.getByRole("button", { name: "Retour" }));
+    await screen.findByRole("heading", { name: "Tes coordonnées" });
+    // Retour du site puis Suivant du navigateur : on retrouve le récapitulatif.
+    await user.click(screen.getByRole("button", { name: "Suivant du navigateur" }));
+    expect(await screen.findByRole("heading", { name: "Vérifie et confirme" })).toBeVisible();
+  });
+
+  it("après la réservation, le Retour ne rouvre pas le formulaire (pas de double réservation)", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([SLOT]);
+    vi.mocked(bookingData.createBooking).mockResolvedValue(RECEIPT);
+    renderWithHistory();
+    await goToSummary(user);
+    await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
+    await screen.findByRole("heading", { name: "C'est réservé !" });
+
+    await user.click(screen.getByRole("button", { name: "Retour du navigateur" }));
+    expect(await screen.findByRole("heading", { name: "C'est réservé !" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Confirmer la réservation" })).toBeNull();
+  });
+});
+
+describe("BookingPage : rechargement de la confirmation (C-03)", () => {
+  beforeEach(() => sessionStorage.clear());
+  afterEach(() => vi.restoreAllMocks());
+
+  it("garde le récapitulatif dans l'onglet, sans aucune donnée personnelle", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([SLOT]);
+    vi.mocked(bookingData.createBooking).mockResolvedValue(RECEIPT);
+    renderWithHistory();
+    await goToSummary(user);
+    await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
+    await screen.findByRole("heading", { name: "C'est réservé !" });
+
+    const stored = sessionStorage.getItem("cutsbyalix:booking-receipt");
+    expect(JSON.parse(stored!)).toEqual(RECEIPT);
+    expect(stored).not.toMatch(/Zoé|Durand|0639980010|@/);
+  });
+
+  it("rechargement d'une entrée du parcours : la confirmation et son lien reviennent", () => {
+    sessionStorage.setItem("cutsbyalix:booking-receipt", JSON.stringify(RECEIPT));
+    renderWithHistory(["/", { pathname: "/reserver", state: { bookingStep: "done" } }]);
+
+    expect(screen.getByRole("heading", { name: "C'est réservé !" })).toBeVisible();
+    expect(screen.getByText(new RegExp(`/annuler#${TOKEN}`))).toBeVisible();
+    expect(bookingData.getServices).not.toHaveBeenCalled();
+  });
+
+  it("arrivée à neuf sur /reserver : l'ancienne réservation est oubliée, on repart de zéro", async () => {
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    sessionStorage.setItem("cutsbyalix:booking-receipt", JSON.stringify(RECEIPT));
+    renderWithHistory();
+
+    expect(await screen.findByText("Étape 1 sur 4")).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "C'est réservé !" })).toBeNull();
+    expect(sessionStorage.getItem("cutsbyalix:booking-receipt")).toBeNull();
+  });
+
+  it("rechargement en plein formulaire : étape 1, la saisie n'a jamais été stockée", async () => {
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    renderWithHistory(["/", { pathname: "/reserver", state: { bookingStep: "summary" } }]);
+
+    expect(await screen.findByText("Étape 1 sur 4")).toBeVisible();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("sans sessionStorage (navigation privée stricte) : la réservation marche quand même", async () => {
+    for (const method of ["setItem", "getItem", "removeItem"] as const) {
+      vi.spyOn(Storage.prototype, method).mockImplementation(() => {
+        throw new DOMException("Stockage refusé", "SecurityError");
+      });
+    }
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([SLOT]);
+    vi.mocked(bookingData.createBooking).mockResolvedValue(RECEIPT);
+    renderWithHistory();
+    await goToSummary(user);
+    await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
+
+    expect(await screen.findByRole("heading", { name: "C'est réservé !" })).toBeVisible();
+    expect(screen.getByText(new RegExp(`/annuler#${TOKEN}`))).toBeVisible();
   });
 });

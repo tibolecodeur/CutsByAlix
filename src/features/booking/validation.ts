@@ -59,6 +59,21 @@ function nameError(raw: string, missing: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Ce que la base verra des coordonnées, après le même nettoyage qu'elle fait (espaces au bord,
+ * séparateurs du téléphone, casse de l'e-mail). Deux formulaires de même empreinte envoient la
+ * même réservation : la clé d'idempotence (ADR 0009) n'a pas besoin de changer. Le consentement
+ * et le honeypot ne partent pas dans la réservation.
+ */
+export function contactFingerprint(form: ContactForm): string {
+  return JSON.stringify([
+    form.firstName.trim(),
+    form.lastName.trim(),
+    normalizePhone(form.phone),
+    normalizeEmail(form.email),
+  ]);
+}
+
 /** Erreurs à afficher sous chaque champ ; objet vide si tout est bon. */
 export function validateContact(form: ContactForm): ContactErrors {
   const errors: ContactErrors = {};

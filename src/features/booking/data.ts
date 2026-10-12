@@ -1,4 +1,11 @@
 import type { DayKey } from "@/lib/dates";
+import {
+  availableSlotRowsSchema,
+  bookingDetailsRowsSchema,
+  bookingReceiptRowsSchema,
+  cancelResultSchema,
+  serviceRowsSchema,
+} from "@/lib/schemas";
 import { getSupabase } from "@/lib/supabase";
 
 /**
@@ -9,6 +16,11 @@ import { getSupabase } from "@/lib/supabase";
  * Tout est branché sur Supabase : `getServices` (table), `getAvailableSlots`, `createBooking`,
  * `getBooking` et `cancelBooking` (RPC). Le `cancel_token` ne doit jamais être écrit dans la
  * console, un message d'erreur ni une URL de requête : il ne part que dans le corps des `POST`.
+ *
+ * Erreurs (C-01, C-02 de l'audit) : TOUT échec devient une `BookingError` avec un code interne,
+ * jamais le message d'origine (il peut contenir du SQL, des noms de colonnes ou le jeton). Toute
+ * réponse est validée (schémas Zod de `lib/schemas.ts`) : vide, mal formée ou inattendue =
+ * `invalid_response`, jamais un faux succès.
  */
 
 /** Table `services`. */
@@ -72,7 +84,10 @@ export type BookingDetails = {
   cancelledBy: "client" | "barber" | null;
 };
 
-/** Clés d'erreur stables renvoyées par les RPC (exceptions P0001), plus « unknown » (réseau…). */
+/**
+ * Clés d'erreur stables renvoyées par les RPC (exceptions P0001), plus deux codes du front :
+ * « unknown » (réseau, panne, config) et « invalid_response » (réponse vide ou inattendue).
+ */
 export type BookingErrorCode =
   | "invalid_input"
   | "slot_unavailable"
@@ -80,6 +95,8 @@ export type BookingErrorCode =
   | "too_far"
   | "limit_reached"
   | "too_late"
+  | "request_conflict"
+  | "invalid_response"
   | "unknown";
 
 const RPC_ERROR_CODES: readonly BookingErrorCode[] = [
@@ -89,6 +106,7 @@ const RPC_ERROR_CODES: readonly BookingErrorCode[] = [
   "too_far",
   "limit_reached",
   "too_late",
+  "request_conflict",
 ];
 
 export class BookingError extends Error {
@@ -132,15 +150,22 @@ const REQUEST_TIMEOUT_MS = 10_000;
  * Rejette en cas d'erreur réseau, de base ou de config manquante.
  */
 export async function getServices(): Promise<Service[]> {
-  const { data, error } = await getSupabase()
-    .from("services")
-    .select("id, name, duration_min, price_label")
-    .order("sort_order")
-    .order("name")
-    .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
-  if (error) throw new Error(`Lecture des prestations impossible : ${error.message}`);
+  let response;
+  try {
+    response = await getSupabase()
+      .from("services")
+      .select("id, name, duration_min, price_label")
+      .order("sort_order")
+      .order("name")
+      .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+  } catch {
+    throw new BookingError("unknown");
+  }
+  if (response.error) throw new BookingError("unknown");
+  const parsed = serviceRowsSchema.safeParse(response.data);
+  if (!parsed.success) throw new BookingError("invalid_response");
 
-  const services = data.map((s) => ({
+  const services = parsed.data.map((s) => ({
     id: s.id,
     name: s.name,
     durationMin: s.duration_min,
@@ -155,12 +180,19 @@ export async function getServices(): Promise<Service[]> {
  * créneaux pris retirés). Rejette en cas d'erreur réseau, de base ou de config manquante.
  */
 export async function getAvailableSlots(serviceId: string, day: DayKey): Promise<AvailableSlot[]> {
-  const { data, error } = await getSupabase()
-    .rpc("get_available_slots", { p_service_id: serviceId, p_day: day })
-    .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
-  if (error) throw new Error(`Lecture des créneaux impossible : ${error.message}`);
+  let response;
+  try {
+    response = await getSupabase()
+      .rpc("get_available_slots", { p_service_id: serviceId, p_day: day })
+      .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+  } catch {
+    throw new BookingError("unknown");
+  }
+  if (response.error) throw new BookingError("unknown");
+  const parsed = availableSlotRowsSchema.safeParse(response.data);
+  if (!parsed.success) throw new BookingError("invalid_response");
 
-  return data.map((slot) => ({
+  return parsed.data.map((slot) => ({
     startsAt: slot.starts_at,
     endsAt: slot.ends_at,
     locationId: slot.location_id,
@@ -172,11 +204,19 @@ export async function getAvailableSlots(serviceId: string, day: DayKey): Promise
  * RPC `create_booking` : crée le RDV et renvoie le récap avec le lien d'annulation.
  * Toutes les règles sont vérifiées par la base ; une erreur devient une `BookingError`.
  *
+ * `requestId` : clé d'idempotence (ADR 0009), la MÊME pour tous les essais d'une même
+ * réservation. Si la base a déjà enregistré cette réservation mais que la réponse s'est perdue,
+ * le nouvel essai renvoie le même récapitulatif (même jeton) au lieu de « créneau pris ».
+ * `null` (pas de source aléatoire sûre) : comportement d'avant, sans rejeu possible.
+ *
  * Volontairement SANS délai d'abandon : couper la requête côté navigateur n'annule pas
  * l'insertion côté base. Le RDV serait créé, mais le client aurait perdu son seul lien
  * d'annulation. On laisse le navigateur aller au bout (ou échouer de lui-même).
  */
-export async function createBooking(input: NewBooking): Promise<BookingReceipt> {
+export async function createBooking(
+  input: NewBooking,
+  requestId: string | null,
+): Promise<BookingReceipt> {
   let response;
   try {
     response = await getSupabase().rpc("create_booking", {
@@ -188,16 +228,19 @@ export async function createBooking(input: NewBooking): Promise<BookingReceipt> 
       p_phone: input.phone?.trim() || null,
       p_email: input.email?.trim() || null,
       p_website: input.website || null,
+      p_request_id: requestId,
     });
   } catch {
     // Config manquante (SupabaseConfigError) ou erreur inattendue du client.
     throw new BookingError("unknown");
   }
 
-  const { data, error } = response;
-  if (error) throw toBookingError(error);
-  const row = data[0];
-  if (!row) throw new BookingError("unknown");
+  if (response.error) throw toBookingError(response.error);
+  // Réponse vide ou inattendue : la réservation a PEUT-ÊTRE été créée. Le nouvel essai, avec
+  // la même clé, renverra son récapitulatif (ADR 0009).
+  const parsed = bookingReceiptRowsSchema.safeParse(response.data);
+  if (!parsed.success) throw new BookingError("invalid_response");
+  const row = parsed.data[0]!;
   return {
     startsAt: row.starts_at,
     endsAt: row.ends_at,
@@ -216,13 +259,21 @@ export async function getBooking(token: string): Promise<BookingDetails | null> 
   // Mal formé : inutile d'interroger la base (qui répondrait par une erreur de syntaxe).
   if (!isUuid(token)) return null;
 
-  const { data, error } = await getSupabase()
-    .rpc("get_booking", { p_token: token })
-    .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+  let response;
+  try {
+    response = await getSupabase()
+      .rpc("get_booking", { p_token: token })
+      .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+  } catch {
+    throw new BookingError("unknown");
+  }
   // Message d'origine volontairement NON recopié : il pourrait contenir le jeton.
-  if (error) throw new Error("Lecture du rendez-vous impossible");
+  if (response.error) throw new BookingError("unknown");
+  // Forme inattendue : erreur avec « Réessayer », PAS « Lien invalide » (le lien est peut-être bon).
+  const parsed = bookingDetailsRowsSchema.safeParse(response.data);
+  if (!parsed.success) throw new BookingError("invalid_response");
 
-  const row = data[0];
+  const row = parsed.data[0];
   if (!row) return null;
   return {
     status: row.status,
@@ -239,9 +290,11 @@ export async function getBooking(token: string): Promise<BookingDetails | null> 
 /**
  * RPC `cancel_booking(p_token)` : `true` si annulé ; `false` si lien inconnu, RDV déjà annulé
  * ou terminé (même résultat : rien ne fuit) ; erreur `too_late` à moins de 24 h du RDV.
+ * Toute autre réponse (vide, null, objet) : `invalid_response`, jamais « annulé ».
  *
  * Volontairement SANS délai d'abandon (couper la requête n'annule pas l'écriture). Rejouer
- * après une coupure réseau est sans danger : la seconde tentative renvoie `false`.
+ * après une coupure réseau est sans danger : la seconde tentative renvoie `false`, que
+ * l'écran affiche comme « déjà annulé ».
  */
 export async function cancelBooking(token: string): Promise<boolean> {
   if (!isUuid(token)) return false;
@@ -254,5 +307,7 @@ export async function cancelBooking(token: string): Promise<boolean> {
     throw new BookingError("unknown");
   }
   if (response.error) throw toBookingError(response.error);
-  return response.data;
+  const parsed = cancelResultSchema.safeParse(response.data);
+  if (!parsed.success) throw new BookingError("invalid_response");
+  return parsed.data;
 }

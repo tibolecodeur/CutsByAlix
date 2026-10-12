@@ -242,18 +242,9 @@ const SCREENS: Screen[] = [
   },
 ];
 
-/**
- * Cas où le comportement observé est un DÉFAUT relevé par l'audit : le test est conservé mais
- * sauté, avec la référence du constat (jamais supprimé). Clé : « écran|panne ».
- */
-const KNOWN_DEFECTS: Record<string, string> = {
-  "annulation : chargement|wrong-shape":
-    "Constat C-02 (docs/AUDIT-2026-10.md) : réponse de forme inattendue affichée comme « Lien invalide »",
-  "annulation : envoi|empty":
-    "Constat C-02 (docs/AUDIT-2026-10.md) : réponse vide affichée comme « C'est annulé »",
-  "annulation : envoi|wrong-shape":
-    "Constat C-02 (docs/AUDIT-2026-10.md) : réponse de forme inattendue affichée comme « C'est annulé »",
-};
+// Les trois cas sautés par l'audit (C-02 : « annulation : chargement|wrong-shape »,
+// « annulation : envoi|empty » et « annulation : envoi|wrong-shape ») sont corrigés depuis la
+// consigne 25 : réponses validées par Zod. Tous les écrans × toutes les pannes tournent.
 
 for (const screen of SCREENS) {
   test.describe(`robustesse : ${screen.name}`, () => {
@@ -261,8 +252,6 @@ for (const screen of SCREENS) {
       test(`${mode} : message clair, rien de technique, nouvel essai possible`, async ({
         page,
       }) => {
-        const defect = KNOWN_DEFECTS[`${screen.name}|${mode}`];
-        test.skip(!!defect, defect);
         test.setTimeout(mode === "timeout" ? 90_000 : 30_000);
 
         const fault: Fault = { mode: screen.trigger ? null : mode, hits: 0 };
@@ -288,7 +277,7 @@ for (const screen of SCREENS) {
 /** Parcours /reserver jusqu'au récapitulatif ; renvoie les appels à create_booking. */
 async function openSummary(
   page: Page,
-  respond: (call: number) => "ok" | "network-error" | "taken",
+  respond: (call: number) => "ok" | "network-error" | "taken" | "replay",
 ) {
   const calls: Record<string, unknown>[] = [];
   await mockRpc(page, "get_available_slots", () => ({ body: [slotRow()] }));
@@ -296,6 +285,16 @@ async function openSummary(
     calls.push(args);
     const outcome = respond(calls.length);
     if (outcome === "network-error") return "network-error";
+    // Contrat de la base (ADR 0009) : même clé que le 1er envoi = même récapitulatif (même
+    // jeton) ; autre clé = le créneau est pris (par la réservation enregistrée au 1er envoi).
+    if (outcome === "replay") {
+      return args.p_request_id === calls[0]!.p_request_id
+        ? { body: [{ ...slotRow(), service_name: "Coupe", cancel_token: TOKEN }] }
+        : {
+            status: 400,
+            body: { code: "P0001", message: "slot_unavailable", details: null, hint: null },
+          };
+    }
     if (outcome === "taken") {
       return {
         status: 400,
@@ -371,10 +370,6 @@ test.describe("robustesse : actions", () => {
   });
 
   test("rechargement de la confirmation : le lien d'annulation reste affiché", async ({ page }) => {
-    test.skip(
-      true,
-      "Constat C-03 (docs/AUDIT-2026-10.md) : après un rechargement, la confirmation et le lien d'annulation sont perdus",
-    );
     await openSummary(page, () => "ok");
     await page.getByRole("button", { name: "Confirmer la réservation" }).click();
     await expect(page.getByRole("heading", { level: 2, name: "C'est réservé !" })).toBeVisible();
@@ -385,10 +380,6 @@ test.describe("robustesse : actions", () => {
   test("bouton Retour du navigateur pendant la réservation : revient à l'étape précédente", async ({
     page,
   }) => {
-    test.skip(
-      true,
-      "Constat C-04 (docs/AUDIT-2026-10.md) : le Retour du navigateur (geste Android/iOS) quitte /reserver et perd la saisie",
-    );
     await openSummary(page, () => "ok");
     await page.goBack();
     await expect(page).toHaveURL(/\/reserver$/);
@@ -410,15 +401,103 @@ test.describe("robustesse : actions", () => {
   test("coupure APRÈS enregistrement (réponse perdue) : le client n'est pas induit en erreur", async ({
     page,
   }) => {
-    test.skip(
-      true,
-      "Constat C-05 (docs/AUDIT-2026-10.md) : la réservation est créée mais la réponse se perd ; le nouvel essai dit « créneau plus disponible » et le client n'a jamais son lien",
-    );
-    // 1er appel : la base enregistre, la réponse se perd. 2e : le créneau est (par lui) pris.
-    await openSummary(page, (n) => (n === 1 ? "network-error" : "taken"));
+    // 1er appel : la base enregistre, la réponse se perd. 2e : nouvel essai.
+    // Consigne 25 : la fausse API suit désormais le contrat réel de la base (ADR 0009). Avant,
+    // elle répondait toujours « slot_unavailable » au 2e envoi, ce que la base ne fait plus
+    // quand la clé est la même. Ce qui est vérifié est PLUS strict qu'avant (voir la PR).
+    const calls = await openSummary(page, (n) => (n === 1 ? "network-error" : "replay"));
     await page.getByRole("button", { name: "Confirmer la réservation" }).click();
     await expect(page.getByRole("alert")).toBeVisible();
     await page.getByRole("button", { name: "Confirmer la réservation" }).click();
-    await expect(page.getByRole("alert")).not.toContainText("n'est plus disponible");
+    // Assertion d'origine RENFORCÉE : avant, seule l'alerte était lue ; le message « créneau
+    // plus disponible » s'affiche aussi à l'étape du créneau. On le cherche dans toute la page.
+    await expect(page.getByText(/n'est plus disponible/)).toHaveCount(0);
+    // Et le client a bien sa confirmation et son lien d'annulation.
+    await expect(page.getByRole("heading", { level: 2, name: "C'est réservé !" })).toBeVisible();
+    await expect(page.locator("#cancel-link-url")).toHaveText(new RegExp(`/annuler#${TOKEN}$`));
+    // Les deux envois portent la MÊME clé, au format uuid v4.
+    expect(calls).toHaveLength(2);
+    expect(calls[0]!.p_request_id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(calls[1]!.p_request_id).toBe(calls[0]!.p_request_id);
+  });
+});
+
+// ---------------------------------------------------------------------------------------
+// Consigne 25 : historique par étape (C-04), confirmation gardée le temps de l'onglet (C-03),
+// jeton jamais dans une URL, 404 non indexée (K-05).
+// ---------------------------------------------------------------------------------------
+test.describe("robustesse : historique et confirmation (consigne 25)", () => {
+  test("Retour et Suivant du navigateur à chaque étape, saisie conservée, URL inchangée", async ({
+    page,
+  }) => {
+    await openSummary(page, () => "ok");
+    const heading = (name: string) => page.getByRole("heading", { level: 2, name });
+
+    await page.goBack();
+    await expect(heading("Tes coordonnées")).toBeVisible();
+    await expect(page.getByLabel("Prénom")).toHaveValue("Zoé");
+    await expect(page.getByLabel("Email")).toHaveValue("zoe@example.test");
+    await page.goBack();
+    await expect(
+      page
+        .getByRole("group", { name: /^Créneaux libres/ })
+        .getByRole("radio")
+        .first(),
+    ).toBeChecked();
+    await page.goBack();
+    await expect(page.getByRole("radio", { name: /^Coupe/ }).first()).toBeChecked();
+
+    await page.goForward();
+    await page.goForward();
+    await page.goForward();
+    await expect(heading("Vérifie et confirme")).toBeVisible();
+    // L'étape vit dans l'historique, pas dans l'URL : rien à partager par erreur.
+    expect(new URL(page.url()).pathname + new URL(page.url()).search).toBe("/reserver");
+
+    // Depuis l'étape 1, le Retour quitte la page (vers l'accueil ouvert par openSummary).
+    for (let i = 0; i < 4; i++) await page.goBack();
+    await expect(page).toHaveURL(/\/$/);
+  });
+
+  test("rechargement de la confirmation, puis nouvelle visite de /reserver : on repart de zéro", async ({
+    page,
+  }) => {
+    const urls: string[] = [];
+    const consoleMessages: string[] = [];
+    page.on("request", (r) => urls.push(r.url().split("#")[0]!));
+    page.on("console", (m) => consoleMessages.push(m.text()));
+
+    await openSummary(page, () => "ok");
+    await page.getByRole("button", { name: "Confirmer la réservation" }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "C'est réservé !" })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 2, name: "C'est réservé !" })).toBeVisible();
+    await expect(page.locator("#cancel-link-url")).toHaveText(new RegExp(`/annuler#${TOKEN}$`));
+    // Le jeton n'est jamais dans l'URL de la page (seulement dans le lien d'annulation affiché).
+    expect(page.url()).not.toContain(TOKEN);
+
+    // Stockage de l'onglet : le récapitulatif, sans aucune donnée personnelle.
+    const stored = await page.evaluate(() => JSON.stringify({ ...sessionStorage }));
+    expect(stored).not.toMatch(/Zoé|Durand|zoe@example/);
+
+    // Nouvelle visite depuis une autre page : nouvelle réservation, l'ancienne est oubliée.
+    // (Un goto vers la MÊME URL est un rechargement pour Chromium, qui garde history.state :
+    // la confirmation revient, comme pour F5. On passe donc par l'accueil.)
+    await page.goto("/");
+    await page.goto("/reserver");
+    await expect(page.getByText("Étape 1 sur 4")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "C'est réservé !" })).toHaveCount(0);
+    expect(await page.evaluate(() => sessionStorage.length)).toBe(0);
+
+    expect(urls.filter((url) => url.includes(TOKEN))).toEqual([]);
+    expect(consoleMessages.filter((m) => m.includes(TOKEN))).toEqual([]);
+  });
+
+  test("page inconnue : servie par le repli SPA, avec noindex (K-05)", async ({ page }) => {
+    await page.goto("/cette-page-n-existe-pas");
+    await expect(page.getByRole("heading", { level: 1, name: "Page introuvable" })).toBeVisible();
+    await expect(page.locator('head meta[name="robots"]')).toHaveAttribute("content", "noindex");
   });
 });

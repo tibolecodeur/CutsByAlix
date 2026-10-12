@@ -122,7 +122,7 @@ select throws_ok($$select * from public.get_booking('40000000-0000-4000-8000-000
 select throws_ok($$select public.cancel_booking('40000000-0000-4000-8000-000000000001')$$,
   '42501', null, 'non-admin connecté : cancel_booking refusée');
 select ok(not has_function_privilege('authenticated',
-  'public.create_booking(uuid, timestamptz, uuid, text, text, text, text, text)', 'execute'),
+  'public.create_booking(uuid, timestamptz, uuid, text, text, text, text, text, uuid)', 'execute'),
   'non-admin connecté : create_booking refusée');
 reset role;
 
