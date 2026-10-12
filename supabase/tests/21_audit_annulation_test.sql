@@ -23,8 +23,8 @@ truncate public.bookings, public.availabilities, public.locations, public.servic
 
 insert into public.services (id, name, duration_min, active) values
   ('1a000000-0000-4000-8000-000000000001', 'Coupe', 60, true);
-insert into public.locations (id, public_label, private_address, active) values
-  ('2a000000-0000-4000-8000-000000000001', 'Lieu un', 'Adresse factice', true);
+insert into public.locations (id, public_label, active) values
+  ('2a000000-0000-4000-8000-000000000001', 'Lieu un', true);
 insert into public.availabilities (location_id, starts_at, ends_at) values
   ('2a000000-0000-4000-8000-000000000001', '2030-05-30 10:00 Europe/Paris', '2030-05-30 12:00 Europe/Paris'),
   ('2a000000-0000-4000-8000-000000000001', '2030-06-01 14:00 Europe/Paris', '2030-06-01 16:00 Europe/Paris'),

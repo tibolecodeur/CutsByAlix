@@ -60,6 +60,11 @@ porteur d'un `cancel_token` via `create_booking` ou `get_booking`. `get_booking`
 plus une fois le RDV annulé ou terminé. Aucune vraie adresse ne figure dans le dépôt : le seed
 utilise des adresses factices, et les vraies se saisissent directement sur la base distante.
 
+> _Correction du 2026-10-12 (consigne 24, ADR 0008) : plus aucune adresse n'est stockée. La
+> colonne `private_address` est supprimée ; le client ne voit que la localité et demande
+> l'adresse à Alix sur Instagram. Ce paragraphe et le risque n° 1 ci-dessous, pour la partie
+> « règle de révélation », ne s'appliquent plus._
+
 **Règles centralisées.** La fonction `private.settings()` est l'unique endroit qui contient :
 pas de 60 min, réservation au moins 2 h à l'avance et au plus 4 semaines, annulation jusqu'à
 2 h avant, 2 RDV futurs maximum, conservation 6 mois. Changer une valeur demande une seule
@@ -105,7 +110,8 @@ pour qu'il ne dépende ni du changement d'heure ni du fuseau de la session.
    **aucune RPC ne renvoie plus l'adresse privée** (`create_booking`, `get_booking`) : réserver
    puis annuler ne la révèle plus. La règle de révélation reste à décider (la révéler tard, ou
    après validation par le barber) : **bloquant pour la mise en ligne**, case dédiée en phase 8
-   de `docs/PLAN.md`.
+   de `docs/PLAN.md`. _Résolu le 2026-10-12 par décision (ADR 0008) : aucune adresse
+   stockée._
 2. **La purge RGPD n'est pas codée.** Les données clients doivent être supprimées 6 mois après le
    RDV, et `private.settings().data_retention` documente cette durée. **La purge DOIT être codée
    avant la mise en ligne** (case dédiée en phase 8 de `docs/PLAN.md`).

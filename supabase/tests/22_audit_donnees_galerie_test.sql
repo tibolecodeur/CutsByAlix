@@ -26,8 +26,8 @@ insert into auth.users (id, email) values ('32000000-0000-4000-8000-000000000001
 insert into public.admins (user_id) values ('32000000-0000-4000-8000-000000000001');
 insert into public.services (id, name, duration_min, active) values
   ('1b000000-0000-4000-8000-000000000001', 'Coupe', 60, true);
-insert into public.locations (id, public_label, private_address, active) values
-  ('2b000000-0000-4000-8000-000000000001', 'Lieu un', 'Adresse factice', true);
+insert into public.locations (id, public_label, active) values
+  ('2b000000-0000-4000-8000-000000000001', 'Lieu un', true);
 -- Une longue dispo : un créneau libre par essai accepté (grille de 70 min).
 insert into public.availabilities (location_id, starts_at, ends_at) values
   ('2b000000-0000-4000-8000-000000000001', '2030-06-12 00:00 Europe/Paris', '2030-06-12 23:59 Europe/Paris');

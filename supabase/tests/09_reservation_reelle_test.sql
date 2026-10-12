@@ -27,10 +27,10 @@ truncate public.bookings, public.availabilities, public.locations, public.servic
 
 insert into public.services (id, name, duration_min, active) values
   ('10000000-0000-4000-8000-000000000001', 'Coupe', 60, true);
-insert into public.locations (id, public_label, private_address, active) values
-  ('20000000-0000-4000-8000-000000000001', 'Ville un', 'Adresse secrète un', true),
-  ('20000000-0000-4000-8000-000000000002', 'Ville deux', 'Adresse secrète deux', true),
-  ('20000000-0000-4000-8000-000000000003', 'Ville fermée', 'Adresse secrète trois', false);
+insert into public.locations (id, public_label, active) values
+  ('20000000-0000-4000-8000-000000000001', 'Ville un', true),
+  ('20000000-0000-4000-8000-000000000002', 'Ville deux', true),
+  ('20000000-0000-4000-8000-000000000003', 'Ville fermée', false);
 
 insert into public.availabilities (location_id, starts_at, ends_at) values
   -- Mer. 21/10 10 h – 14 h, ville un : grille 10:00, 11:10, 12:20 (13:30 déborderait).

@@ -10,9 +10,9 @@ truncate public.bookings, public.availabilities, public.locations, public.servic
 
 insert into public.services (id, name, duration_min) values
   ('10000000-0000-4000-8000-000000000001', 'Coupe', 60);
-insert into public.locations (id, public_label, private_address) values
-  ('20000000-0000-4000-8000-000000000001', 'Lieu un', 'Adresse un'),
-  ('20000000-0000-4000-8000-000000000002', 'Lieu deux', 'Adresse deux');
+insert into public.locations (id, public_label) values
+  ('20000000-0000-4000-8000-000000000001', 'Lieu un'),
+  ('20000000-0000-4000-8000-000000000002', 'Lieu deux');
 
 -- Dispo A1 : J+2, 10 h – 14 h, lieu un.
 insert into public.availabilities (id, location_id, starts_at, ends_at) values (

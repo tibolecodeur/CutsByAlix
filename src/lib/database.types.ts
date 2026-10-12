@@ -61,7 +61,7 @@ type GalleryItemsTable = {
 
 /**
  * RPC `get_available_slots` (migration …_reservation_reelle.sql) : créneaux libres d'un jour
- * (heure de Paris). Jamais d'adresse privée.
+ * (heure de Paris). Aucune adresse n'est stockée (ADR 0008).
  */
 type GetAvailableSlotsFunction = {
   Args: {
@@ -81,7 +81,7 @@ type GetAvailableSlotsFunction = {
 /**
  * RPC `create_booking` (migration …_reservation_reelle.sql). Erreurs : exceptions P0001 dont
  * le message est une clé stable (invalid_input, slot_unavailable, too_soon, too_far,
- * limit_reached). Le récap ne contient PAS l'adresse privée.
+ * limit_reached). Le récap ne contient que la localité du lieu (ADR 0008).
  */
 type CreateBookingFunction = {
   Args: {
@@ -111,7 +111,7 @@ export type CancelledBy = "client" | "barber";
 /**
  * RPC `get_booking` (migration …_admin_reservations.sql) : récap pour le porteur du lien.
  * Aucune ligne si le jeton est inconnu, nul ou si le RDV est terminé (lien « expiré »). Ni
- * adresse privée, ni téléphone, ni email, ni nom de famille.
+ * téléphone, ni email, ni nom de famille.
  */
 type GetBookingFunction = {
   Args: { p_token: string };
@@ -151,8 +151,8 @@ type AdminsTable = {
 
 /**
  * Table `public.locations`, vue par l'ADMIN (migration …_admin_disponibilites.sql) : il n'a le
- * droit de lire que ces trois colonnes. `private_address` n'y figure volontairement pas (le
- * demander échouerait en 42501). Aucune écriture via l'API.
+ * droit de lire que ces trois colonnes (`select *` échouerait en 42501). Aucune adresse n'est
+ * stockée (ADR 0008). Aucune écriture via l'API.
  */
 type LocationsTable = {
   Row: { id: string; public_label: string; active: boolean };
@@ -165,7 +165,7 @@ type LocationsTable = {
 type AdminAvailabilityRow = {
   id: string;
   location_id: string;
-  /** Libellé public du lieu (la ville), jamais l'adresse. */
+  /** Libellé public du lieu (la localité). */
   location_label: string;
   starts_at: string;
   ends_at: string;
@@ -204,7 +204,7 @@ type AdminBookingListRow = {
   starts_at: string;
   ends_at: string;
   service_name: string;
-  /** Libellé public du lieu (la ville), jamais l'adresse. */
+  /** Libellé public du lieu (la localité). */
   location_label: string;
   first_name: string;
   last_name: string;

@@ -17,7 +17,7 @@ const ROW = {
   starts_at: "2030-03-12T13:00:00+00:00", // mardi 12 mars 2030, 14 h à Paris
   ends_at: "2030-03-12T14:00:00+00:00",
   service_name: "Coupe + barbe",
-  location_label: "Angers",
+  location_label: "Les Ponts-de-Cé",
   first_name: "Lucas",
   can_cancel: true,
   cancelled_by: null,
@@ -68,7 +68,7 @@ test("lien valide : récapitulatif sans adresse, puis annulation en deux temps",
   await expect(page.getByText("Coupe + barbe")).toBeVisible();
   await expect(page.getByText("mardi 12 mars")).toBeVisible();
   await expect(page.getByText("14:00 – 15:00")).toBeVisible();
-  await expect(page.getByText("Angers")).toBeVisible();
+  await expect(page.getByText("Les Ponts-de-Cé")).toBeVisible();
   await expect(page.locator("dt", { hasText: /^Adresse$/ })).toHaveCount(0);
   await expectNoAxeViolation(page);
 
@@ -95,10 +95,45 @@ test("trop tard : moins de 24 h avant le RDV", async ({ page }) => {
     page.getByRole("heading", { level: 2, name: "Trop tard pour annuler en ligne" }),
   ).toBeVisible();
   await expect(page.getByText(/jusqu'à 24 h avant/)).toBeVisible();
-  await expect(page.getByText(/contacte Alix directement/)).toBeVisible();
+  await expect(page.getByText(/contacte Alix directement sur Instagram/)).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Annuler mon rendez-vous" })).toHaveCount(0);
   await expectNoAxeViolation(page);
+});
+
+test("trop tard : le lien Instagram ouvre un nouvel onglet sans jeton, Referer ni opener", async ({
+  page,
+  context,
+}) => {
+  await mockBooking(page, { booking: { body: [{ ...ROW, can_cancel: false }] } });
+  // Instagram simulé : aucune requête ne part vers le vrai site.
+  const versInstagram: { url: string; referer: string }[] = [];
+  await context.route("https://www.instagram.com/**", (route) => {
+    versInstagram.push({
+      url: route.request().url(),
+      referer: route.request().headers()["referer"] ?? "",
+    });
+    return route.fulfill({ contentType: "text/html", body: "<title>Instagram simulé</title>" });
+  });
+  await page.goto(`/annuler#${TOKEN}`);
+
+  const instagram = page.getByRole("link", { name: /@CutsByAlix sur Instagram/ });
+  await expect(instagram).toHaveAttribute("href", "https://www.instagram.com/cutsbyalix/");
+  await expect(instagram).toHaveAttribute("target", "_blank");
+  expect((await instagram.getAttribute("rel"))?.split(" ")).toEqual(
+    expect.arrayContaining(["noopener", "noreferrer"]),
+  );
+
+  const [onglet] = await Promise.all([context.waitForEvent("page"), instagram.click()]);
+  await onglet.waitForLoadState();
+  expect(onglet.url()).toBe("https://www.instagram.com/cutsbyalix/");
+  // noopener : l'onglet ouvert ne peut pas piloter le nôtre.
+  expect(await onglet.evaluate(() => window.opener)).toBeNull();
+  // noreferrer : rien de notre URL n'est transmis, et donc jamais le jeton.
+  expect(versInstagram).toEqual([{ url: "https://www.instagram.com/cutsbyalix/", referer: "" }]);
+  // Notre onglet reste sur la page d'annulation.
+  await expect(page).toHaveURL(new RegExp(`/annuler#${TOKEN}$`));
+  await onglet.close();
 });
 
 test("trop tard au moment d'annuler : la base refuse (too_late)", async ({ page }) => {
@@ -110,7 +145,8 @@ test("trop tard au moment d'annuler : la base refuse (too_late)", async ({ page 
   await expect(
     page.getByRole("heading", { level: 2, name: "Trop tard pour annuler en ligne" }),
   ).toBeFocused();
-  await expect(page.getByText(/contacte Alix directement/)).toBeVisible();
+  await expect(page.getByText(/contacte Alix directement sur Instagram/)).toBeVisible();
+  await expect(page.getByRole("link", { name: /@CutsByAlix sur Instagram/ })).toBeVisible();
 });
 
 test("RDV déjà annulé", async ({ page }) => {

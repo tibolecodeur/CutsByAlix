@@ -19,7 +19,7 @@ import {
 
 const LIGNE = {
   service_name: "Coupe",
-  location_label: "Angers",
+  location_label: "Les Ponts-de-Cé",
   status: "confirmed",
   cancelled_by: null,
 };

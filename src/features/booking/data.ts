@@ -23,7 +23,7 @@ export type Service = {
 /**
  * Ligne renvoyée par la RPC `get_available_slots` : chaque créneau porte son lieu, fixé par le
  * barber dans sa disponibilité. Le client choisit un créneau, jamais un lieu.
- * Libellé public uniquement : l'adresse privée n'est jamais renvoyée ici.
+ * Libellé public (la localité) : aucune adresse n'est stockée (ADR 0008).
  */
 export type AvailableSlot = {
   startsAt: string;
@@ -47,8 +47,8 @@ export type NewBooking = {
 };
 
 /**
- * Ligne renvoyée par la RPC `create_booking` : le récapitulatif. Pas d'adresse privée : la
- * règle de révélation reste à décider (docs/PLAN.md).
+ * Ligne renvoyée par la RPC `create_booking` : le récapitulatif. Pas d'adresse : le site n'en
+ * stocke aucune (ADR 0008), le client la demande à Alix sur Instagram.
  */
 export type BookingReceipt = {
   startsAt: string;
@@ -59,7 +59,7 @@ export type BookingReceipt = {
   cancelToken: string;
 };
 
-/** Ligne renvoyée par la RPC `get_booking` (ni adresse, ni téléphone, ni email). */
+/** Ligne renvoyée par la RPC `get_booking` (ni téléphone, ni email). */
 export type BookingDetails = {
   status: "confirmed" | "cancelled";
   startsAt: string;

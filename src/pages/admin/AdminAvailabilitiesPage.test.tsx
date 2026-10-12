@@ -20,15 +20,15 @@ vi.mock("@/features/admin/data", async (importOriginal) => ({
 
 const NOW = new Date("2030-03-04T08:00:00Z");
 const RULES = { slotStepMin: 70, minNoticeMin: 2880, maxAdvanceDays: 28 };
-const ANGERS = { id: "20000000-0000-4000-8000-000000000001", publicLabel: "Angers" };
+const PONTS_DE_CE = { id: "20000000-0000-4000-8000-000000000001", publicLabel: "Les Ponts-de-Cé" };
 const OTHER = {
   id: "20000000-0000-4000-8000-000000000002",
   publicLabel: "Saint-Christophe-du-Bois",
 };
 const AVAILABILITY = {
   id: "50000000-0000-4000-8000-000000000001",
-  locationId: ANGERS.id,
-  locationLabel: "Angers",
+  locationId: PONTS_DE_CE.id,
+  locationLabel: "Les Ponts-de-Cé",
   startsAt: "2030-03-06T09:00:00Z", // mercredi 6 mars, 10 h à Paris
   endsAt: "2030-03-06T12:30:00Z",
   slotCount: 3,
@@ -39,7 +39,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
   vi.mocked(data.getBookingRules).mockResolvedValue(RULES);
-  vi.mocked(data.getLocations).mockResolvedValue([ANGERS, OTHER]);
+  vi.mocked(data.getLocations).mockResolvedValue([PONTS_DE_CE, OTHER]);
   vi.mocked(data.getAvailabilities).mockResolvedValue([AVAILABILITY]);
   vi.mocked(data.createAvailability).mockReset();
   vi.mocked(data.deleteAvailability).mockReset();
@@ -70,13 +70,13 @@ describe("AdminAvailabilitiesPage", () => {
     const week = await screen.findByRole("region", { name: "Semaine du lundi 4 mars" });
     const item = within(week).getByRole("listitem");
     expect(item).toHaveTextContent("mercredi 6 mars");
-    expect(item).toHaveTextContent("10:00 – 13:30 · Angers");
+    expect(item).toHaveTextContent("10:00 – 13:30 · Les Ponts-de-Cé");
     expect(item).toHaveTextContent("3 créneaux · 1 réservation");
   });
 
   it("aperçu en direct des créneaux et de la période réservable (règles lues en base)", async () => {
     renderPage();
-    await screen.findByRole("radio", { name: "Angers" });
+    await screen.findByRole("radio", { name: "Les Ponts-de-Cé" });
     fillRange("2030-03-08", "10:00", "13:30");
 
     const preview = screen.getByTestId("slot-preview");
@@ -102,7 +102,7 @@ describe("AdminAvailabilitiesPage", () => {
   it("suit les règles reçues : un autre pas change l'aperçu (rien n'est codé en dur)", async () => {
     vi.mocked(data.getBookingRules).mockResolvedValue({ ...RULES, slotStepMin: 60 });
     renderPage();
-    await screen.findByRole("radio", { name: "Angers" });
+    await screen.findByRole("radio", { name: "Les Ponts-de-Cé" });
     fillRange("2030-03-08", "10:00", "13:30");
     expect(screen.getByTestId("slot-preview")).toHaveTextContent(
       "3 créneaux : 10:00, 11:00, 12:00",
@@ -115,12 +115,12 @@ describe("AdminAvailabilitiesPage", () => {
       .mockResolvedValueOnce({ ...AVAILABILITY, id: "nouvelle", bookingCount: 0 })
       .mockRejectedValueOnce(new data.AdminError("availability_overlap"));
     renderPage();
-    await user.click(await screen.findByRole("radio", { name: "Angers" }));
+    await user.click(await screen.findByRole("radio", { name: "Les Ponts-de-Cé" }));
     fillRange("2030-03-06", "10:00", "13:30");
     await user.click(screen.getByRole("button", { name: "Ajouter la disponibilité" }));
 
     expect(data.createAvailability).toHaveBeenCalledWith({
-      locationId: ANGERS.id,
+      locationId: PONTS_DE_CE.id,
       startsAt: "2030-03-06T09:00:00.000Z",
       endsAt: "2030-03-06T12:30:00.000Z",
     });
@@ -135,7 +135,7 @@ describe("AdminAvailabilitiesPage", () => {
   it("demande un lieu avant d'envoyer", async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByRole("radio", { name: "Angers" });
+    await screen.findByRole("radio", { name: "Les Ponts-de-Cé" });
     await user.click(screen.getByRole("button", { name: "Ajouter la disponibilité" }));
     expect(screen.getByText("Choisis un lieu.")).toBeInTheDocument();
     expect(data.createAvailability).not.toHaveBeenCalled();
@@ -168,7 +168,7 @@ describe("AdminAvailabilitiesPage", () => {
 
   it("n'affiche que le libellé public des lieux", async () => {
     renderPage();
-    const angers = await screen.findByRole("radio", { name: "Angers" });
-    expect(angers.closest("label")).toHaveTextContent(/^Angers$/);
+    const pontsDeCe = await screen.findByRole("radio", { name: "Les Ponts-de-Cé" });
+    expect(pontsDeCe.closest("label")).toHaveTextContent(/^Les Ponts-de-Cé$/);
   });
 });

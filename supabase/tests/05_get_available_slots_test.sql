@@ -27,10 +27,10 @@ insert into public.services (id, name, duration_min, active) values
   ('10000000-0000-4000-8000-000000000001', 'Coupe', 60, true),
   ('10000000-0000-4000-8000-000000000002', 'Prestation masquée', 60, false),
   ('10000000-0000-4000-8000-000000000003', 'Coupe longue', 90, true);
-insert into public.locations (id, public_label, private_address, active) values
-  ('20000000-0000-4000-8000-000000000001', 'Lieu un', 'Adresse un', true),
-  ('20000000-0000-4000-8000-000000000002', 'Lieu deux', 'Adresse deux', true),
-  ('20000000-0000-4000-8000-000000000003', 'Lieu fermé', 'Adresse trois', false);
+insert into public.locations (id, public_label, active) values
+  ('20000000-0000-4000-8000-000000000001', 'Lieu un', true),
+  ('20000000-0000-4000-8000-000000000002', 'Lieu deux', true),
+  ('20000000-0000-4000-8000-000000000003', 'Lieu fermé', false);
 
 insert into public.availabilities (location_id, starts_at, ends_at) values
   -- Dim. 18/10 12 h – 16 h, grille 12:00, 13:10, 14:20 : 12:00 et 13:10 sont à moins de 5 h (limite 18/10

@@ -21,17 +21,19 @@ et au barber (étudiant, disponibilités variables) de publier lui-même ses cr�
 
 ## Lieux
 
-Le barber coupe dans deux lieux : **« Chez ses parents »** et **« Chez lui »**. C'est lui qui
-choisit le lieu en publiant chaque disponibilité ; le client ne choisit pas, il voit le libellé
-public du lieu à côté de chaque créneau.
+Le barber coupe dans deux lieux, désignés par leur localité : **« Les Ponts-de-Cé »** et
+**« Saint-Christophe-du-Bois »**. C'est lui qui choisit le lieu en publiant chaque
+disponibilité ; le client ne choisit pas, il voit la localité à côté de chaque créneau.
 
-- Le libellé public est visible de tous ; l'**adresse exacte est privée** : elle n'est révélée qu'à
-  la personne qui a réservé (récap de réservation et lien personnel), et à l'admin.
+- **Aucune adresse n'est stockée ni affichée sur le site** (décision d'Alix du 2026-10-12,
+  ADR 0008). Le client voit seulement la localité. Pour avoir l'adresse exacte, il écrit à Alix
+  en message privé sur Instagram ([@CutsByAlix](https://www.instagram.com/cutsbyalix/)) : le
+  récapitulatif le dit avant de confirmer, l'écran de confirmation le répète avec le lien.
 - Le barber n'est qu'à un endroit à la fois : deux dispos ne se chevauchent jamais, et deux RDV
   non plus, tous lieux confondus.
 - Le lieu est mémorisé dans la réservation : modifier une dispo plus tard ne change pas
   l'historique.
-- Aucune vraie adresse dans le dépôt (public) : elles se saisissent directement en production.
+- Les lieux sont créés inactifs ; leur activation est une décision de mise en ligne.
 
 ## Fonctionnalités — V1 (MVP)
 
@@ -65,7 +67,7 @@ public du lieu à côté de chaque créneau.
 Détail et justification : `docs/adr/0002-modele-de-donnees-et-securite.md`.
 
 - `services` : id, name, duration_min, price_label, active, sort_order
-- `locations` : id, public_label, private_address, active, sort_order
+- `locations` : id, public_label (la localité), active, sort_order — aucune adresse (ADR 0008)
 - `availabilities` : id, location_id, starts_at, ends_at (timestamptz)
   → pas de chevauchement entre deux dispos, tous lieux confondus
 - `bookings` : id, service_id, location_id, starts_at, ends_at, first_name, last_name, phone, email,
@@ -89,7 +91,7 @@ dans `private.settings()` (une migration suffit pour les changer) :
 - Pas de réservation au-delà de **4 semaines**.
 - Annulation client possible jusqu'à **24 h** avant le RDV. Un RDV réservé à moins de 24 h
   n'est donc pas annulable en ligne : l'écran de confirmation et la page `/annuler` le disent et
-  renvoient vers Alix directement.
+  renvoient vers Alix directement, par le lien de son compte Instagram.
 - Limite anti-abus : **2 RDV futurs** max par téléphone ou par email, + champ honeypot.
 - Conservation des données clients : suppression **6 mois** après le RDV (purge à coder avant la
   mise en ligne).
@@ -98,8 +100,8 @@ dans `private.settings()` (une migration suffit pour les changer) :
 
 - [ ] Prix affichés des deux prestations (durées : 60 min chacune)
 - [x] Durée standard d'un créneau → 70 min
-- [x] Où il coupe → deux lieux, « Chez ses parents » et « Chez lui », adresse révélée après réservation
-- [ ] Vraies adresses des deux lieux (à saisir en production, jamais dans le dépôt)
+- [x] Où il coupe → deux lieux, « Les Ponts-de-Cé » et « Saint-Christophe-du-Bois » (localités)
+- [x] Adresses → jamais stockées : données par Alix sur Instagram (décision du 2026-10-12)
 - [x] Délai d'annulation client → 24 h, délai minimum → 5 h (48 h jusqu'à la consigne 21),
       horizon → 4 semaines
 - [ ] Nom, logo, couleurs, ambiance, photos disponibles

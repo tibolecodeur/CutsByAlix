@@ -26,7 +26,7 @@ function booking(id: string, startsAt: string, fields: Partial<AdminBooking> = {
     startsAt,
     endsAt: new Date(Date.parse(startsAt) + 3_600_000).toISOString(),
     serviceName: "Coupe",
-    locationLabel: "Angers",
+    locationLabel: "Les Ponts-de-Cé",
     firstName: "Léa",
     lastName: "Martin",
     ...fields,
@@ -87,7 +87,7 @@ describe("AdminBookingsPage", () => {
     const thursday = screen.getByRole("region", { name: "jeudi 15 octobre" });
     expect(within(thursday).getAllByRole("listitem")).toHaveLength(2);
     expect(within(thursday).getByText("Annulé par toi")).toBeVisible();
-    expect(within(thursday).getByText("Coupe + barbe · Angers")).toBeVisible();
+    expect(within(thursday).getByText("Coupe + barbe · Les Ponts-de-Cé")).toBeVisible();
     expect(screen.getByRole("button", { name: "À venir" })).toHaveAttribute("aria-pressed", "true");
   });
 

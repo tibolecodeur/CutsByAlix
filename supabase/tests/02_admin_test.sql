@@ -45,8 +45,8 @@ insert into public.admins (user_id) values ('30000000-0000-4000-8000-00000000000
 insert into public.services (id, name, duration_min, active) values
   ('10000000-0000-4000-8000-000000000001', 'Coupe', 60, true),
   ('10000000-0000-4000-8000-000000000002', 'Prestation masquée', 60, false);
-insert into public.locations (id, public_label, private_address) values
-  ('20000000-0000-4000-8000-000000000001', 'Lieu un', '1 rue Secrète, 00000 Testville');
+insert into public.locations (id, public_label) values
+  ('20000000-0000-4000-8000-000000000001', 'Lieu un');
 insert into public.availabilities (location_id, starts_at, ends_at) values (
   '20000000-0000-4000-8000-000000000001',
   now() + interval '3 days', now() + interval '3 days 4 hours');
@@ -71,7 +71,7 @@ select is((select count(*) from public.admins), 0::bigint,
 select is((select count(*) from public.services where not active), 0::bigint,
   'non-admin connecté : ne voit pas les prestations inactives');
 select throws_ok(
-  $$insert into public.locations (public_label, private_address) values ('Pirate', 'x')$$,
+  $$insert into public.locations (public_label) values ('Pirate')$$,
   '42501', null, 'non-admin connecté : ne peut pas créer de lieu');
 select throws_ok(
   $$update public.bookings set first_name = 'Pirate'$$, '42501', null,
@@ -91,13 +91,13 @@ set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", 
 -- (admin_list_bookings, admin_get_booking, admin_cancel_booking, testées dans 14).
 select throws_ok('select count(*) from public.bookings', '42501', null,
   'admin : ne lit pas les réservations en direct');
--- Depuis la consigne 18 : l'admin lit id, public_label et active, jamais l'adresse privée.
-select throws_ok('select private_address from public.locations', '42501', null,
-  'admin : ne lit pas l''adresse privée');
+-- Depuis la consigne 18 : l'admin ne lit que id, public_label et active.
+select throws_ok('select sort_order from public.locations', '42501', null,
+  'admin : ne lit pas les autres colonnes des lieux');
 select is((select count(*) from public.services), 2::bigint,
   'admin : voit aussi les prestations inactives');
 select throws_ok(
-  $$insert into public.locations (public_label, private_address) values ('Lieu deux', 'Ailleurs')$$,
+  $$insert into public.locations (public_label) values ('Lieu deux')$$,
   '42501', null, 'admin : ne crée pas de lieu via l''API (consigne 18)');
 select throws_ok(
   $$update public.bookings set status = 'cancelled', cancelled_by = 'barber'$$, '42501', null,

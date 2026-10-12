@@ -26,8 +26,8 @@ truncate public.bookings, public.availabilities, public.locations, public.servic
 
 insert into public.services (id, name, duration_min, active) values
   ('10000000-0000-4000-8000-000000000001', 'Coupe', 60, true);
-insert into public.locations (id, public_label, private_address, active) values
-  ('20000000-0000-4000-8000-000000000001', 'Ville un', 'Adresse secrète un', true);
+insert into public.locations (id, public_label, active) values
+  ('20000000-0000-4000-8000-000000000001', 'Ville un', true);
 
 -- Dispos : de quoi poser un RDV de 60 min à chacune des dates ci-dessous (heure de Paris).
 insert into public.availabilities (location_id, starts_at, ends_at) values

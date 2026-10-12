@@ -74,7 +74,7 @@ function slotRow() {
     starts_at: parisDateTime(day, "14:00").toISOString(),
     ends_at: parisDateTime(day, "15:00").toISOString(),
     location_id: "a11ce000-0000-4000-8000-000000000101",
-    location_label: "Angers",
+    location_label: "Les Ponts-de-Cé",
   };
 }
 
@@ -138,7 +138,7 @@ test("axe : /annuler, rendez-vous trouvé, confirmation demandée, puis annulé"
         starts_at: "2030-03-12T13:00:00+00:00",
         ends_at: "2030-03-12T14:00:00+00:00",
         service_name: "Coupe",
-        location_label: "Angers",
+        location_label: "Les Ponts-de-Cé",
         first_name: "Lucas",
         can_cancel: true,
         cancelled_by: null,
@@ -163,7 +163,7 @@ test("axe : toutes les pages admin, connecté", async ({ page }) => {
   await mockAdminAuth(page);
   await mockStorage(page);
   await mockTable(page, "locations", [
-    { id: "a11ce000-0000-4000-8000-000000000101", public_label: "Angers" },
+    { id: "a11ce000-0000-4000-8000-000000000101", public_label: "Les Ponts-de-Cé" },
   ]);
   await mockRpc(page, "admin_booking_rules", () => ({
     body: [{ slot_step_min: 70, min_notice_min: 300, max_advance_days: 28 }],

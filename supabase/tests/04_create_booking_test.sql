@@ -22,9 +22,9 @@ truncate public.bookings, public.availabilities, public.locations, public.servic
 insert into public.services (id, name, duration_min, active) values
   ('10000000-0000-4000-8000-000000000001', 'Coupe', 60, true),
   ('10000000-0000-4000-8000-000000000002', 'Prestation masquée', 60, false);
-insert into public.locations (id, public_label, private_address) values
-  ('20000000-0000-4000-8000-000000000001', 'Lieu un', '1 rue Secrète, 00000 Testville'),
-  ('20000000-0000-4000-8000-000000000002', 'Lieu deux', '2 rue Cachée, 00000 Testville');
+insert into public.locations (id, public_label) values
+  ('20000000-0000-4000-8000-000000000001', 'Lieu un'),
+  ('20000000-0000-4000-8000-000000000002', 'Lieu deux');
 
 insert into public.availabilities (location_id, starts_at, ends_at) values
   -- Dans l'heure qui vient : bien en deçà du délai minimum de 48 h.

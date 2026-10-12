@@ -199,7 +199,7 @@ describe("BookingPage : rendez-vous à moins de 24 h", () => {
     expect(
       screen.getByText(/dans moins de 24 h : tu ne pourras pas l'annuler en ligne/),
     ).toBeVisible();
-    expect(screen.getByText(/contacte Alix directement/)).toBeVisible();
+    expect(screen.getByText(/contacte Alix directement sur Instagram/)).toBeVisible();
   });
 
   it("à plus de 24 h : aucun avertissement, promesse d'annulation conservée", async () => {
@@ -296,6 +296,12 @@ describe("BookingPage : envoi de la réservation", () => {
     renderPage();
     await goToSummary(user);
 
+    // Récapitulatif : l'adresse sera donnée sur Instagram, sans lien qui ferait quitter le parcours.
+    expect(
+      screen.getByText(/L'adresse exacte n'est pas affichée sur le site : une fois réservé/),
+    ).toBeVisible();
+    expect(screen.queryByRole("link", { name: /Instagram/ })).not.toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
 
     expect(await screen.findByRole("heading", { name: "C'est réservé !" })).toBeVisible();
@@ -305,5 +311,24 @@ describe("BookingPage : envoi de la réservation", () => {
     expect(screen.getByText(/Tu ne recevras pas d'e-mail de confirmation/)).toBeVisible();
     expect(screen.getByText(new RegExp(`/annuler#${TOKEN}`))).toBeVisible();
     expect(screen.queryByText("Adresse")).not.toBeInTheDocument();
+
+    // Adresse : message et lien Instagram (nouvel onglet, sans opener ni referrer).
+    expect(
+      screen.getByText(/écris à Alix en message privé sur Instagram pour la recevoir/),
+    ).toBeVisible();
+    // Le lien d'annulation vient avant l'adresse, et ne doit pas être envoyé à Alix.
+    expect(screen.getByText(/n'envoie pas ton lien d'annulation/)).toBeVisible();
+    const titles = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(titles.indexOf("Ton lien d'annulation")).toBeLessThan(titles.indexOf("L'adresse"));
+    const instagram = screen.getByRole("link", { name: /@CutsByAlix sur Instagram/ });
+    expect(instagram).toHaveAttribute("href", "https://www.instagram.com/cutsbyalix/");
+    expect(instagram).toHaveAttribute("target", "_blank");
+    expect(instagram.getAttribute("rel")?.split(" ")).toEqual(
+      expect.arrayContaining(["noopener", "noreferrer"]),
+    );
+
+    // Le jeton n'apparaît dans aucun lien, sauf celui de la page d'annulation.
+    const hrefs = screen.getAllByRole("link").map((link) => link.getAttribute("href") ?? "");
+    expect(hrefs.filter((href) => href.includes(TOKEN))).toEqual([`/annuler#${TOKEN}`]);
   });
 });

@@ -29,8 +29,8 @@ insert into auth.users (id, email) values
 insert into public.admins (user_id) values ('31000000-0000-4000-8000-000000000001');
 insert into public.services (id, name, duration_min, active) values
   ('11000000-0000-4000-8000-000000000001', 'Coupe', 60, true);
-insert into public.locations (id, public_label, private_address, active) values
-  ('21000000-0000-4000-8000-000000000001', 'Lieu un', 'Adresse factice', true);
+insert into public.locations (id, public_label, active) values
+  ('21000000-0000-4000-8000-000000000001', 'Lieu un', true);
 insert into public.availabilities (id, location_id, starts_at, ends_at) values
   ('41000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001',
    '2030-06-12 10:00 Europe/Paris', '2030-06-12 12:00 Europe/Paris');

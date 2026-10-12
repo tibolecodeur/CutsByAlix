@@ -24,7 +24,7 @@ const ROW = {
   starts_at: "2026-10-20T12:00:00+00:00", // mardi 20 octobre, 14 h à Paris
   ends_at: "2026-10-20T13:00:00+00:00",
   service_name: "Coupe + barbe",
-  location_label: "Angers",
+  location_label: "Les Ponts-de-Cé",
   first_name: "Lucas",
   can_cancel: true,
   cancelled_by: null,
@@ -80,7 +80,7 @@ describe("CancelPage : lien valide", () => {
     expect(screen.getByText("Coupe + barbe")).toBeVisible();
     expect(screen.getByText("mardi 20 octobre")).toBeVisible();
     expect(screen.getByText("14:00 – 15:00")).toBeVisible();
-    expect(screen.getByText("Angers")).toBeVisible();
+    expect(screen.getByText("Les Ponts-de-Cé")).toBeVisible();
     expect(screen.queryByText("Adresse")).not.toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(TOKEN);
   });
@@ -157,7 +157,15 @@ describe("CancelPage : trop tard et déjà annulé", () => {
     ).toBeVisible();
     expect(screen.getByText(/jusqu'à 24 h avant/)).toBeVisible();
     expect(screen.getByText(/Il est trop tard pour annuler en ligne/)).toBeVisible();
-    expect(screen.getByText(/contacte Alix directement/)).toBeVisible();
+    expect(screen.getByText(/contacte Alix directement sur Instagram/)).toBeVisible();
+    // Lien Instagram dans un nouvel onglet ; le jeton n'y est jamais ajouté.
+    const instagram = screen.getByRole("link", { name: /@CutsByAlix sur Instagram/ });
+    expect(instagram).toHaveAttribute("href", "https://www.instagram.com/cutsbyalix/");
+    expect(instagram).toHaveAttribute("target", "_blank");
+    expect(instagram.getAttribute("rel")?.split(" ")).toEqual(
+      expect.arrayContaining(["noopener", "noreferrer"]),
+    );
+    expect(document.body.innerHTML).not.toContain(TOKEN);
     // Message clair, pas une erreur technique.
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(
@@ -178,7 +186,8 @@ describe("CancelPage : trop tard et déjà annulé", () => {
 
     const title = await screen.findByRole("heading", { name: "Trop tard pour annuler en ligne" });
     expect(title).toHaveFocus();
-    expect(screen.getByText(/contacte Alix directement/)).toBeVisible();
+    expect(screen.getByText(/contacte Alix directement sur Instagram/)).toBeVisible();
+    expect(screen.getByRole("link", { name: /@CutsByAlix sur Instagram/ })).toBeVisible();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 

@@ -18,13 +18,13 @@ import {
  */
 
 const RULES = [{ slot_step_min: 70, min_notice_min: 2880, max_advance_days: 28 }];
-const ANGERS = { id: "e2e00000-0000-4000-8000-0000000001c1", public_label: "Angers" };
+const PONTS_DE_CE = { id: "e2e00000-0000-4000-8000-0000000001c1", public_label: "Les Ponts-de-Cé" };
 
 /** Jeudi 17 janvier 2030, 14 h – 18 h à Paris, avec une réservation. */
 const PLAGE_AVEC_RDV = {
   id: "e2e00000-0000-4000-8000-0000000000a1",
-  location_id: ANGERS.id,
-  location_label: "Angers",
+  location_id: PONTS_DE_CE.id,
+  location_label: "Les Ponts-de-Cé",
   starts_at: "2030-01-17T13:00:00+00:00",
   ends_at: "2030-01-17T17:00:00+00:00",
   slot_count: 3,
@@ -41,7 +41,7 @@ async function ouvrirDispos(page: Page, options: Options = {}) {
 
   await page.clock.install({ time: ADMIN_TEST_NOW });
   await mockAdminAuth(page);
-  const locationRequests = await mockTable(page, "locations", options.locations ?? [ANGERS]);
+  const locationRequests = await mockTable(page, "locations", options.locations ?? [PONTS_DE_CE]);
   await mockRpc(page, "admin_booking_rules", () => ({ body: RULES }));
   await mockRpc(page, "admin_list_availabilities", () => ({ body: availabilities }));
 
@@ -91,7 +91,7 @@ test("création : aperçu en direct, période réservable, plage ajoutée à la 
   await page.getByLabel("Fin").fill("13:30");
 
   // Un seul lieu actif : déjà coché. Libellé public uniquement.
-  await expect(page.getByRole("radio", { name: "Angers" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "Les Ponts-de-Cé" })).toBeChecked();
   const audit = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
     .analyze();
@@ -102,7 +102,7 @@ test("création : aperçu en direct, période réservable, plage ajoutée à la 
   // Heures de Paris converties en instants absolus (UTC+1 en janvier).
   expect(created).toEqual([
     {
-      p_location_id: ANGERS.id,
+      p_location_id: PONTS_DE_CE.id,
       p_starts_at: "2030-01-20T09:00:00.000Z",
       p_ends_at: "2030-01-20T12:30:00.000Z",
     },
@@ -110,12 +110,14 @@ test("création : aperçu en direct, période réservable, plage ajoutée à la 
 
   const semaine = page.getByRole("region", { name: "Semaine du lundi 14 janvier" });
   await expect(semaine.getByRole("listitem")).toHaveCount(2);
-  await expect(semaine.getByRole("listitem").nth(1)).toContainText("10:00 – 13:30 · Angers");
+  await expect(semaine.getByRole("listitem").nth(1)).toContainText(
+    "10:00 – 13:30 · Les Ponts-de-Cé",
+  );
   await expect(semaine.getByRole("listitem").nth(1)).toContainText("3 créneaux · 0 réservation");
 
-  // Jamais l'adresse privée : ni demandée, ni dans aucune requête.
+  // Lieux : colonnes nommées, jamais select=* (l'admin n'a droit qu'à id, public_label, active).
   expect(locationRequests.length).toBeGreaterThan(0);
-  expect(urls.filter((url) => /private_address|select=\*/.test(url))).toEqual([]);
+  expect(urls.filter((url) => /select=\*/.test(url))).toEqual([]);
 });
 
 test("chevauchement : refusé par la base, message en français", async ({ page }) => {
@@ -138,7 +140,7 @@ test("suppression refusée quand des réservations existent : la plage reste", a
   });
 
   const plage = page.getByRole("listitem").filter({ hasText: "jeudi 17 janvier" });
-  await expect(plage).toContainText("14:00 – 18:00 · Angers");
+  await expect(plage).toContainText("14:00 – 18:00 · Les Ponts-de-Cé");
   await expect(plage).toContainText("3 créneaux · 1 réservation");
   await plage
     .getByRole("button", { name: /^Supprimer la disponibilité du jeudi 17 janvier/ })

@@ -23,7 +23,7 @@ function booking(startsAt: string, fields: Partial<AdminBooking> = {}): AdminBoo
     startsAt,
     endsAt: new Date(Date.parse(startsAt) + 3_600_000).toISOString(),
     serviceName: "Coupe",
-    locationLabel: "Angers",
+    locationLabel: "Les Ponts-de-Cé",
     firstName: "Léa",
     lastName: "Martin",
     ...fields,

@@ -76,7 +76,7 @@ select results_eq(
     ('public.services', 'authenticated',
      'id:siu name:siu duration_min:siu price_label:siu active:siu sort_order:siu created_at:siu')
   $$,
-  'droits de COLONNE : jamais private_address, phone, email, cancel_token ni consent_at');
+  'droits de COLONNE : jamais phone, email, cancel_token ni consent_at');
 
 -- ---------------------------------------------------------------------------
 -- 3. Schémas : anon n'a pas USAGE sur private ; authenticated l'a (les policies Storage

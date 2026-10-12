@@ -1,6 +1,6 @@
 -- Plages de disponibilité côté admin (consigne 18) : droits des 3 profils, validation à date
--- fixe, chevauchement, lieu inactif, suppression avec réservations, absence de fuite de
--- private_address.
+-- fixe, chevauchement, lieu inactif, suppression avec réservations, lecture des lieux limitée
+-- à id, public_label, active.
 -- « Maintenant » est FIXE pour les règles de date : private.admin_create_availability_at reçoit
 -- lundi 4 mars 2030, 9 h à Paris. Les appels aux vraies fonctions (avec now()) utilisent des
 -- plages en 2099 (toujours futures) ou en 2001 (toujours passées) : rien ne dépend du jour.
@@ -19,7 +19,7 @@ begin
   end loop;
 end $$;
 
-select plan(64);
+select plan(62);
 
 truncate public.bookings, public.availabilities, public.locations, public.services,
          public.gallery_items, public.admins;
@@ -32,9 +32,9 @@ insert into public.admins (user_id) values ('30000000-0000-4000-8000-00000000000
 
 insert into public.services (id, name, duration_min, active) values
   ('10000000-0000-4000-8000-000000000001', 'Coupe', 70, true);
-insert into public.locations (id, public_label, private_address, active) values
-  ('20000000-0000-4000-8000-000000000001', 'Ville un', 'Adresse secrète un', true),
-  ('20000000-0000-4000-8000-000000000002', 'Ville deux', 'À RENSEIGNER', false);
+insert into public.locations (id, public_label, active) values
+  ('20000000-0000-4000-8000-000000000001', 'Ville un', true),
+  ('20000000-0000-4000-8000-000000000002', 'Ville deux', false);
 
 -- Plages posées en tant que postgres.
 insert into public.availabilities (id, location_id, starts_at, ends_at) values
@@ -170,14 +170,10 @@ select results_eq(
   $$values ('20000000-0000-4000-8000-000000000002'::uuid, 'Ville deux'::text, false),
            ('20000000-0000-4000-8000-000000000001'::uuid, 'Ville un'::text, true)$$,
   'admin : lit id, public_label et active de tous les lieux');
-select throws_ok('select private_address from public.locations', '42501', null,
-  'admin : ne lit pas private_address');
 select throws_ok('select * from public.locations', '42501', null,
-  'admin : select * sur locations refusé (il inclurait private_address)');
+  'admin : select * sur locations refusé (il inclurait sort_order et created_at)');
 select throws_ok('select sort_order from public.locations', '42501', null,
   'admin : ne lit aucune autre colonne que id, public_label, active');
-select throws_ok($$update public.locations set private_address = 'Pirate'$$, '42501', null,
-  'admin : ne modifie jamais une adresse');
 select throws_ok($$update public.locations set active = true$$, '42501', null,
   'admin : n''active pas un lieu');
 select throws_ok($$delete from public.locations$$, '42501', null,

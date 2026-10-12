@@ -48,7 +48,7 @@ function slotRow() {
     starts_at: parisDateTime(day, "14:00").toISOString(),
     ends_at: parisDateTime(day, "15:00").toISOString(),
     location_id: LOCATION,
-    location_label: "Angers",
+    location_label: "Les Ponts-de-Cé",
   };
 }
 const BOOKING_ROW = {
@@ -56,7 +56,7 @@ const BOOKING_ROW = {
   starts_at: "2030-03-12T13:00:00+00:00",
   ends_at: "2030-03-12T14:00:00+00:00",
   service_name: "Coupe",
-  location_label: "Angers",
+  location_label: "Les Ponts-de-Cé",
   first_name: "Lucas",
   can_cancel: true,
   cancelled_by: null,
@@ -206,7 +206,7 @@ const SCREENS: Screen[] = [
     open: async (page, fault) => {
       await page.clock.install({ time: ADMIN_TEST_NOW });
       await mockAdminAuth(page);
-      await mockTable(page, "locations", [{ id: LOCATION, public_label: "Angers" }]);
+      await mockTable(page, "locations", [{ id: LOCATION, public_label: "Les Ponts-de-Cé" }]);
       await mockRpc(page, "admin_booking_rules", () => ({
         body: [{ slot_step_min: 70, min_notice_min: 300, max_advance_days: 28 }],
       }));
@@ -344,7 +344,7 @@ test.describe("robustesse : actions", () => {
     const created: unknown[] = [];
     await page.clock.install({ time: ADMIN_TEST_NOW });
     await mockAdminAuth(page);
-    await mockTable(page, "locations", [{ id: LOCATION, public_label: "Angers" }]);
+    await mockTable(page, "locations", [{ id: LOCATION, public_label: "Les Ponts-de-Cé" }]);
     await mockRpc(page, "admin_booking_rules", () => ({
       body: [{ slot_step_min: 70, min_notice_min: 300, max_advance_days: 28 }],
     }));

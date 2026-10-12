@@ -9,11 +9,10 @@
 -- Relançable : rien n'est ajouté en double.
 -- =============================================================================
 
--- Garde : ce fichier active les lieux de seed.sql avec une adresse factice et leur ajoute des
--- dispos. Lancé par erreur sur le distant, il ouvrirait des créneaux réservables avec une
--- fausse adresse. On s'arrête dès que la base ne ressemble pas à une base locale neuve :
--- un compte (admin ou non), un RDV, un lieu inconnu de seed.sql (anciens lieux de
--- production) ou une adresse déjà saisie.
+-- Garde : ce fichier active les lieux de seed.sql et leur ajoute des dispos. Lancé par
+-- erreur sur le distant, il ouvrirait des créneaux réservables. On s'arrête dès que la base
+-- ne ressemble pas à une base locale neuve : un compte (admin ou non), un RDV ou un lieu
+-- inconnu de seed.sql (anciens lieux de production).
 do $$
 begin
   if exists (select 1 from auth.users)
@@ -23,17 +22,16 @@ begin
        select 1 from public.locations
        where id not in ('a11ce000-0000-4000-8000-000000000101',
                         'a11ce000-0000-4000-8000-000000000102')
-          or private_address not in ('À RENSEIGNER', 'Adresse factice (dev local)')
      )
   then
     raise exception 'seed-dev.sql : base non vierge (probablement le projet distant). Abandon.';
   end if;
 end $$;
 
--- seed.sql crée les lieux inactifs : on les active ici, avec une adresse FACTICE, pour que
--- le parcours de réservation propose des créneaux en local.
+-- seed.sql crée les lieux inactifs : on les active ici pour que le parcours de réservation
+-- propose des créneaux en local.
 update public.locations
-set private_address = 'Adresse factice (dev local)', active = true
+set active = true
 where id in ('a11ce000-0000-4000-8000-000000000101', 'a11ce000-0000-4000-8000-000000000102');
 
 -- Disponibilités de test : les 7 prochains jours, 14 h–18 h heure de Paris, en alternant
@@ -44,7 +42,7 @@ select slot.location_id, slot.starts_at, slot.ends_at
 from (
   select
     case when d % 2 = 0
-      then 'a11ce000-0000-4000-8000-000000000101'::uuid  -- Angers
+      then 'a11ce000-0000-4000-8000-000000000101'::uuid  -- Les Ponts-de-Cé
       else 'a11ce000-0000-4000-8000-000000000102'::uuid  -- Saint-Christophe-du-Bois
     end as location_id,
     (((now() at time zone 'Europe/Paris')::date + d) + time '14:00') at time zone 'Europe/Paris'
