@@ -120,8 +120,9 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 - [x] `noindex` sur `/annuler` (prop `noindex` de `PageMeta` + `X-Robots-Tag` dans
       `public/_headers`).
 - [x] `noindex` sur `/admin` (consigne 17 : `AdminHead` + `X-Robots-Tag` dans `_headers`).
-- [ ] **`<meta name="robots" content="noindex">` sur la 404** (prop `noindex` de `PageMeta`).
-      **À faire avant la mise en ligne.**
+- [x] **`<meta name="robots" content="noindex">` sur la 404** (prop `noindex` de `PageMeta`) :
+      fait par la consigne 25 (K-05), vérifié avec wrangler en local (statut 200 du repli SPA,
+      balise présente une fois la page rendue).
 - [x] `referrer: no-referrer` sur `/annuler` : balise `<meta name="referrer">` (prop `noReferrer`
       de `PageMeta`) + `Referrer-Policy` dans `public/_headers` (Cloudflare Pages), **fichier
       prêt, rien de déployé**.
@@ -258,6 +259,24 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       production comparé au local (identique). Aucune correction faite : elles viendront en
       consignes séparées, triées avec Thibault. Décision prise : la recopie de `error.message`
       (C-01) est déclassée en 🟡 (plus bloquante), corrigée dans la première consigne de correction.
+- [x] **Robustesse du parcours client** (consigne 25, issue #37) : C-01 à C-05 et K-05 de l'audit.
+      Erreurs sans message brut et réponses validées (Zod) ; `false` à l'annulation → « déjà
+      annulé » ; réservation idempotente (clé `p_request_id`, rejeu accepté 30 min, ADR 0009,
+      migration `…_reservation_idempotente.sql`) ; confirmation gardée le temps de l'onglet
+      (`sessionStorage`, sans donnée personnelle) ; une entrée d'historique par étape (geste
+      Retour) ; 404 en `noindex`. Les 18 tests sautés correspondants sont réactivés ; restent
+      sautés : B-02 (3) et les 3 anciens sans défaut.
+      **Ordre de mise en production : `db push` AVANT la fusion** (le nouveau front envoie
+      `p_request_id` : sans la migration, toute réservation échoue en `PGRST202`). Voir
+      l'ADR 0009 et `docs/audit/controle-reservation-idempotente.sql`.
+- [ ] 🟡 **Hacher le jeton d'annulation** : `cancel_token` est stocké en clair dans `bookings`
+      (constaté à la consigne 25). Le stocker haché (sha256) limiterait les dégâts d'une fuite de
+      la base ; il faudrait alors régénérer le jeton lors d'un rejeu (ADR 0009). À planifier.
+- [ ] **Lien d'annulation : un seul endroit** : pas d'e-mail en V1, le lien n'existe que sur
+      l'écran de confirmation (bouton « Copier le lien » déjà présent, et la confirmation survit
+      au rechargement de l'onglet depuis la consigne 25). Un client qui ferme l'onglet sans le
+      garder ne peut plus annuler en ligne. **À réévaluer avant la mise en ligne** : e-mail de
+      confirmation (nom de domaine vérifié, V2) ou autre moyen de le retrouver.
 
 - [ ] Version 1.0.0 : tag Git, CHANGELOG, README avec captures
 - [ ] `/check-deploiement` · Données de test supprimées · Compte admin du barber · Domaine
@@ -270,7 +289,9 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       et demande l'adresse à Alix sur Instagram. Plus de règle de révélation à coder. Bloquants
       restants avant la mise en ligne : CSP en blocage (K-01), anti-abus (K-02), purge RGPD (K-03).
       Les lieux restent inactifs : leur activation est une décision de mise en ligne.
-- [ ] **Messages d'erreur du parcours client** (🟡 depuis l'audit : jamais affiché ; à corriger dans la première consigne de correction, avec C-02) (point 8 de la revue de la consigne 18) :
+- [x] **Messages d'erreur du parcours client** : fait par la consigne 25 (C-01, C-02 ; plus aucun
+      `error.message` recopié, réponses validées par Zod). Historique : (🟡 depuis l'audit :
+      jamais affiché) (point 8 de la revue de la consigne 18) :
       `src/features/booking/data.ts:139` (`getServices`) et `:159` (`getAvailableSlots`)
       recopient `error.message` de Supabase dans l'`Error` levée. Ce texte brut (détails SQL,
       noms de colonnes ou de fonctions) ne doit plus en sortir : message fixe en français, comme

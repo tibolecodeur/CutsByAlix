@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { Button } from "@/components/Button";
 import { cx } from "@/lib/cx";
 
@@ -24,7 +24,12 @@ type StepFrameProps = {
 export function StepFrame({ number, title, focusOnMount, children }: StepFrameProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
 
-  useEffect(() => {
+  // useLayoutEffect et non useEffect : le focus est placé dans la MÊME tâche que l'insertion de
+  // l'étape, avant qu'un champ soit utilisable. Les changements d'étape passent par le routeur,
+  // qui les applique en « transition » : un useEffect s'exécuterait ~30 ms après l'affichage, et
+  // volerait le focus à un champ que le client (ou le remplissage automatique de l'iPhone) vient
+  // de toucher, le texte saisi partant alors dans le vide (constaté en e2e sous WebKit).
+  useLayoutEffect(() => {
     if (focusOnMount) titleRef.current?.focus();
   }, [focusOnMount]);
 

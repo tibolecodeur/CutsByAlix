@@ -35,6 +35,9 @@ const OTHER_ERRORS: Partial<Record<BookingErrorCode, string>> = {
     "Réservation impossible avec ces coordonnées pour le moment. Si tu as déjà des rendez-vous à venir, garde ton lien d'annulation à portée de main.",
   invalid_input:
     "Certaines informations ne sont pas acceptées. Reviens à l'étape précédente pour vérifier tes coordonnées.",
+  // Même clé, autre réservation (ou trop tard pour rejouer) : une nouvelle clé est tirée, le
+  // prochain appui envoie une réservation neuve. Rien n'est dit de la réservation existante.
+  request_conflict: "La réservation n'a pas pu être confirmée. Réessaie dans un instant.",
 };
 
 const DEFAULT_ERROR =
@@ -46,9 +49,13 @@ type SummaryStepProps = {
   slot: AvailableSlot;
   contact: ContactForm;
   website: string;
+  /** Clé d'idempotence (ADR 0009), demandée à l'envoi : la même à chaque essai de CETTE réservation. */
+  getRequestId: () => string | null;
   focusOnMount: boolean;
   onBack: () => void;
   onSlotLost: (message: string) => void;
+  /** La base refuse la clé (request_conflict) : le parent en tire une nouvelle. */
+  onRequestConflict: () => void;
   onBooked: (receipt: BookingReceipt) => void;
 };
 
@@ -65,16 +72,19 @@ export function SummaryStep(props: SummaryStepProps) {
     setSubmitting(true);
     setError(undefined);
     try {
-      const receipt = await createBooking({
-        serviceId: props.serviceId,
-        startsAt: slot.startsAt,
-        locationId: slot.locationId,
-        firstName: contact.firstName,
-        lastName: contact.lastName,
-        phone: contact.phone,
-        email: contact.email,
-        website: props.website,
-      });
+      const receipt = await createBooking(
+        {
+          serviceId: props.serviceId,
+          startsAt: slot.startsAt,
+          locationId: slot.locationId,
+          firstName: contact.firstName,
+          lastName: contact.lastName,
+          phone: contact.phone,
+          email: contact.email,
+          website: props.website,
+        },
+        props.getRequestId(),
+      );
       props.onBooked(receipt);
     } catch (caught) {
       const code = caught instanceof BookingError ? caught.code : "unknown";
@@ -82,6 +92,7 @@ export function SummaryStep(props: SummaryStepProps) {
       if (slotMessage) {
         props.onSlotLost(slotMessage);
       } else {
+        if (code === "request_conflict") props.onRequestConflict();
         setError(OTHER_ERRORS[code] ?? DEFAULT_ERROR);
         setSubmitting(false);
       }

@@ -69,7 +69,12 @@ export function CancelPage() {
   );
 }
 
-type Outcome = "idle" | "confirming" | "cancelling" | "cancelled" | "too_late" | "error";
+/**
+ * `already` : la base répond `false` (RDV déjà annulé entre-temps, par Alix ou par un premier
+ * essai dont la réponse s'est perdue). Ce n'est pas « C'est annulé » : on dit ce qui est vrai.
+ */
+type Outcome =
+  "idle" | "confirming" | "cancelling" | "cancelled" | "already" | "too_late" | "error";
 
 function BookingCancellation({ token, booking }: { token: string; booking: BookingDetails }) {
   const [outcome, setOutcome] = useState<Outcome>("idle");
@@ -84,9 +89,10 @@ function BookingCancellation({ token, booking }: { token: string; booking: Booki
     sending.current = true;
     setOutcome("cancelling");
     try {
-      // false = déjà annulé entre-temps (autre onglet) : le résultat est le même pour le client.
-      await cancelBooking(token);
-      setOutcome("cancelled");
+      // false = déjà annulé (autre onglet, Alix, ou rejeu après une coupure) : on le dit.
+      // Réponse vide ou inattendue : erreur (invalid_response), jamais un faux « annulé ».
+      const cancelled = await cancelBooking(token);
+      setOutcome(cancelled ? "cancelled" : "already");
     } catch (caught) {
       setOutcome(
         caught instanceof BookingError && caught.code === "too_late" ? "too_late" : "error",
@@ -102,6 +108,17 @@ function BookingCancellation({ token, booking }: { token: string; booking: Booki
         <p>
           Ton rendez-vous du {formatLongDay(booking.startsAt)} à {formatTime(booking.startsAt)} est
           annulé. Le créneau est libéré pour quelqu'un d'autre.
+        </p>
+        <BookAgain />
+      </StateBlock>
+    );
+  }
+  if (outcome === "already") {
+    return (
+      <StateBlock title="Rendez-vous déjà annulé" focusTitle>
+        <p>
+          Ce rendez-vous du {formatLongDay(booking.startsAt)} à {formatTime(booking.startsAt)} a
+          déjà été annulé. Tu n'as rien d'autre à faire.
         </p>
         <BookAgain />
       </StateBlock>

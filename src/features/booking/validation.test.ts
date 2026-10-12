@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  contactFingerprint,
   isValidEmail,
   isValidName,
   isValidPhone,
@@ -82,5 +83,29 @@ describe("validateContact", () => {
     expect(errors.lastName).toMatch(/Évite/);
     expect(errors.phone).toMatch(/numéro/);
     expect(errors.email).toMatch(/email/);
+  });
+});
+
+describe("contactFingerprint (clé d'idempotence, ADR 0009)", () => {
+  it("ne change pas quand seule la mise en forme change (espaces, séparateurs, casse)", () => {
+    const base = { ...VALID, firstName: "Zoé", phone: "06 39 98 00 10", email: "Zoe@Example.test" };
+    const same = contactFingerprint(base);
+    expect(contactFingerprint({ ...base, firstName: " Zoé " })).toBe(same);
+    expect(contactFingerprint({ ...base, phone: "06.39.98.00.10" })).toBe(same);
+    expect(contactFingerprint({ ...base, phone: "+33 6 39 98 00 10" })).toBe(same);
+    expect(contactFingerprint({ ...base, email: " zoe@example.test " })).toBe(same);
+  });
+
+  it("ne dépend ni du consentement ni d'un champ resté vide", () => {
+    expect(contactFingerprint({ ...VALID, consent: false })).toBe(contactFingerprint(VALID));
+    expect(contactFingerprint({ ...VALID, email: "   " })).toBe(contactFingerprint(VALID));
+  });
+
+  it("change dès qu'une valeur envoyée à la base change", () => {
+    const same = contactFingerprint(VALID);
+    expect(contactFingerprint({ ...VALID, firstName: "Luca" })).not.toBe(same);
+    expect(contactFingerprint({ ...VALID, lastName: "Martins" })).not.toBe(same);
+    expect(contactFingerprint({ ...VALID, phone: "06 39 98 00 03" })).not.toBe(same);
+    expect(contactFingerprint({ ...VALID, email: "lucas@example.test" })).not.toBe(same);
   });
 });

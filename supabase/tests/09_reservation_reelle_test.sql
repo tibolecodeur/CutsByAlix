@@ -230,10 +230,10 @@ select set_eq(
 -- 8. Droits : anon seulement pour les 4 RPC, personne pour create_booking_at.
 -- ---------------------------------------------------------------------------
 select ok(has_function_privilege('anon',
-  'public.create_booking(uuid, timestamptz, uuid, text, text, text, text, text)', 'execute'),
+  'public.create_booking(uuid, timestamptz, uuid, text, text, text, text, text, uuid)', 'execute'),
   'anon peut exécuter create_booking');
 select ok(not has_function_privilege('authenticated',
-  'public.create_booking(uuid, timestamptz, uuid, text, text, text, text, text)', 'execute'),
+  'public.create_booking(uuid, timestamptz, uuid, text, text, text, text, text, uuid)', 'execute'),
   'authenticated ne peut pas exécuter create_booking');
 select ok(not has_function_privilege('authenticated', 'public.get_available_slots(uuid, date)', 'execute'),
   'authenticated ne peut pas exécuter get_available_slots');
@@ -243,9 +243,9 @@ select ok(not has_function_privilege('authenticated', 'public.cancel_booking(uui
   'authenticated ne peut pas exécuter cancel_booking');
 select ok(
   not has_function_privilege('anon',
-        'private.create_booking_at(timestamptz, uuid, timestamptz, uuid, text, text, text, text, text)', 'execute')
+        'private.create_booking_at(timestamptz, uuid, timestamptz, uuid, text, text, text, text, text, uuid)', 'execute')
   and not has_function_privilege('authenticated',
-        'private.create_booking_at(timestamptz, uuid, timestamptz, uuid, text, text, text, text, text)', 'execute'),
+        'private.create_booking_at(timestamptz, uuid, timestamptz, uuid, text, text, text, text, text, uuid)', 'execute'),
   'personne (anon, authenticated) ne peut appeler create_booking_at, ni choisir « maintenant »');
 select is(
   (select count(*) from pg_proc where proname = 'create_booking'),

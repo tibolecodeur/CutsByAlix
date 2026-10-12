@@ -10,6 +10,20 @@
  * Les identifiants des lignes et le cancel_token, eux, sont générés par la base
  * (gen_random_uuid), jamais par le navigateur.
  */
+/**
+ * Uuid v4 tiré d'une source aléatoire SÛRE, ou `null` s'il n'y en a pas. Sert de clé
+ * d'idempotence à la réservation (ADR 0009) : cette clé permet de récupérer le jeton
+ * d'annulation, c'est donc un secret. Pas de repli sur `Math.random` (prévisible) : sans
+ * source sûre, on n'envoie simplement pas de clé (la réservation marche comme avant).
+ * `crypto.getRandomValues` existe aussi hors contexte sécurisé (http sur le réseau local).
+ */
+export function secureRandomUuid(): string | null {
+  if (typeof globalThis.crypto?.getRandomValues !== "function") return null;
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  return formatUuidV4(bytes);
+}
+
 export function randomUuid(): string {
   if (typeof globalThis.crypto?.randomUUID === "function") {
     return globalThis.crypto.randomUUID();
@@ -22,7 +36,11 @@ export function randomUuid(): string {
     // n'est pas un secret (la base refuse les doublons), l'imprévisibilité n'est pas requise.
     for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
   }
-  // Version 4 (aléatoire) et variante RFC 4122, comme randomUUID.
+  return formatUuidV4(bytes);
+}
+
+/** 16 octets aléatoires → uuid version 4 (aléatoire), variante RFC 4122, comme randomUUID. */
+function formatUuidV4(bytes: Uint8Array): string {
   bytes[6] = (bytes[6]! & 0x0f) | 0x40;
   bytes[8] = (bytes[8]! & 0x3f) | 0x80;
   const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");

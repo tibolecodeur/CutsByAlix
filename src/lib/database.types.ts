@@ -79,9 +79,10 @@ type GetAvailableSlotsFunction = {
 };
 
 /**
- * RPC `create_booking` (migration …_reservation_reelle.sql). Erreurs : exceptions P0001 dont
- * le message est une clé stable (invalid_input, slot_unavailable, too_soon, too_far,
- * limit_reached). Le récap ne contient que la localité du lieu (ADR 0008).
+ * RPC `create_booking` (migrations …_reservation_reelle.sql et …_reservation_idempotente.sql).
+ * Erreurs : exceptions P0001 dont le message est une clé stable (invalid_input,
+ * slot_unavailable, too_soon, too_far, limit_reached, request_conflict). Le récap ne contient
+ * que la localité du lieu (ADR 0008). Réponse validée par Zod (lib/schemas.ts).
  */
 type CreateBookingFunction = {
   Args: {
@@ -94,13 +95,15 @@ type CreateBookingFunction = {
     p_email?: string | null;
     /** Honeypot : vide pour un humain. */
     p_website?: string | null;
+    /** Clé d'idempotence (ADR 0009) : la même pour tous les essais d'une réservation. */
+    p_request_id?: string | null;
   };
   Returns: {
     starts_at: string;
     ends_at: string;
     service_name: string;
     location_label: string;
-    /** Renvoyé une seule fois, ici : aucune autre fonction ne le relit. */
+    /** Renvoyé ici seulement (et lors d'un rejeu avec la même clé, ADR 0009). */
     cancel_token: string;
   }[];
 };

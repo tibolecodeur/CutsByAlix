@@ -105,20 +105,21 @@ Schéma complet et justification : [`docs/adr/0002-modele-de-donnees-et-securite
 
 Fonctions RPC publiques (`security definer`, validation complète en SQL) :
 
-| Fonction                                | Rôle                                                            |
-| --------------------------------------- | --------------------------------------------------------------- |
-| `get_available_slots(service_id, jour)` | créneaux libres d'un jour + libellé public du lieu, en un appel |
-| `create_booking(...)`                   | réserve et renvoie le récap (localité, `cancel_token`)          |
-| `get_booking(cancel_token)`             | récap pour le porteur du lien d'annulation                      |
-| `cancel_booking(cancel_token)`          | annule si le délai le permet                                    |
+| Fonction                                | Rôle                                                                                 |
+| --------------------------------------- | ------------------------------------------------------------------------------------ |
+| `get_available_slots(service_id, jour)` | créneaux libres d'un jour + libellé public du lieu, en un appel                      |
+| `create_booking(..., request_id)`       | réserve et renvoie le récap (localité, `cancel_token`) ; rejeu idempotent (ADR 0009) |
+| `get_booking(cancel_token)`             | récap pour le porteur du lien d'annulation                                           |
+| `cancel_booking(cancel_token)`          | annule si le délai le permet                                                         |
 
 Erreurs renvoyées au front (message de l'exception) : `invalid_input`, `slot_unavailable`,
-`too_soon`, `too_far`, `limit_reached`, `too_late`.
+`too_soon`, `too_far`, `limit_reached`, `too_late`, `request_conflict`. Côté front, toute réponse
+est validée par Zod (`src/lib/schemas.ts`) et aucun message brut de Supabase n'est recopié.
 
 Règles centralisées dans `private.settings()` (une migration suffit pour les changer) : grille
 de créneaux de 70 min, réservation au plus tard 5 h avant et au plus 4 semaines à l'avance,
 annulation jusqu'à 24 h avant, 2 RDV futurs max par téléphone ou email, conservation des données
-clients 6 mois. Le front en garde une copie pour ses textes (`src/lib/bookingRules.ts`).
+clients 6 mois, rejeu d'une réservation (même clé) accepté 30 min. Le front en garde une copie pour ses textes (`src/lib/bookingRules.ts`).
 
 Durcissements : le public (anon) ne lit sur `services` que `id`, `name`, `duration_min`,
 `price_label` et `sort_order`. Aucune adresse n'est stockée (ADR 0008) : le client voit la

@@ -26,3 +26,83 @@ export const availabilityFormSchema = z
   .refine((form) => form.to > form.from, { message: "invalid_range", path: ["to"] });
 
 export type AvailabilityForm = z.infer<typeof availabilityFormSchema>;
+
+// ---------------------------------------------------------------------------------------------
+// Réponses de Supabase pour le parcours client (C-02 de l'audit) : on ne croit pas la réponse
+// sur parole. Une réponse vide, mal formée ou de forme inattendue (proxy, panne, version de la
+// base différente) est refusée ici, et l'écran affiche une erreur avec « Réessayer » au lieu
+// d'un faux succès. Comparable à la désérialisation stricte d'un DTO en Symfony/Java.
+// ---------------------------------------------------------------------------------------------
+
+/** Horodatage ISO 8601 avec fuseau (« …Z » ou « …+00:00 », format renvoyé par PostgREST). */
+const isoDateTime = z.iso.datetime({ offset: true });
+/** Forme d'un uuid, sans exiger de version (même règle que `isUuid` de booking/data.ts). */
+const uuidLike = z
+  .string()
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+const label = z.string().min(1);
+
+/** Table `services` (colonnes lisibles par anon). */
+export const serviceRowsSchema = z.array(
+  z.object({
+    id: z.string().min(1),
+    name: label,
+    duration_min: z.number().int().positive(),
+    price_label: z.string().nullable(),
+  }),
+);
+
+/** RPC `get_available_slots`. */
+export const availableSlotRowsSchema = z.array(
+  z.object({
+    starts_at: isoDateTime,
+    ends_at: isoDateTime,
+    location_id: z.string().min(1),
+    location_label: label,
+  }),
+);
+
+/** RPC `create_booking` : exactement UNE ligne, avec un jeton d'annulation bien formé. */
+export const bookingReceiptRowsSchema = z
+  .array(
+    z.object({
+      starts_at: isoDateTime,
+      ends_at: isoDateTime,
+      service_name: label,
+      location_label: label,
+      cancel_token: uuidLike,
+    }),
+  )
+  .length(1);
+
+/** RPC `get_booking` : zéro ligne (lien invalide ou expiré) ou une seule. */
+export const bookingDetailsRowsSchema = z
+  .array(
+    z.object({
+      status: z.enum(["confirmed", "cancelled"]),
+      starts_at: isoDateTime,
+      ends_at: isoDateTime,
+      service_name: label,
+      location_label: label,
+      first_name: label,
+      can_cancel: z.boolean(),
+      cancelled_by: z.enum(["client", "barber"]).nullable(),
+    }),
+  )
+  .max(1);
+
+/** RPC `cancel_booking` : un booléen, rien d'autre (ni null, ni objet). */
+export const cancelResultSchema = z.boolean();
+
+/**
+ * Récapitulatif gardé dans `sessionStorage` pour survivre à un rechargement (C-03). Relu depuis
+ * le navigateur : on le valide comme une réponse réseau. Aucune donnée personnelle (ni nom, ni
+ * téléphone, ni e-mail).
+ */
+export const storedReceiptSchema = z.strictObject({
+  startsAt: isoDateTime,
+  endsAt: isoDateTime,
+  serviceName: label,
+  locationLabel: label,
+  cancelToken: uuidLike,
+});
