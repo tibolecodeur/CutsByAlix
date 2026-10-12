@@ -69,12 +69,12 @@ export const SERVICE_ROWS = [
     id: "10000000-0000-4000-8000-000000000001",
     name: "Coupe",
     duration_min: 60,
-    price_label: null,
+    price_label: "10 €",
   },
   {
     id: "10000000-0000-4000-8000-000000000002",
     name: "Coupe + barbe",
-    duration_min: 60,
-    price_label: "20 €",
+    duration_min: 70,
+    price_label: "12 €",
   },
 ];

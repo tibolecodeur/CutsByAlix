@@ -75,7 +75,7 @@ select extensions.dblink_exec('setup', $sql$
   values ('cc000000-0000-4000-8000-000000000002', 'Ville test', true);
   insert into public.availabilities (location_id, starts_at, ends_at)
   values ('cc000000-0000-4000-8000-000000000002',
-          '2030-06-12 10:00 Europe/Paris', '2030-06-12 11:00 Europe/Paris');
+          '2030-06-12 10:00 Europe/Paris', '2030-06-12 11:10 Europe/Paris');
 $sql$);
 
 -- Client 1 : réserve, SANS valider sa transaction (il garde le verrou).

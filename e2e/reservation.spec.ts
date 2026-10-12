@@ -148,6 +148,7 @@ async function allerAuRecap(page: Page) {
   await continuer(page);
   await remplirCoordonnees(page);
   await expect(page.getByRole("heading", { level: 2, name: "Vérifie et confirme" })).toBeVisible();
+  await expect(page.getByText(/Paiement en liquide ou par virement./)).toBeVisible();
 }
 
 async function reserverJusquALaConfirmation(page: Page) {
@@ -158,6 +159,7 @@ async function reserverJusquALaConfirmation(page: Page) {
   await allerAuRecap(page);
   await page.getByRole("button", { name: "Confirmer la réservation" }).click();
   await expect(page.getByRole("heading", { level: 2, name: "C'est réservé !" })).toBeVisible();
+  await expect(page.getByText("En liquide ou par virement")).toBeVisible();
 }
 
 test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation sans adresse", async ({

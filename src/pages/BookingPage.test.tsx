@@ -340,10 +340,13 @@ describe("BookingPage : envoi de la réservation", () => {
       screen.getByText(/L'adresse exacte n'est pas affichée sur le site : une fois réservé/),
     ).toBeVisible();
     expect(screen.queryByRole("link", { name: /Instagram/ })).not.toBeInTheDocument();
+    // Mode de paiement annoncé avant de confirmer, sans coordonnées bancaires.
+    expect(screen.getByText(/Paiement en liquide ou par virement\./)).toBeVisible();
 
     await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
 
     expect(await screen.findByRole("heading", { name: "C'est réservé !" })).toBeVisible();
+    expect(screen.getByText("En liquide ou par virement")).toBeVisible();
     expect(screen.getByText("mardi 15 janvier")).toBeVisible();
     expect(screen.getByText("14:00 – 15:00")).toBeVisible();
     expect(screen.getByText("Saint-Christophe-du-Bois")).toBeVisible();

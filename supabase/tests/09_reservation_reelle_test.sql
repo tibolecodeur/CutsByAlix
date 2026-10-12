@@ -39,8 +39,8 @@ insert into public.availabilities (location_id, starts_at, ends_at) values
   ('20000000-0000-4000-8000-000000000003', '2026-10-22 10:00 Europe/Paris', '2026-10-22 12:00 Europe/Paris'),
   -- Ven. 23/10 10 h – 12 h 20, ville deux : 10:00, 11:10.
   ('20000000-0000-4000-8000-000000000002', '2026-10-23 10:00 Europe/Paris', '2026-10-23 12:20 Europe/Paris'),
-  -- Sam. 24/10 10 h – 11 h, ville un : 10:00.
-  ('20000000-0000-4000-8000-000000000001', '2026-10-24 10:00 Europe/Paris', '2026-10-24 11:00 Europe/Paris'),
+  -- Sam. 24/10 10 h – 11 h 10, ville un : 10:00.
+  ('20000000-0000-4000-8000-000000000001', '2026-10-24 10:00 Europe/Paris', '2026-10-24 11:10 Europe/Paris'),
   -- Dim. 15/11 8 h 30 – 10 h 50, ville un : 8:30 (= horizon pile), 9:40 (au-delà).
   ('20000000-0000-4000-8000-000000000001', '2026-11-15 08:30 Europe/Paris', '2026-11-15 10:50 Europe/Paris');
 
@@ -62,7 +62,7 @@ $$;
 --    Maintenant = dim. 18/10 8 h 30 → limite à 10 h 30 le même jour.
 -- ---------------------------------------------------------------------------
 insert into public.availabilities (location_id, starts_at, ends_at) values
-  ('20000000-0000-4000-8000-000000000001', '2026-10-18 10:29 Europe/Paris', '2026-10-18 11:29 Europe/Paris');
+  ('20000000-0000-4000-8000-000000000001', '2026-10-18 10:29 Europe/Paris', '2026-10-18 11:39 Europe/Paris');
 select throws_ok(
   $$select * from pg_temp.book('2026-10-18 10:29 Europe/Paris', '20000000-0000-4000-8000-000000000001')
       as (s timestamptz, e timestamptz, n text, l text, t uuid)$$,
@@ -70,7 +70,7 @@ select throws_ok(
 delete from public.availabilities where starts_at = '2026-10-18 10:29 Europe/Paris';
 
 insert into public.availabilities (location_id, starts_at, ends_at) values
-  ('20000000-0000-4000-8000-000000000001', '2026-10-18 10:31 Europe/Paris', '2026-10-18 11:31 Europe/Paris');
+  ('20000000-0000-4000-8000-000000000001', '2026-10-18 10:31 Europe/Paris', '2026-10-18 11:41 Europe/Paris');
 select lives_ok(
   $$select * from pg_temp.book('2026-10-18 10:31 Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Ana', 'Petit', '0600000011') as (s timestamptz, e timestamptz, n text, l text, t uuid)$$,
@@ -80,7 +80,7 @@ delete from public.bookings where phone = '0600000011';
 delete from public.availabilities where starts_at = '2026-10-18 10:31 Europe/Paris';
 
 insert into public.availabilities (location_id, starts_at, ends_at) values
-  ('20000000-0000-4000-8000-000000000001', '2026-10-18 10:30 Europe/Paris', '2026-10-18 11:30 Europe/Paris');
+  ('20000000-0000-4000-8000-000000000001', '2026-10-18 10:30 Europe/Paris', '2026-10-18 11:40 Europe/Paris');
 select lives_ok(
   $$select * from pg_temp.book('2026-10-18 10:30 Europe/Paris', '20000000-0000-4000-8000-000000000001',
       'Ana', 'Petit', '0600000001') as (s timestamptz, e timestamptz, n text, l text, t uuid)$$,
@@ -99,16 +99,16 @@ select throws_ok(
   'P0001', 'too_far', 'créneau suivant de la grille, au-delà de l''horizon : refusé (too_far)');
 
 -- ---------------------------------------------------------------------------
--- 3. Cas nominal : récap sans adresse, jeton présent, RDV de la durée de la PRESTATION.
+-- 3. Cas nominal : récap sans adresse, jeton présent, RDV de la durée du CRÉNEAU (70 min).
 -- ---------------------------------------------------------------------------
 select results_eq(
   $$select s, e - s, n, l, t is not null
       from pg_temp.book('2026-10-21 10:00 Europe/Paris', '20000000-0000-4000-8000-000000000001',
              '  Léa ', 'Martin', '06 12 34 56 78')
         as (s timestamptz, e timestamptz, n text, l text, t uuid)$$,
-  $$values ('2026-10-21 10:00 Europe/Paris'::timestamptz, interval '60 minutes', 'Coupe'::text,
+  $$values ('2026-10-21 10:00 Europe/Paris'::timestamptz, interval '70 minutes', 'Coupe'::text,
             'Ville un'::text, true)$$,
-  'nominal : début, durée de la prestation (60 min), prestation, ville, jeton');
+  'nominal : début, durée du créneau (70 min), prestation, ville, jeton');
 
 -- ---------------------------------------------------------------------------
 -- 4. Le créneau doit exister, dans CE lieu, actif, sur la grille, libre.
@@ -262,7 +262,7 @@ delete from public.availabilities;
 insert into public.availabilities (location_id, starts_at, ends_at) values
   ('20000000-0000-4000-8000-000000000002',
    ((now() at time zone 'Europe/Paris')::date + 3 + time '10:00') at time zone 'Europe/Paris',
-   ((now() at time zone 'Europe/Paris')::date + 3 + time '11:00') at time zone 'Europe/Paris');
+   ((now() at time zone 'Europe/Paris')::date + 3 + time '11:10') at time zone 'Europe/Paris');
 
 set local role anon;
 select results_eq(

@@ -90,6 +90,16 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       fournir). pgTAP 16 + 05, 08, 09, 13 adaptés (4 h 59 refusé / 5 h 01 accepté, 23 h 59 /
       24 h 01), Vitest et Playwright (horloge figée). Appliqué en local seulement. Ordre pour la
       production : fusionner la PR PUIS `db push`.
+- [x] **Tarifs, durées et paiement** (consigne 26, branche `feat/tarifs-paiement`) : Coupe 60 min /
+      10 €, Coupe + barbe 70 min / 12 €, paiement « en liquide ou par virement » (récapitulatif,
+      confirmation, page de réservation, accueil). Migration `…_tarifs_durees_paiement.sql`
+      (ADR 0011) : la fin d'un RDV et d'un créneau proposé = durée du créneau (`slot_step`,
+      70 min) et non `services.duration_min` ; mise à jour des deux prestations par nom, rien si
+      la table est vide, échec si l'une manque ; RDV existants inchangés. pgTAP 27 ajouté,
+      03, 04, 05, 09, 10, 11, 14, 16, 19, 25, 26 adaptés (plages de 70 min). Ordre pour la
+      production : une seule migration, `db push` puis requête de contrôle en lecture seule.
+- [ ] **Créneaux de durée variable selon la prestation** : non fait, à reconsidérer si Alix le
+      demande (aujourd'hui tous les créneaux font 70 min).
 - [x] **Délai minimum de réservation à 2 h** (consigne 28) : migration
       `…_delai_reservation_2h.sql` (seule `min_notice` de `private.settings()` passe de 5 h à
       2 h ; les 8 colonnes reprises de `…_reservation_idempotente.sql`, la définition en vigueur ;

@@ -44,7 +44,7 @@ insert into public.availabilities (location_id, starts_at, ends_at) values
   ('20000000-0000-4000-8000-000000000003', '2026-10-23 10:00 Europe/Paris', '2026-10-23 12:00 Europe/Paris'),
   -- Dim. 25/10, jour du passage à l'heure d'hiver (3 h → 2 h) : journée de 25 h.
   ('20000000-0000-4000-8000-000000000001', '2026-10-25 09:00 Europe/Paris', '2026-10-25 12:00 Europe/Paris'),
-  ('20000000-0000-4000-8000-000000000001', '2026-10-25 23:00 Europe/Paris', '2026-10-26 00:00 Europe/Paris'),
+  ('20000000-0000-4000-8000-000000000001', '2026-10-25 23:00 Europe/Paris', '2026-10-26 00:10 Europe/Paris'),
   -- Dim. 15/11 8 h – 11 h : limite des 4 semaines (15/11 8 h 30) → 8:00 oui, 9:10 non.
   ('20000000-0000-4000-8000-000000000001', '2026-11-15 08:00 Europe/Paris', '2026-11-15 11:00 Europe/Paris');
 

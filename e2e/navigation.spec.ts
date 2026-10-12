@@ -62,7 +62,7 @@ test("l'accueil contient les sections dans l'ordre attendu", async ({ page }) =>
   expect(ids).toEqual(["accueil", "prestations", "galerie", "reserver"]);
 });
 
-test("l'accueil affiche les deux prestations sans prix inventé", async ({ page }) => {
+test("l'accueil affiche les deux prestations avec les prix de la base", async ({ page }) => {
   await page.goto("/");
   const prestations = page.locator("#prestations");
 
@@ -70,7 +70,9 @@ test("l'accueil affiche les deux prestations sans prix inventé", async ({ page 
     "Coupe",
     "Coupe + barbe",
   ]);
-  await expect(prestations.getByText("Prix : À confirmer")).toHaveCount(2);
+  await expect(prestations.getByText("Prix : 10 €")).toHaveCount(1);
+  await expect(prestations.getByText("Prix : 12 €")).toHaveCount(1);
+  await expect(prestations.getByText("Prix : À confirmer")).toHaveCount(0);
 });
 
 /**

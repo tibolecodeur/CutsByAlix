@@ -102,14 +102,14 @@ values ('60000000-0000-4000-8000-000000000002',
         '2000-01-01 00:00+00', 'Eva', 'Petit', 'eva@example.test');
 select is(
   (select ends_at - starts_at from public.bookings where id = '60000000-0000-4000-8000-000000000002'),
-  interval '60 minutes',
-  'ends_at est recalculé à partir de la durée de la prestation');
+  interval '70 minutes',
+  'ends_at est recalculé à partir de la durée du créneau (70 min, pas celle de la prestation)');
 
 update public.bookings set ends_at = ends_at + interval '3 hours'
  where id = '60000000-0000-4000-8000-000000000002';
 select is(
   (select ends_at - starts_at from public.bookings where id = '60000000-0000-4000-8000-000000000002'),
-  interval '60 minutes',
+  interval '70 minutes',
   'ends_at ne peut pas être modifié à la main');
 
 -- Une réservation annulée libère le créneau.

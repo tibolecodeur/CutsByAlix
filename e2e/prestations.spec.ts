@@ -17,15 +17,16 @@ const APRES_LES_REESSAIS = { timeout: 15_000 };
 
 test("/reserver affiche les prestations lues dans Supabase, avec leur prix", async ({ page }) => {
   await mockServices(page, {
-    body: [{ ...E2E_SERVICES[0], price_label: "15 €" }, E2E_SERVICES[1]],
+    body: E2E_SERVICES,
   });
   const requete = page.waitForRequest(
     (r) => r.method() === "GET" && /\/rest\/v1\/services\?/.test(r.url()),
   );
   await page.goto("/reserver");
 
-  await expect(page.getByRole("radio", { name: /^Coupe\s*60 min · 15 €/ })).toBeVisible();
-  await expect(page.getByRole("radio", { name: /^Coupe \+ barbe\s*60 min/ })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /^Coupe\s*60 min · 10 €/ })).toBeVisible();
+  await expect(page.getByRole("radio", { name: /^Coupe \+ barbe\s*70 min · 12 €/ })).toBeVisible();
+  await expect(page.getByText("Paiement en liquide ou par virement.")).toBeVisible();
 
   // Lecture minimale : prestations actives, colonnes utiles seulement, triées.
   const url = new URL((await requete).url());

@@ -35,7 +35,7 @@ export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProp
           ["Date", formatLongDay(receipt.startsAt)],
           ["Heure", `${formatTime(receipt.startsAt)} – ${formatTime(receipt.endsAt)}`],
           ["Lieu", receipt.locationLabel],
-          ["Paiement", "En liquide, sur place"],
+          ["Paiement", "En liquide ou par virement"],
         ]}
       />
 

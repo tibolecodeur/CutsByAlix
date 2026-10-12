@@ -36,21 +36,21 @@ insert into public.locations (id, public_label, active) values
 -- Aucune plage ne se chevauche (tous lieux confondus).
 insert into public.availabilities (location_id, starts_at, ends_at) values
   -- Passé par rapport à A.
-  ('26000000-0000-4000-8000-000000000001', '2030-03-10 09:00 Europe/Paris', '2030-03-10 10:00 Europe/Paris'),
+  ('26000000-0000-4000-8000-000000000001', '2030-03-10 09:00 Europe/Paris', '2030-03-10 10:10 Europe/Paris'),
   -- Mer. 20/03 10 h – 11 h : UN seul créneau (10:00).
-  ('26000000-0000-4000-8000-000000000001', '2030-03-20 10:00 Europe/Paris', '2030-03-20 11:00 Europe/Paris'),
+  ('26000000-0000-4000-8000-000000000001', '2030-03-20 10:00 Europe/Paris', '2030-03-20 11:10 Europe/Paris'),
   -- Jeu. 21/03 14 h – 18 h : 14:00, 15:10, 16:20.
   ('26000000-0000-4000-8000-000000000001', '2030-03-21 14:00 Europe/Paris', '2030-03-21 18:00 Europe/Paris'),
   -- Ven. 22/03 14 h – 16 h 30 : 14:00 et 15:10 ; un RDV à 15:10 → il reste 14:00.
   ('26000000-0000-4000-8000-000000000001', '2030-03-22 14:00 Europe/Paris', '2030-03-22 16:30 Europe/Paris'),
   -- Sam. 23/03 10 h – 11 h : un seul créneau, pris par un RDV → le jour disparaît.
-  ('26000000-0000-4000-8000-000000000001', '2030-03-23 10:00 Europe/Paris', '2030-03-23 11:00 Europe/Paris'),
+  ('26000000-0000-4000-8000-000000000001', '2030-03-23 10:00 Europe/Paris', '2030-03-23 11:10 Europe/Paris'),
   -- Dim. 24/03, lieu inactif.
   ('26000000-0000-4000-8000-000000000002', '2030-03-24 10:00 Europe/Paris', '2030-03-24 12:00 Europe/Paris'),
   -- Lun. 25/03 23 h 30 → mar. 26/03 3 h : 23:30 (le 25), 00:40 et 01:50 (le 26).
   ('26000000-0000-4000-8000-000000000001', '2030-03-25 23:30 Europe/Paris', '2030-03-26 03:00 Europe/Paris'),
   -- Mer. 27/03 0 h 30 – 1 h 30 : 00:30 (le 27). En UTC (hiver, +1) ce serait le 26 à 23:30.
-  ('26000000-0000-4000-8000-000000000001', '2030-03-27 00:30 Europe/Paris', '2030-03-27 01:30 Europe/Paris'),
+  ('26000000-0000-4000-8000-000000000001', '2030-03-27 00:30 Europe/Paris', '2030-03-27 01:40 Europe/Paris'),
   -- Dim. 31/03, passage à l'heure d'été (2 h → 3 h) : 00:30, 01:40, 03:50.
   ('26000000-0000-4000-8000-000000000001', '2030-03-31 00:30 Europe/Paris', '2030-03-31 05:00 Europe/Paris'),
   -- Lun. 15/04 7 h – 11 h : horizon de A à 8 h 30 → 07:00 et 08:10 seulement.
@@ -211,7 +211,7 @@ select ok((select proconfig @> array['search_path=""'] from pg_proc where pronam
 insert into public.availabilities (location_id, starts_at, ends_at) values
   ('26000000-0000-4000-8000-000000000001',
    (((now() at time zone 'Europe/Paris')::date + 3)::timestamp + time '10:00') at time zone 'Europe/Paris',
-   (((now() at time zone 'Europe/Paris')::date + 3)::timestamp + time '11:00') at time zone 'Europe/Paris');
+   (((now() at time zone 'Europe/Paris')::date + 3)::timestamp + time '11:10') at time zone 'Europe/Paris');
 
 set local role anon;
 select is(
