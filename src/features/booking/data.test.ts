@@ -292,6 +292,20 @@ describe("createBooking", () => {
     await expectBookingError(createBooking(bookingInput(), REQUEST_ID), "unknown");
   });
 
+  it("base SANS la migration d'idempotence (PGRST202) : « unknown », aucun détail recopié", async () => {
+    // Réponse réelle de PostgREST (HTTP 404) quand le nouveau front envoie p_request_id à une
+    // base qui n'a pas encore la fonction à 9 paramètres (ADR 0009, ordre de mise en production).
+    const message =
+      "Could not find the function public.create_booking(p_email, p_first_name, p_request_id) in the schema cache";
+    mockSupabase({ data: null, error: { code: "PGRST202", message } });
+    const error = await createBooking(bookingInput(), REQUEST_ID).catch(
+      (caught: unknown) => caught,
+    );
+    expect(error).toBeInstanceOf(BookingError);
+    expect(error).toMatchObject({ code: "unknown", message: "unknown" });
+    expect(String(error)).not.toMatch(/PGRST|create_booking|schema cache|p_request_id/);
+  });
+
   it("ne recopie jamais le message brut de la base dans l'erreur", async () => {
     mockSupabase({
       data: null,

@@ -266,6 +266,9 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       (`sessionStorage`, sans donnée personnelle) ; une entrée d'historique par étape (geste
       Retour) ; 404 en `noindex`. Les 18 tests sautés correspondants sont réactivés ; restent
       sautés : B-02 (3) et les 3 anciens sans défaut.
+      **Ordre de mise en production : `db push` AVANT la fusion** (le nouveau front envoie
+      `p_request_id` : sans la migration, toute réservation échoue en `PGRST202`). Voir
+      l'ADR 0009 et `docs/audit/controle-reservation-idempotente.sql`.
 - [ ] 🟡 **Hacher le jeton d'annulation** : `cancel_token` est stocké en clair dans `bookings`
       (constaté à la consigne 25). Le stocker haché (sha256) limiterait les dégâts d'une fuite de
       la base ; il faudrait alors régénérer le jeton lors d'un rejeu (ADR 0009). À planifier.

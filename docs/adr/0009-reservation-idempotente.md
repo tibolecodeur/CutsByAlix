@@ -55,6 +55,27 @@ dont une seule resterait valable, et n'apporterait rien tant que le jeton n'est 
   coordonnées d'un client obtiendrait son lien d'annulation. Écarté.
 - **Ne rien faire et compter sur l'e-mail** : pas d'e-mail en V1.
 
+## Ordre de mise en production : la migration D'ABORD, le front ensuite
+
+Cloudflare Pages déploie le site dès la fusion dans `main`. Il faut donc appliquer la migration
+**avant** de fusionner. Mesuré en local le 2026-10-12, avec le vrai PostgREST :
+
+| Base                                        | Ancien front (8 paramètres)                        | Nouveau front (9 paramètres, `p_request_id`)   |
+| ------------------------------------------- | -------------------------------------------------- | ---------------------------------------------- |
+| **sans** la migration (production actuelle) | fonctionne                                         | **HTTP 404 `PGRST202`** : fonction introuvable |
+| **avec** la migration                       | fonctionne (`p_request_id` vaut `null` par défaut) | fonctionne                                     |
+
+Si le nouveau front part avant la migration, **plus aucune réservation n'est possible** jusqu'au
+`db push` : le client voit « La réservation n'a pas pu être envoyée. Vérifie ta connexion »
+(message générique, rien de technique), rien n'est créé et aucune donnée n'est perdue. Les autres
+écrans (prestations, créneaux, annulation) ne sont pas touchés. Dans l'ordre inverse, l'ancien
+front encore en cache dans un navigateur continue de fonctionner sans rejeu possible.
+
+Ordre : sauvegarde (`docs/SAUVEGARDES.md`), `npx supabase migration list`,
+`npx supabase db push --dry-run`, `npx supabase db push` (jamais `--include-seed`),
+requête de contrôle `docs/audit/controle-reservation-idempotente.sql` (tout doit être OK),
+puis fusion de la PR.
+
 ## Limites
 
 - La clé vit **en mémoire de la page** : elle ne survit pas à un rechargement. Une coupure
