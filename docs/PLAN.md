@@ -312,8 +312,14 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 ## Backlog (non planifié)
 
 - [ ] Bouton « Ajouter à mon calendrier » (.ics) sur la confirmation de réservation (SPEC V1).
-- [ ] Calendrier de /reserver : griser les jours sans créneau (une requête pour les 4 semaines,
-      jours sans dispo en `aria-disabled`).
+- [x] ~~Calendrier de /reserver : griser les jours sans créneau~~ : fait par la consigne 25 bis
+      (issue #40, ADR 0010). Une seule requête pour les 4 semaines (nouvelle fonction
+      `get_available_days`, migration `…_jours_disponibles.sql`) ; jour sans créneau = bouton
+      radio `disabled` (et non `aria-disabled`, qui laisserait le jour atteignable aux flèches),
+      grisé, barré et annoncé « aucun créneau disponible » ; jour disponible annonce son nombre de
+      créneaux ; aucun jour disponible = message avec le lien Instagram. **Ordre de mise en
+      production : `db push` AVANT la fusion** (sinon le calendrier retombe sur l'affichage
+      d'avant, sans rien casser). Contrôle : `docs/audit/controle-jours-disponibles.sql`.
 - [x] ~~Annulation d'un RDV par le barber~~ : faite par la consigne 19 (`admin_cancel_booking`,
       `cancelled_by = 'barber'`, pgTAP 14). Pas de motif enregistré (minimisation).
 

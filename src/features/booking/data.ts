@@ -1,5 +1,6 @@
 import type { DayKey } from "@/lib/dates";
 import {
+  availableDayRowsSchema,
   availableSlotRowsSchema,
   bookingDetailsRowsSchema,
   bookingReceiptRowsSchema,
@@ -42,6 +43,13 @@ export type AvailableSlot = {
   endsAt: string;
   locationId: string;
   locationLabel: string;
+};
+
+/** Un jour du calendrier qui a au moins un créneau (RPC `get_available_days`). */
+export type AvailableDay = {
+  /** Jour « yyyy-MM-dd », en heure de Paris. */
+  day: DayKey;
+  slotCount: number;
 };
 
 /** Paramètres de la RPC `create_booking`. */
@@ -172,6 +180,28 @@ export async function getServices(): Promise<Service[]> {
     priceLabel: s.price_label,
   }));
   return services;
+}
+
+/**
+ * RPC `get_available_days(p_service_id)` : les jours des 4 prochaines semaines qui ont au moins
+ * un créneau, avec leur nombre de créneaux, en UNE requête (au lieu d'une par jour). Mêmes règles
+ * que `getAvailableSlots`. Un jour absent de la liste n'a aucun créneau (passé, hors période,
+ * trop proche, tout pris, ou aucune plage). Rejette en cas d'erreur réseau ou de base.
+ */
+export async function getAvailableDays(serviceId: string): Promise<AvailableDay[]> {
+  let response;
+  try {
+    response = await getSupabase()
+      .rpc("get_available_days", { p_service_id: serviceId })
+      .abortSignal(AbortSignal.timeout(REQUEST_TIMEOUT_MS));
+  } catch {
+    throw new BookingError("unknown");
+  }
+  if (response.error) throw new BookingError("unknown");
+  const parsed = availableDayRowsSchema.safeParse(response.data);
+  if (!parsed.success) throw new BookingError("invalid_response");
+
+  return parsed.data.map((row) => ({ day: row.day, slotCount: row.slot_count }));
 }
 
 /**

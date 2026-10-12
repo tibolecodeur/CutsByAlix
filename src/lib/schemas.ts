@@ -62,6 +62,17 @@ export const availableSlotRowsSchema = z.array(
   }),
 );
 
+/**
+ * RPC `get_available_days` : les jours (heure de Paris, « yyyy-MM-dd ») qui ont au moins un
+ * créneau, avec leur nombre de créneaux. Un jour sans créneau n'est pas dans la liste.
+ */
+export const availableDayRowsSchema = z.array(
+  z.object({
+    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    slot_count: z.number().int().positive(),
+  }),
+);
+
 /** RPC `create_booking` : exactement UNE ligne, avec un jeton d'annulation bien formé. */
 export const bookingReceiptRowsSchema = z
   .array(

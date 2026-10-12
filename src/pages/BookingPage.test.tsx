@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useNavigate, type InitialEntry } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as bookingData from "@/features/booking/data";
+import { calendarDays } from "@/features/booking/availability";
 import { firstBookableDay } from "@/features/booking/notice";
 import { formatDayKey } from "@/lib/dates";
 import { BookingPage } from "@/pages/BookingPage";
@@ -16,6 +17,7 @@ vi.mock("@/features/booking/data", async (importOriginal) => {
   return {
     ...original,
     getServices: vi.fn(),
+    getAvailableDays: vi.fn(),
     getAvailableSlots: vi.fn(),
     createBooking: vi.fn(),
   };
@@ -44,13 +46,36 @@ function renderPage() {
   );
 }
 
+/**
+ * Nom d'un jour du calendrier, quel que soit le nombre de créneaux annoncé après la virgule
+ * (« mardi 13 octobre, 2 créneaux disponibles »). Testing Library compare le nom en entier.
+ */
+function dayName(day: string): RegExp {
+  return new RegExp(`^${formatDayKey(day)}(,|$)`);
+}
+
 /** Case du calendrier du premier jour réservable (au-delà du délai de 5 h). */
-function firstBookableDayRadio() {
-  return screen.getByRole("radio", { name: formatDayKey(firstBookableDay(new Date())) });
+async function firstBookableDayRadio() {
+  // Le calendrier s'affiche une fois les jours disponibles chargés : on l'attend.
+  return screen.findByRole("radio", { name: dayName(firstBookableDay(new Date())) });
+}
+
+/**
+ * Jours que la base renverrait par défaut : tous ceux qui ne sont pas trop proches (à moins de
+ * 5 h), avec 2 créneaux chacun. Calculé À L'APPEL, avec l'horloge du moment (figée par certains
+ * tests).
+ */
+function defaultDays(): bookingData.AvailableDay[] {
+  const first = firstBookableDay(new Date());
+  return calendarDays(new Date())
+    .filter((day) => day >= first)
+    .map((day) => ({ day, slotCount: 2 }));
 }
 
 beforeEach(() => {
   vi.mocked(bookingData.getServices).mockReset();
+  vi.mocked(bookingData.getAvailableDays).mockReset();
+  vi.mocked(bookingData.getAvailableDays).mockImplementation(async () => defaultDays());
   vi.mocked(bookingData.getAvailableSlots).mockReset();
   vi.mocked(bookingData.createBooking).mockReset();
 });
@@ -59,7 +84,7 @@ beforeEach(() => {
 async function goToSummary(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole("radio", { name: /Coupe/ }));
   await user.click(screen.getByRole("button", { name: "Continuer" }));
-  await user.click(firstBookableDayRadio());
+  await user.click(await firstBookableDayRadio());
   await user.click(await screen.findByRole("radio", { name: /14:00 – 15:00/ }));
   await user.click(screen.getByRole("button", { name: "Continuer" }));
   await user.type(screen.getByLabelText("Prénom"), "Zoé");
@@ -104,7 +129,7 @@ describe("BookingPage : chargement et erreurs", () => {
 
     await user.click(await screen.findByRole("radio", { name: /Coupe/ }));
     await user.click(screen.getByRole("button", { name: "Continuer" }));
-    await user.click(firstBookableDayRadio());
+    await user.click(await firstBookableDayRadio());
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /Impossible de charger les créneaux/,
@@ -133,13 +158,27 @@ describe("BookingPage : délai de 5 h", () => {
     await user.click(screen.getByRole("button", { name: "Continuer" }));
   }
 
-  it("19 h 01 : explique la règle, aujourd'hui est refusé sans interroger la base", async () => {
+  it("19 h 01 : la règle est expliquée et aujourd'hui est grisé, non cliquable", async () => {
     const user = userEvent.setup();
     vi.setSystemTime(new Date("2026-10-13T17:01:00Z")); // mardi 13, 19 h 01 à Paris
     await openSlotStep(user);
     expect(screen.getByText(/On réserve au plus tard 5 h avant le rendez-vous/)).toBeVisible();
 
-    await user.click(screen.getByRole("radio", { name: formatDayKey("2026-10-13") }));
+    const today = await screen.findByRole("radio", { name: dayName("2026-10-13") });
+    expect(today).toBeDisabled();
+    expect(today).toHaveAccessibleName(`${formatDayKey("2026-10-13")}, aucun créneau disponible`);
+    await user.click(today);
+    expect(bookingData.getAvailableSlots).not.toHaveBeenCalled();
+    expect(screen.getByRole("radio", { name: dayName("2026-10-14") })).toBeEnabled();
+  });
+
+  it("19 h 01, jours impossibles à charger : explique « Trop tard » sans interroger la base", async () => {
+    const user = userEvent.setup();
+    vi.setSystemTime(new Date("2026-10-13T17:01:00Z")); // mardi 13, 19 h 01 à Paris
+    vi.mocked(bookingData.getAvailableDays).mockRejectedValue(new Error("réseau"));
+    await openSlotStep(user);
+
+    await user.click(await screen.findByRole("radio", { name: dayName("2026-10-13") }));
     expect(
       screen.getByText(`Trop tard pour réserver le ${formatDayKey("2026-10-13")}.`),
     ).toBeVisible();
@@ -155,7 +194,7 @@ describe("BookingPage : délai de 5 h", () => {
     vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([]);
     await openSlotStep(user);
 
-    await user.click(screen.getByRole("radio", { name: formatDayKey("2026-10-13") }));
+    await user.click(screen.getByRole("radio", { name: dayName("2026-10-13") }));
     expect(screen.queryByText(/Trop tard pour réserver/)).not.toBeInTheDocument();
     await vi.waitFor(() => expect(bookingData.getAvailableSlots).toHaveBeenCalled());
   });
@@ -612,5 +651,152 @@ describe("BookingPage : rechargement de la confirmation (C-03)", () => {
 
     expect(await screen.findByRole("heading", { name: "C'est réservé !" })).toBeVisible();
     expect(screen.getByText(new RegExp(`/annuler#${TOKEN}`))).toBeVisible();
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Consigne 25 bis : jours sans créneau en gris (ADR 0010).
+// ---------------------------------------------------------------------------------------------
+describe("BookingPage : jours disponibles", () => {
+  async function openSlotStep(user: ReturnType<typeof userEvent.setup>) {
+    vi.mocked(bookingData.getServices).mockResolvedValue([SERVICE]);
+    renderPage();
+    await user.click(await screen.findByRole("radio", { name: /Coupe/ }));
+    await user.click(screen.getByRole("button", { name: "Continuer" }));
+  }
+  const dayAt = (offset: number) => calendarDays(new Date())[offset]!;
+
+  it("grise les jours sans créneau et annonce le nombre de créneaux des autres", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getAvailableDays).mockResolvedValue([
+      { day: dayAt(2), slotCount: 1 },
+      { day: dayAt(3), slotCount: 3 },
+    ]);
+    await openSlotStep(user);
+
+    const one = await screen.findByRole("radio", { name: dayName(dayAt(2)) });
+    expect(one).toBeEnabled();
+    expect(one).toHaveAccessibleName(`${formatDayKey(dayAt(2))}, 1 créneau disponible`);
+    expect(screen.getByRole("radio", { name: dayName(dayAt(3)) })).toHaveAccessibleName(
+      `${formatDayKey(dayAt(3))}, 3 créneaux disponibles`,
+    );
+    for (const offset of [0, 1, 4, 27]) {
+      const off = screen.getByRole("radio", { name: dayName(dayAt(offset)) });
+      expect(off).toBeDisabled();
+      expect(off).toHaveAccessibleName(`${formatDayKey(dayAt(offset))}, aucun créneau disponible`);
+    }
+    // Le gris n'est pas le seul signal : jour barré.
+    expect(screen.getByRole("radio", { name: dayName(dayAt(4)) }).closest("label")).toHaveClass(
+      "line-through",
+    );
+    expect(one.closest("label")).not.toHaveClass("line-through");
+  });
+
+  it("charge les jours en UNE requête, pour la prestation choisie", async () => {
+    const user = userEvent.setup();
+    await openSlotStep(user);
+    await screen.findByRole("radio", { name: dayName(dayAt(27)) });
+    expect(bookingData.getAvailableDays).toHaveBeenCalledTimes(1);
+    expect(bookingData.getAvailableDays).toHaveBeenCalledWith(SERVICE.id);
+    expect(bookingData.getAvailableSlots).not.toHaveBeenCalled();
+  });
+
+  it("un jour grisé ne se choisit pas ; un jour disponible charge ses créneaux", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getAvailableDays).mockResolvedValue([{ day: dayAt(2), slotCount: 1 }]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([SLOT]);
+    await openSlotStep(user);
+
+    await user.click(await screen.findByRole("radio", { name: dayName(dayAt(1)) }));
+    expect(bookingData.getAvailableSlots).not.toHaveBeenCalled();
+    expect(screen.getByText("Choisis un jour pour voir les créneaux libres.")).toBeVisible();
+
+    await user.click(screen.getByRole("radio", { name: dayName(dayAt(2)) }));
+    expect(await screen.findByRole("radio", { name: /14:00 – 15:00/ })).toBeVisible();
+    expect(bookingData.getAvailableSlots).toHaveBeenCalledWith(SERVICE.id, dayAt(2));
+  });
+
+  it("aucun jour disponible : message clair avec le lien Instagram, sans « Continuer »", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getAvailableDays).mockResolvedValue([]);
+    await openSlotStep(user);
+
+    expect(
+      await screen.findByText(
+        "Aucun créneau disponible pour le moment, contacte Alix sur Instagram.",
+      ),
+    ).toBeVisible();
+    const link = screen.getByRole("link", { name: /@CutsByAlix sur Instagram/ });
+    expect(link).toHaveAttribute("href", "https://www.instagram.com/cutsbyalix/");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(screen.queryByRole("radio", { name: dayName(dayAt(2)) })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continuer" })).not.toBeInTheDocument();
+    // On peut toujours revenir en arrière.
+    await user.click(screen.getByRole("button", { name: "Retour" }));
+    expect(await screen.findByRole("radio", { name: /Coupe/ })).toBeVisible();
+  });
+
+  it("jours impossibles à charger : message, calendrier utilisable, « Réessayer » applique le grisé", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getAvailableDays)
+      .mockRejectedValueOnce(new Error("réseau"))
+      .mockResolvedValueOnce([{ day: dayAt(2), slotCount: 2 }]);
+    await openSlotStep(user);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /Impossible de vérifier les jours disponibles/,
+    );
+    // Tous les jours restent cliquables, sans rien annoncer de faux sur leur disponibilité.
+    const tomorrow = screen.getByRole("radio", { name: dayName(dayAt(1)) });
+    expect(tomorrow).toBeEnabled();
+    expect(tomorrow).toHaveAccessibleName(formatDayKey(dayAt(1)));
+
+    await user.click(screen.getByRole("button", { name: "Réessayer" }));
+    // Après « Réessayer », seul le jour +2 a des créneaux : les autres sont grisés.
+    const twoSlots = await screen.findByRole("radio", { name: dayName(dayAt(2)) });
+    expect(twoSlots).toBeEnabled();
+    expect(twoSlots).toHaveAccessibleName(`${formatDayKey(dayAt(2))}, 2 créneaux disponibles`);
+    expect(screen.getByRole("radio", { name: dayName(dayAt(1)) })).toBeDisabled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("le jour déjà choisi qui perd son dernier créneau reste sélectionné et visible, sans bloquer", async () => {
+    const user = userEvent.setup();
+    // 1er affichage : deux jours disponibles. Au retour de l'étape suivante : le jour choisi a
+    // perdu son dernier créneau (un autre client l'a pris).
+    vi.mocked(bookingData.getAvailableDays)
+      .mockResolvedValueOnce([
+        { day: dayAt(2), slotCount: 1 },
+        { day: dayAt(3), slotCount: 1 },
+      ])
+      .mockResolvedValue([{ day: dayAt(3), slotCount: 1 }]);
+    vi.mocked(bookingData.getAvailableSlots).mockResolvedValueOnce([SLOT]).mockResolvedValue([]);
+    await openSlotStep(user);
+
+    await user.click(await screen.findByRole("radio", { name: dayName(dayAt(2)) }));
+    await user.click(await screen.findByRole("radio", { name: /14:00 – 15:00/ }));
+    await user.click(screen.getByRole("button", { name: "Continuer" }));
+    await user.click(await screen.findByRole("button", { name: "Retour" }));
+
+    const chosen = await screen.findByRole("radio", { name: dayName(dayAt(2)) });
+    // Ni désactivé (sélection visible, clavier cohérent) ni présenté comme disponible.
+    expect(chosen).toBeChecked();
+    expect(chosen).toBeEnabled();
+    expect(chosen).toHaveAccessibleName(`${formatDayKey(dayAt(2))}, aucun créneau disponible`);
+    expect(chosen.closest("label")).toHaveClass("line-through", "has-checked:bg-ink");
+    expect(await screen.findByText(/Aucun créneau libre le/)).toBeVisible();
+    // Les autres jours sans créneau restent désactivés, l'autre jour disponible reste choisissable.
+    expect(screen.getByRole("radio", { name: dayName(dayAt(4)) })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: dayName(dayAt(3)) })).toBeEnabled();
+  });
+
+  it("pendant le chargement, le calendrier n'est pas affiché à moitié", async () => {
+    const user = userEvent.setup();
+    vi.mocked(bookingData.getAvailableDays).mockReturnValue(new Promise(() => {}));
+    await openSlotStep(user);
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Chargement des jours disponibles…",
+    );
+    expect(screen.queryByRole("radio", { name: dayName(dayAt(2)) })).not.toBeInTheDocument();
   });
 });

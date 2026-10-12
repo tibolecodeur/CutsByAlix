@@ -3,6 +3,7 @@ import {
   BookingError,
   cancelBooking,
   createBooking,
+  getAvailableDays,
   getAvailableSlots,
   getBooking,
   getServices,
@@ -93,6 +94,63 @@ describe("getServices", () => {
   ])("refuse une réponse %s (C-02) : invalid_response", async (_label, data) => {
     mockSupabase({ data, error: null });
     await expectBookingError(getServices(), "invalid_response");
+  });
+});
+
+describe("getAvailableDays", () => {
+  it("appelle la RPC avec la prestation et convertit chaque jour", async () => {
+    const calls = mockSupabase({
+      data: [
+        { day: "2030-05-20", slot_count: 3 },
+        { day: "2030-05-21", slot_count: 1 },
+      ],
+      error: null,
+    });
+
+    expect(await getAvailableDays(SERVICE_ID)).toEqual([
+      { day: "2030-05-20", slotCount: 3 },
+      { day: "2030-05-21", slotCount: 1 },
+    ]);
+    expect(calls.map(({ method, args }) => [method, ...args])).toEqual([
+      ["rpc", "get_available_days", { p_service_id: SERVICE_ID }],
+      ["abortSignal", expect.any(AbortSignal)],
+    ]);
+  });
+
+  it("renvoie une liste vide quand aucun jour n'a de créneau", async () => {
+    mockSupabase({ data: [], error: null });
+    expect(await getAvailableDays(SERVICE_ID)).toEqual([]);
+  });
+
+  it("rejette une erreur de la base sans recopier son message", async () => {
+    mockSupabase({
+      data: null,
+      error: { code: "PGRST202", message: "Could not find the function" },
+    });
+    const error = await getAvailableDays(SERVICE_ID).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(BookingError);
+    expect(error).toMatchObject({ code: "unknown", message: "unknown" });
+  });
+
+  it("rejette sans planter si les variables Supabase manquent", async () => {
+    vi.mocked(getSupabase).mockImplementation(() => {
+      throw new SupabaseConfigError();
+    });
+    await expectBookingError(getAvailableDays(SERVICE_ID), "unknown");
+  });
+
+  it.each([
+    ["vide", null],
+    ["de forme inattendue", { unexpected: true }],
+    ["avec un jour mal formé", [{ day: "mardi", slot_count: 1 }]],
+    ["avec un jour au format date-heure", [{ day: "2030-05-20T00:00:00Z", slot_count: 1 }]],
+    ["avec un compteur nul", [{ day: "2030-05-20", slot_count: 0 }]],
+    ["avec un compteur négatif", [{ day: "2030-05-20", slot_count: -1 }]],
+    ["avec un compteur décimal", [{ day: "2030-05-20", slot_count: 1.5 }]],
+    ["avec un compteur en texte", [{ day: "2030-05-20", slot_count: "2" }]],
+  ])("refuse une réponse %s : invalid_response", async (_label, data) => {
+    mockSupabase({ data, error: null });
+    await expectBookingError(getAvailableDays(SERVICE_ID), "invalid_response");
   });
 });
 

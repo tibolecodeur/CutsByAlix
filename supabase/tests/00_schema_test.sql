@@ -47,24 +47,28 @@ select ok(
   'au moins un moyen de contact obligatoire'
 );
 
--- Les quatre RPC publiques : security definer et search_path vide.
+-- Les cinq RPC publiques : security definer et search_path vide.
 select is(
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
-      and p.proname in ('get_available_slots', 'create_booking', 'get_booking', 'cancel_booking')
+      and p.proname in ('get_available_slots', 'get_available_days', 'create_booking',
+                        'get_booking', 'cancel_booking')
       and p.prosecdef
       and p.proconfig @> array['search_path=""']),
-  4::bigint,
-  'les 4 RPC sont security definer avec search_path vide'
+  5::bigint,
+  'les 5 RPC sont security definer avec search_path vide'
 );
 
--- anon n'exécute QUE ces quatre fonctions (public et private confondus).
+-- anon n'exécute QUE ces cinq fonctions (public et private confondus).
 select set_eq(
   $$select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname in ('public', 'private')
        and has_function_privilege('anon', p.oid, 'execute')$$,
-  array['get_available_slots', 'create_booking', 'get_booking', 'cancel_booking'],
-  'anon n''exécute que les 4 RPC publiques'
+  array[
+    'get_available_slots', 'get_available_days', 'create_booking', 'get_booking',
+    'cancel_booking'
+  ],
+  'anon n''exécute que les 5 RPC publiques'
 );
 
 -- anon ne lit aucune table en entier (consigne 20 : gallery_items passe aux colonnes)...

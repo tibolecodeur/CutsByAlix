@@ -105,12 +105,13 @@ Schéma complet et justification : [`docs/adr/0002-modele-de-donnees-et-securite
 
 Fonctions RPC publiques (`security definer`, validation complète en SQL) :
 
-| Fonction                                | Rôle                                                                                 |
-| --------------------------------------- | ------------------------------------------------------------------------------------ |
-| `get_available_slots(service_id, jour)` | créneaux libres d'un jour + libellé public du lieu, en un appel                      |
-| `create_booking(..., request_id)`       | réserve et renvoie le récap (localité, `cancel_token`) ; rejeu idempotent (ADR 0009) |
-| `get_booking(cancel_token)`             | récap pour le porteur du lien d'annulation                                           |
-| `cancel_booking(cancel_token)`          | annule si le délai le permet                                                         |
+| Fonction                                | Rôle                                                                                      |
+| --------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `get_available_days(service_id)`        | jours des 4 semaines qui ont au moins un créneau + leur nombre, en une requête (ADR 0010) |
+| `get_available_slots(service_id, jour)` | créneaux libres d'un jour + libellé public du lieu, en un appel                           |
+| `create_booking(..., request_id)`       | réserve et renvoie le récap (localité, `cancel_token`) ; rejeu idempotent (ADR 0009)      |
+| `get_booking(cancel_token)`             | récap pour le porteur du lien d'annulation                                                |
+| `cancel_booking(cancel_token)`          | annule si le délai le permet                                                              |
 
 Erreurs renvoyées au front (message de l'exception) : `invalid_input`, `slot_unavailable`,
 `too_soon`, `too_far`, `limit_reached`, `too_late`, `request_conflict`. Côté front, toute réponse
@@ -200,8 +201,8 @@ Deux principes :
 
 - RLS activée sur toutes les tables, sans exception, et chaque GRANT écrit explicitement.
 - Le public ne lit jamais les réservations ni les lieux : il passe par des fonctions RPC
-  `security definer` (`get_available_slots`, `create_booking`, `get_booking`, `cancel_booking`)
-  qui valident tout côté SQL.
+  `security definer` (`get_available_days`, `get_available_slots`, `create_booking`,
+  `get_booking`, `cancel_booking`) qui valident tout côté SQL.
 - Aucune adresse n'est stockée : seule la localité du lieu est affichée ; l'adresse se demande
   à Alix sur Instagram (ADR 0008).
 - Annulation par `cancel_token` (uuid aléatoire), jamais par l'identifiant de la réservation.
