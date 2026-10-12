@@ -95,7 +95,7 @@ select results_eq(
 
 -- ---------------------------------------------------------------------------
 -- 4. Fonctions exécutables (hors fonctions d'extensions) : (nom, anon, authenticated).
---    PUBLIC n'exécute rien ; les 4 RPC publiques sont à anon SEULEMENT ; les RPC admin_* à
+--    PUBLIC n'exécute rien ; les 5 RPC publiques sont à anon SEULEMENT ; les RPC admin_* à
 --    authenticated SEULEMENT (puis require_admin() dans la fonction).
 -- ---------------------------------------------------------------------------
 select results_eq(
@@ -133,6 +133,7 @@ select results_eq(
     ('public.admin_update_gallery_item_alt', false, true),
     ('public.cancel_booking', true, false),
     ('public.create_booking', true, false),
+    ('public.get_available_days', true, false),
     ('public.get_available_slots', true, false),
     ('public.get_booking', true, false)
   $$,

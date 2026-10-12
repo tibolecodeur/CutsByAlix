@@ -117,8 +117,37 @@ const SCREENS: Screen[] = [
       expect(page.getByRole("radio", { name: /^Coupe \+ barbe/ })).toBeVisible(),
   },
   {
+    name: "réserver : jours disponibles",
+    open: async (page, fault) => {
+      await mockRpc(page, "get_available_slots", () => ({ body: [slotRow()] }));
+      await mockFaulty(
+        page,
+        /\/rest\/v1\/rpc\/get_available_days(\?|$)/,
+        () => [{ day: dayWithSlots(), slot_count: 1 }],
+        fault,
+      );
+      await page.goto("/reserver");
+      await page
+        .getByRole("radio", { name: /^Coupe/ })
+        .first()
+        .check();
+      await page.getByRole("button", { name: "Continuer" }).click();
+    },
+    retry: retryButton,
+    // Après « Réessayer », le grisé s'applique : un jour sans créneau est désactivé.
+    expectRecovered: async (page) => {
+      await expect(page.getByRole("radio", { name: formatDayKey(dayWithSlots()) })).toBeEnabled();
+      await expect(
+        page.getByRole("radio", { name: /aucun créneau disponible/ }).first(),
+      ).toBeDisabled();
+    },
+  },
+  {
     name: "réserver : créneaux",
     open: async (page, fault) => {
+      await mockRpc(page, "get_available_days", () => ({
+        body: [{ day: dayWithSlots(), slot_count: 1 }],
+      }));
       await mockFaulty(
         page,
         /\/rest\/v1\/rpc\/get_available_slots(\?|$)/,
@@ -143,6 +172,9 @@ const SCREENS: Screen[] = [
   {
     name: "réserver : envoi de la réservation",
     open: async (page, fault) => {
+      await mockRpc(page, "get_available_days", () => ({
+        body: [{ day: dayWithSlots(), slot_count: 1 }],
+      }));
       await mockRpc(page, "get_available_slots", () => ({ body: [slotRow()] }));
       await mockFaulty(
         page,
@@ -280,6 +312,9 @@ async function openSummary(
   respond: (call: number) => "ok" | "network-error" | "taken" | "replay",
 ) {
   const calls: Record<string, unknown>[] = [];
+  await mockRpc(page, "get_available_days", () => ({
+    body: [{ day: dayWithSlots(), slot_count: 1 }],
+  }));
   await mockRpc(page, "get_available_slots", () => ({ body: [slotRow()] }));
   await mockRpc(page, "create_booking", (args) => {
     calls.push(args);

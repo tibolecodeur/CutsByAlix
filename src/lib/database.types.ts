@@ -79,6 +79,20 @@ type GetAvailableSlotsFunction = {
 };
 
 /**
+ * RPC `get_available_days` (migration …_jours_disponibles.sql) : les jours (heure de Paris) qui
+ * ont au moins un créneau, avec leur nombre de créneaux, en UNE requête. Mêmes règles que
+ * `get_available_slots` (elle s'appuie sur la même fonction de calcul). Réponse validée par Zod.
+ */
+type GetAvailableDaysFunction = {
+  Args: { p_service_id: string };
+  Returns: {
+    /** Jour « yyyy-MM-dd », déjà en heure de Paris : aucun regroupement à faire dans le navigateur. */
+    day: string;
+    slot_count: number;
+  }[];
+};
+
+/**
  * RPC `create_booking` (migrations …_reservation_reelle.sql et …_reservation_idempotente.sql).
  * Erreurs : exceptions P0001 dont le message est une clé stable (invalid_input,
  * slot_unavailable, too_soon, too_far, limit_reached, request_conflict). Le récap ne contient
@@ -311,6 +325,7 @@ export type Database = {
     Views: Record<never, never>;
     Functions: {
       get_available_slots: GetAvailableSlotsFunction;
+      get_available_days: GetAvailableDaysFunction;
       create_booking: CreateBookingFunction;
       get_booking: GetBookingFunction;
       cancel_booking: CancelBookingFunction;

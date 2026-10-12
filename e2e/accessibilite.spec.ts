@@ -79,6 +79,9 @@ function slotRow() {
 }
 
 test("axe : chaque étape de /reserver jusqu'à la confirmation", async ({ page }) => {
+  await mockRpc(page, "get_available_days", () => ({
+    body: [{ day: dayWithSlots(), slot_count: 1 }],
+  }));
   await mockRpc(page, "get_available_slots", () => ({ body: [slotRow()] }));
   await mockRpc(page, "create_booking", () => ({
     body: [{ ...slotRow(), service_name: "Coupe", cancel_token: TOKEN }],

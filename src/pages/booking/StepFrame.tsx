@@ -60,6 +60,8 @@ type StepActionsProps = {
   onBack?: () => void;
   submitLabel: string;
   submitting?: boolean;
+  /** Retire « Continuer » : l'étape n'a rien à valider (ex. aucun jour disponible). */
+  hideSubmit?: boolean;
 };
 
 /**
@@ -67,7 +69,12 @@ type StepActionsProps = {
  * plus proche du pouce. « Continuer » est un bouton `submit` : la touche Entrée du clavier
  * virtuel valide aussi l'étape.
  */
-export function StepActions({ onBack, submitLabel, submitting = false }: StepActionsProps) {
+export function StepActions({
+  onBack,
+  submitLabel,
+  submitting = false,
+  hideSubmit = false,
+}: StepActionsProps) {
   return (
     <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-between">
       {onBack ? (
@@ -78,9 +85,11 @@ export function StepActions({ onBack, submitLabel, submitting = false }: StepAct
         // Garde « Continuer » à droite sur desktop ; inutile (et espace perdu) sur mobile.
         <span className="hidden sm:block" />
       )}
-      <Button type="submit" disabled={submitting} aria-busy={submitting || undefined}>
-        {submitLabel}
-      </Button>
+      {!hideSubmit && (
+        <Button type="submit" disabled={submitting} aria-busy={submitting || undefined}>
+          {submitLabel}
+        </Button>
+      )}
     </div>
   );
 }

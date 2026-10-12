@@ -62,11 +62,31 @@ function receiptFor(row: SlotRow) {
   ];
 }
 
-/** get_available_slots simulée ; renvoie la liste des jours demandés par le site. */
+/**
+ * Jours que la base annoncerait (get_available_days) : les 28 jours à partir d'aujourd'hui (Paris),
+ * sans ceux qui sont entièrement à moins de 5 h, et seulement ceux qui ont des créneaux simulés
+ * (donc sans les lundis).
+ */
+function daysFor(now: Date): { day: string; slot_count: number }[] {
+  const today = parisDayKey(now);
+  const first = parisDayKey(new Date(now.getTime() + 5 * HOUR_MS));
+  return Array.from({ length: 28 }, (_, i) => addDaysToKey(today, i))
+    .filter((day) => day >= first)
+    .map((day) => ({ day, slot_count: slotsFor(day).length }))
+    .filter((row) => row.slot_count > 0);
+}
+
+/**
+ * get_available_slots simulée (renvoie la liste des jours demandés par le site) et
+ * get_available_days, déduite des mêmes créneaux. `now` : l'heure simulée du navigateur, quand
+ * le test fige l'horloge.
+ */
 async function mockSlots(
   page: Page,
   respond = (day: DayKey): RpcResponse => ({ body: slotsFor(day) }),
+  now = new Date(),
 ) {
+  await mockRpc(page, "get_available_days", () => ({ body: daysFor(now) }));
   const requested: string[] = [];
   await mockRpc(page, "get_available_slots", (args) => {
     requested.push(String(args.p_day));
@@ -258,13 +278,32 @@ test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation 
   expect(erreurs).toEqual([]);
 });
 
-test("délai de 5 h : expliqué ; à 19 h 01 aujourd'hui est refusé sans appel à la base", async ({
+test("délai de 5 h : expliqué ; à 19 h 01 aujourd'hui est grisé et non cliquable", async ({
   page,
 }) => {
-  await page.clock.setFixedTime(new Date("2026-10-13T17:01:00Z")); // mardi 13, 19 h 01 à Paris
-  const requested = await mockSlots(page);
+  const maintenant = new Date("2026-10-13T17:01:00Z"); // mardi 13, 19 h 01 à Paris
+  await page.clock.setFixedTime(maintenant);
+  const requested = await mockSlots(page, undefined, maintenant);
   await allerAuxCreneaux(page);
   await expect(page.getByText(/On réserve au plus tard 5 h avant le rendez-vous/)).toBeVisible();
+
+  const aujourdhui = page.getByRole("radio", { name: formatDayKey("2026-10-13") });
+  await expect(aujourdhui).toBeDisabled();
+  await expect(aujourdhui).toHaveAccessibleName(
+    `${formatDayKey("2026-10-13")}, aucun créneau disponible`,
+  );
+  await expect(page.getByRole("radio", { name: formatDayKey("2026-10-14") })).toBeEnabled();
+  expect(requested).not.toContain("2026-10-13");
+});
+
+test("délai de 5 h, jours impossibles à charger : « Trop tard » explique la règle sans appel à la base", async ({
+  page,
+}) => {
+  const maintenant = new Date("2026-10-13T17:01:00Z"); // mardi 13, 19 h 01 à Paris
+  await page.clock.setFixedTime(maintenant);
+  const requested = await mockSlots(page, undefined, maintenant);
+  await mockRpc(page, "get_available_days", () => "network-error");
+  await allerAuxCreneaux(page);
 
   await toucherJour(page, "2026-10-13");
   await expect(
@@ -275,8 +314,9 @@ test("délai de 5 h : expliqué ; à 19 h 01 aujourd'hui est refusé sans appel 
 });
 
 test("délai de 5 h : à 18 h 59, aujourd'hui reste réservable", async ({ page }) => {
-  await page.clock.setFixedTime(new Date("2026-10-13T16:59:00Z")); // mardi 13, 18 h 59 à Paris
-  const requested = await mockSlots(page);
+  const maintenant = new Date("2026-10-13T16:59:00Z"); // mardi 13, 18 h 59 à Paris
+  await page.clock.setFixedTime(maintenant);
+  const requested = await mockSlots(page, undefined, maintenant);
   await allerAuxCreneaux(page);
 
   await toucherJour(page, "2026-10-13");
@@ -288,8 +328,9 @@ test("délai de 5 h : à 18 h 59, aujourd'hui reste réservable", async ({ page 
 test("RDV à moins de 24 h : récapitulatif et confirmation préviennent, sans rien bloquer", async ({
   page,
 }) => {
-  await page.clock.setFixedTime(new Date("2026-10-13T10:00:00Z")); // mardi 13, 12 h à Paris
-  await mockSlots(page);
+  const maintenant = new Date("2026-10-13T10:00:00Z"); // mardi 13, 12 h à Paris
+  await page.clock.setFixedTime(maintenant);
+  await mockSlots(page, undefined, maintenant);
   // Créneau de 14 h le jour même : dans 2 h, donc à moins de 24 h.
   await mockRpc(page, "create_booking", () => ({
     body: receiptFor(slotsFor("2026-10-13")[0]!),
@@ -312,8 +353,9 @@ test("RDV à moins de 24 h : récapitulatif et confirmation préviennent, sans r
 });
 
 test("RDV à plus de 24 h : aucun avertissement", async ({ page }) => {
-  await page.clock.setFixedTime(new Date("2026-10-13T10:00:00Z"));
-  await mockSlots(page);
+  const maintenant = new Date("2026-10-13T10:00:00Z");
+  await page.clock.setFixedTime(maintenant);
+  await mockSlots(page, undefined, maintenant);
   await mockRpc(page, "create_booking", () => ({
     body: receiptFor(slotsFor("2026-10-15")[0]!),
   }));
@@ -329,15 +371,22 @@ test("RDV à plus de 24 h : aucun avertissement", async ({ page }) => {
   await expect(page.getByText(/dans moins de 24 h/)).toHaveCount(0);
 });
 
-test("aucun créneau un lundi ; « Retour » ramène à la prestation", async ({ page }) => {
-  await mockSlots(page);
+test("un lundi sans créneau est grisé et non cliquable ; « Retour » ramène à la prestation", async ({
+  page,
+}) => {
+  const demandes = await mockSlots(page);
   await allerAuxCreneaux(page);
 
-  await toucherJour(page, (await lastMonday(page))!);
-  await expect(page.getByText(/^Aucun créneau libre le lundi/)).toBeVisible();
-  await expect(page.getByText("Essaie un autre jour.")).toBeVisible();
+  const lundi = (await lastMonday(page))!;
+  const radio = page.locator(`input[name="day"][value="${lundi}"]`);
+  await expect(radio).toBeDisabled();
+  await expect(radio).toHaveAccessibleName(/^lundi .*, aucun créneau disponible$/);
+  // Toucher son libellé ne choisit rien et n'appelle pas la base.
+  await radio.locator("xpath=ancestor::label[1]").click({ force: true });
+  await expect(page.getByText("Choisis un jour pour voir les créneaux libres.")).toBeVisible();
+  expect(demandes).not.toContain(lundi);
   await continuer(page);
-  await expect(page.getByText("Choisis un créneau.")).toBeVisible();
+  await expect(page.getByText("Choisis un jour, puis un créneau.")).toBeVisible();
 
   await page.getByRole("button", { name: "Retour" }).click();
   await expect(page.getByRole("heading", { level: 2, name: "Quelle prestation ?" })).toBeFocused();
@@ -345,6 +394,8 @@ test("aucun créneau un lundi ; « Retour » ramène à la prestation", async ({
 
 /** Le dernier lundi du calendrier (toujours au-delà du délai de 5 h). */
 async function lastMonday(page: Page): Promise<DayKey | undefined> {
+  // Le calendrier s'affiche une fois les jours disponibles chargés : on l'attend.
+  await expect(page.getByRole("radio", { name: /^lundi / }).first()).toBeAttached();
   const valeurs = await page
     .getByRole("radio", { name: /^lundi / })
     .evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value));
