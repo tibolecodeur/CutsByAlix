@@ -100,9 +100,9 @@ select is(
   'anon n''a aucun droit d''écriture sur une colonne'
 );
 
--- Un lieu actif doit avoir une vraie adresse (comportement testé dans 08_regles_test.sql).
-select col_has_check('public', 'locations', array['active', 'private_address'],
-  'contrainte : pas d''adresse provisoire sur un lieu actif');
+-- Aucune adresse stockée (ADR 0008, consigne 24) : détail dans 23_lieux_sans_adresse_test.sql.
+select hasnt_column('public', 'locations', 'private_address',
+  'locations : aucune colonne d''adresse');
 
 -- La table admins n'est écrite par personne via l'API.
 select is(

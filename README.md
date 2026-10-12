@@ -94,21 +94,21 @@ Base de données (CLI Supabase installée en devDependency, version figée) :
 
 Schéma complet et justification : [`docs/adr/0002-modele-de-donnees-et-securite.md`](docs/adr/0002-modele-de-donnees-et-securite.md).
 
-| Table            | Contenu                                       | Accès public (anon)               |
-| ---------------- | --------------------------------------------- | --------------------------------- |
-| `services`       | prestations : nom, durée, prix affiché, actif | lecture des prestations actives   |
-| `locations`      | lieux : libellé public, **adresse privée**    | aucun                             |
-| `availabilities` | plages de disponibilité, chacune dans un lieu | aucun (via `get_available_slots`) |
-| `bookings`       | réservations clients                          | aucun (via les RPC ci-dessous)    |
-| `gallery_items`  | photos de la galerie (bucket Storage privé)   | photos publiées, par URL signée   |
-| `admins`         | utilisateurs Supabase Auth administrateurs    | aucun                             |
+| Table            | Contenu                                        | Accès public (anon)               |
+| ---------------- | ---------------------------------------------- | --------------------------------- |
+| `services`       | prestations : nom, durée, prix affiché, actif  | lecture des prestations actives   |
+| `locations`      | lieux : localité seulement, **aucune adresse** | aucun                             |
+| `availabilities` | plages de disponibilité, chacune dans un lieu  | aucun (via `get_available_slots`) |
+| `bookings`       | réservations clients                           | aucun (via les RPC ci-dessous)    |
+| `gallery_items`  | photos de la galerie (bucket Storage privé)    | photos publiées, par URL signée   |
+| `admins`         | utilisateurs Supabase Auth administrateurs     | aucun                             |
 
 Fonctions RPC publiques (`security definer`, validation complète en SQL) :
 
 | Fonction                                | Rôle                                                            |
 | --------------------------------------- | --------------------------------------------------------------- |
 | `get_available_slots(service_id, jour)` | créneaux libres d'un jour + libellé public du lieu, en un appel |
-| `create_booking(...)`                   | réserve et renvoie le récap (adresse privée, `cancel_token`)    |
+| `create_booking(...)`                   | réserve et renvoie le récap (localité, `cancel_token`)          |
 | `get_booking(cancel_token)`             | récap pour le porteur du lien d'annulation                      |
 | `cancel_booking(cancel_token)`          | annule si le délai le permet                                    |
 
@@ -120,22 +120,22 @@ de créneaux de 70 min, réservation au plus tard 5 h avant et au plus 4 semaine
 annulation jusqu'à 24 h avant, 2 RDV futurs max par téléphone ou email, conservation des données
 clients 6 mois. Le front en garde une copie pour ses textes (`src/lib/bookingRules.ts`).
 
-Durcissements : un lieu actif ne peut pas garder une adresse provisoire (« À RENSEIGNER »,
-« adresse réelle ») ; le public (anon) ne lit sur `services` que `id`, `name`,
-`duration_min`, `price_label` et `sort_order`.
+Durcissements : le public (anon) ne lit sur `services` que `id`, `name`, `duration_min`,
+`price_label` et `sort_order`. Aucune adresse n'est stockée (ADR 0008) : le client voit la
+localité et demande l'adresse à Alix sur Instagram (`src/lib/contact.ts`).
 
 Tests : `supabase/tests/` (pgTAP), un fichier par thème — schéma, anonyme, admin,
 chevauchements, `create_booking`, créneaux (dont le changement d'heure), tokens, Storage,
 galerie (chemins, types, limite de 60 photos, accord avant publication).
 `supabase/seed.sql` : prestations et lieux de départ, relançable sans doublon, à lancer à la main
 dans le SQL Editor du projet distant. Il n'insère que ce qui manque, ne modifie et ne supprime
-rien. Les lieux sont créés **inactifs**, adresse « À RENSEIGNER » (jamais de vraie adresse dans
-le dépôt) : on active chaque lieu en même temps que la saisie de son adresse.
+rien. Les lieux sont créés **inactifs**, sans adresse : leur activation est une décision de mise
+en ligne.
 
-`supabase/seed-dev.sql` : lieux actifs avec adresse factice et disponibilités de test, pour la
+`supabase/seed-dev.sql` : lieux actifs et disponibilités de test, pour la
 base **locale uniquement** (`npm run db:reset:dev`). Il n'est pas listé dans `config.toml`,
 donc `supabase db push --include-seed` ne peut pas l'embarquer, et il s'arrête de lui-même sur
-une base qui n'est pas une base locale neuve (compte, RDV, lieu ou adresse inconnus).
+une base qui n'est pas une base locale neuve (compte, RDV ou lieu inconnus).
 
 ## Routes
 
@@ -181,7 +181,7 @@ e2e/                  tests Playwright
 supabase/
 ├── migrations/       toute évolution du schéma, versionnée
 ├── tests/            tests pgTAP (règles SQL, RLS, accès interdits)
-├── seed.sql          prestations et lieux de départ (adresses « À RENSEIGNER »)
+├── seed.sql          prestations et lieux de départ (inactifs, sans adresse)
 ├── seed-dev.sql      disponibilités de test, base locale uniquement
 └── config.toml       configuration de la stack locale
 docs/                 SPEC, PLAN, DESIGN, ADR, TESTS-APPAREILS (checklist téléphones)
@@ -201,7 +201,8 @@ Deux principes :
 - Le public ne lit jamais les réservations ni les lieux : il passe par des fonctions RPC
   `security definer` (`get_available_slots`, `create_booking`, `get_booking`, `cancel_booking`)
   qui valident tout côté SQL.
-- L'adresse privée du lieu n'est révélée qu'à la personne qui a réservé (et à l'admin).
+- Aucune adresse n'est stockée : seule la localité du lieu est affichée ; l'adresse se demande
+  à Alix sur Instagram (ADR 0008).
 - Annulation par `cancel_token` (uuid aléatoire), jamais par l'identifiant de la réservation.
 - Un créneau ne peut pas être réservé deux fois, tous lieux confondus : contrainte d'exclusion
   PostgreSQL, et non une vérification côté navigateur.

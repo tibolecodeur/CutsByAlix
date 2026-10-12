@@ -14,7 +14,7 @@ begin
   end loop;
 end $$;
 
-select plan(21);
+select plan(20);
 
 -- ---------------------------------------------------------------------------
 -- Données de test (en tant que postgres), isolées du seed.
@@ -26,8 +26,8 @@ insert into public.services (id, name, duration_min, active) values
   ('10000000-0000-4000-8000-000000000001', 'Coupe', 60, true),
   ('10000000-0000-4000-8000-000000000002', 'Prestation masquée', 60, false);
 
-insert into public.locations (id, public_label, private_address) values
-  ('20000000-0000-4000-8000-000000000001', 'Lieu un', '1 rue Secrète, 00000 Testville');
+insert into public.locations (id, public_label) values
+  ('20000000-0000-4000-8000-000000000001', 'Lieu un');
 
 -- Dispo à J+3, 10 h – 14 h (heure de Paris) : toujours au-delà du délai minimum de 48 h.
 insert into public.availabilities (location_id, starts_at, ends_at) values (
@@ -57,8 +57,6 @@ select throws_ok('select * from public.bookings', '42501', null,
   'anon ne peut pas lire bookings');
 select throws_ok('select * from public.locations', '42501', null,
   'anon ne peut pas lire locations');
-select throws_ok('select private_address from public.locations', '42501', null,
-  'anon ne peut pas lire private_address');
 select throws_ok('select * from public.availabilities', '42501', null,
   'anon ne peut pas lire availabilities');
 select throws_ok('select * from public.admins', '42501', null,
@@ -102,7 +100,7 @@ select throws_ok(
   $$update public.gallery_items set published = true$$,
   '42501', null, 'anon ne peut pas publier une photo');
 select throws_ok(
-  $$insert into public.locations (public_label, private_address) values ('Pirate', 'x')$$,
+  $$insert into public.locations (public_label) values ('Pirate')$$,
   '42501', null, 'anon ne peut pas créer de lieu');
 select throws_ok(
   $$insert into public.bookings (service_id, location_id, starts_at, ends_at, first_name, last_name, phone)

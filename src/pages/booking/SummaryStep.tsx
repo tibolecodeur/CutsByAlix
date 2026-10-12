@@ -109,6 +109,12 @@ export function SummaryStep(props: SummaryStepProps) {
           ? `Ce rendez-vous est dans moins de ${BOOKING_RULES.cancelNoticeHours} h : tu ne pourras pas l'annuler en ligne.`
           : `Tu pourras annuler en ligne jusqu'à ${BOOKING_RULES.cancelNoticeHours} h avant le rendez-vous.`}
       </p>
+      {/* Pas de lien ici : il ferait quitter le parcours avant la confirmation. Il est sur
+          l'écran suivant (ConfirmationStep). */}
+      <p>
+        L'adresse exacte n'est pas affichée sur le site : une fois réservé, écris à Alix en message
+        privé sur Instagram pour la recevoir.
+      </p>
       {error && <ErrorMessage>{error}</ErrorMessage>}
       <form onSubmit={handleSubmit}>
         <StepActions

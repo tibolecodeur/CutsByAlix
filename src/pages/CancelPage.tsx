@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router";
 import { Button, ButtonLink } from "@/components/Button";
+import { InstagramLink } from "@/components/InstagramLink";
 import { PageMeta } from "@/components/PageMeta";
 import { Section } from "@/components/Section";
 import { ErrorMessage, LoadingMessage } from "@/components/StatusMessage";
@@ -130,13 +131,15 @@ function BookingCancellation({ token, booking }: { token: string; booking: Booki
   }
   if (!booking.canCancel || outcome === "too_late") {
     return (
-      // TODO contact : ajouter le téléphone ou l'Instagram du barber dès qu'ils sont fournis.
       <StateBlock title="Trop tard pour annuler en ligne" focusTitle={hasActed}>
         <p>
           L'annulation en ligne est possible jusqu'à {BOOKING_RULES.cancelNoticeHours} h avant le
           rendez-vous. Ton rendez-vous du {formatLongDay(booking.startsAt)} à{" "}
           {formatTime(booking.startsAt)} est donc maintenu. Il est trop tard pour annuler en ligne :
-          contacte Alix directement.
+          contacte Alix directement sur Instagram.
+        </p>
+        <p>
+          <InstagramLink />
         </p>
       </StateBlock>
     );
@@ -150,7 +153,6 @@ function BookingCancellation({ token, booking }: { token: string; booking: Booki
           ["Prestation", booking.serviceName],
           ["Date", formatLongDay(booking.startsAt)],
           ["Heure", `${formatTime(booking.startsAt)} – ${formatTime(booking.endsAt)}`],
-          // TODO: règle de révélation de l'adresse privée à décider (docs/PLAN.md).
           ["Lieu", booking.locationLabel],
         ]}
       />

@@ -36,8 +36,8 @@ insert into public.services (id, name, duration_min, active) values
 insert into public.gallery_items (image_path, alt_text, width, height, published, consent_at) values
   ('a1200000-0000-4000-8000-000000000001.webp', 'Publiée', 800, 600, true, now()),
   ('a1200000-0000-4000-8000-000000000002.webp', 'Masquée', 800, 600, false, null);
-insert into public.locations (id, public_label, private_address) values
-  ('20000000-0000-4000-8000-000000000001', 'Lieu un', '1 rue Secrète, 00000 Testville');
+insert into public.locations (id, public_label) values
+  ('20000000-0000-4000-8000-000000000001', 'Lieu un');
 insert into public.availabilities (location_id, starts_at, ends_at) values
   ('20000000-0000-4000-8000-000000000001', '2030-06-12 10:00 Europe/Paris', '2030-06-12 12:00 Europe/Paris');
 insert into public.bookings (service_id, location_id, starts_at, ends_at, first_name, last_name, phone)
@@ -94,7 +94,7 @@ select throws_ok($$insert into public.services (name, duration_min) values ('Pir
   '42501', null, 'non-admin connecté : n''ajoute pas de prestation');
 select throws_ok($$insert into public.gallery_items (image_path) values ('pirate.jpg')$$,
   '42501', null, 'non-admin connecté : n''ajoute pas de photo');
-select throws_ok($$insert into public.locations (public_label, private_address) values ('P', 'x')$$,
+select throws_ok($$insert into public.locations (public_label) values ('P')$$,
   '42501', null, 'non-admin connecté : ne crée pas de lieu');
 select throws_ok($$insert into public.availabilities (location_id, starts_at, ends_at)
     values ('20000000-0000-4000-8000-000000000001', '2030-07-01 10:00+00', '2030-07-01 11:00+00')$$,
@@ -139,8 +139,8 @@ select throws_ok('select count(*) from public.bookings', '42501', null,
   'admin : ne lit plus bookings en direct, seulement par les fonctions admin (consigne 19)');
 select is((select count(*) from public.admins where user_id = auth.uid()), 1::bigint,
   'admin : lit SA ligne admins (c''est ainsi que le front le reconnaît)');
-select throws_ok('select private_address from public.locations', '42501', null,
-  'admin : ne lit pas l''adresse privée (consigne 18)');
+select throws_ok('select * from public.locations', '42501', null,
+  'admin : select * sur les lieux refusé, seulement id, public_label, active (consigne 18)');
 select is((select count(*) from storage.objects where bucket_id = 'gallery'), 1::bigint,
   'admin : liste les objets du bucket gallery');
 select lives_ok($$insert into public.services (name, duration_min) values ('Barbe', 30)$$,

@@ -51,7 +51,7 @@ const LOCATION_ID = "20000000-0000-4000-8000-000000000001";
 const AVAILABILITY_ROW = {
   id: "50000000-0000-4000-8000-000000000001",
   location_id: LOCATION_ID,
-  location_label: "Angers",
+  location_label: "Les Ponts-de-Cé",
   starts_at: "2026-10-20T08:00:00+00:00",
   ends_at: "2026-10-20T11:30:00+00:00",
   slot_count: 3,
@@ -81,19 +81,19 @@ describe("getBookingRules", () => {
 });
 
 describe("getLocations", () => {
-  it("lit les lieux actifs, id et libellé public seulement (jamais l'adresse privée)", async () => {
+  it("lit les lieux actifs, id et libellé public seulement (jamais select *)", async () => {
     const calls = mockSupabase({
-      data: [{ id: LOCATION_ID, public_label: "Angers" }],
+      data: [{ id: LOCATION_ID, public_label: "Les Ponts-de-Cé" }],
       error: null,
     });
-    expect(await getLocations()).toEqual([{ id: LOCATION_ID, publicLabel: "Angers" }]);
+    expect(await getLocations()).toEqual([{ id: LOCATION_ID, publicLabel: "Les Ponts-de-Cé" }]);
     expect(asCalls(calls).slice(0, 4)).toEqual([
       ["from", "locations"],
       ["select", "id, public_label"],
       ["eq", "active", true],
       ["order", "public_label"],
     ]);
-    expect(JSON.stringify(calls)).not.toMatch(/private_address|\*/);
+    expect(JSON.stringify(calls)).not.toMatch(/\*/);
   });
 
   it("une config absente devient une panne neutre", async () => {
@@ -111,7 +111,7 @@ describe("disponibilités", () => {
       {
         id: AVAILABILITY_ROW.id,
         locationId: LOCATION_ID,
-        locationLabel: "Angers",
+        locationLabel: "Les Ponts-de-Cé",
         startsAt: AVAILABILITY_ROW.starts_at,
         endsAt: AVAILABILITY_ROW.ends_at,
         slotCount: 3,
@@ -128,7 +128,11 @@ describe("disponibilités", () => {
       startsAt: "2026-10-20T08:00:00.000Z",
       endsAt: "2026-10-20T11:30:00.000Z",
     });
-    expect(created).toMatchObject({ locationLabel: "Angers", slotCount: 3, bookingCount: 0 });
+    expect(created).toMatchObject({
+      locationLabel: "Les Ponts-de-Cé",
+      slotCount: 3,
+      bookingCount: 0,
+    });
     expect(asCalls(calls)).toEqual([
       [
         "rpc",
@@ -187,7 +191,7 @@ const BOOKING_ROW = {
   starts_at: "2026-10-20T08:00:00+00:00",
   ends_at: "2026-10-20T09:00:00+00:00",
   service_name: "Coupe",
-  location_label: "Angers",
+  location_label: "Les Ponts-de-Cé",
   first_name: "Léa",
   last_name: "Martin",
   status: "confirmed",
@@ -209,7 +213,7 @@ describe("getAdminBookings", () => {
       startsAt: BOOKING_ROW.starts_at,
       endsAt: BOOKING_ROW.ends_at,
       serviceName: "Coupe",
-      locationLabel: "Angers",
+      locationLabel: "Les Ponts-de-Cé",
       firstName: "Léa",
       lastName: "Martin",
     });

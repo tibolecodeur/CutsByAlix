@@ -91,7 +91,7 @@ describe("getAvailableSlots", () => {
           starts_at: "2026-10-20T12:00:00+00:00",
           ends_at: "2026-10-20T13:00:00+00:00",
           location_id: LOCATION_ID,
-          location_label: "Angers",
+          location_label: "Les Ponts-de-Cé",
         },
       ],
       error: null,
@@ -102,7 +102,7 @@ describe("getAvailableSlots", () => {
         startsAt: "2026-10-20T12:00:00+00:00",
         endsAt: "2026-10-20T13:00:00+00:00",
         locationId: LOCATION_ID,
-        locationLabel: "Angers",
+        locationLabel: "Les Ponts-de-Cé",
       },
     ]);
     expect(calls.map(({ method, args }) => [method, ...args])).toEqual([
@@ -132,7 +132,7 @@ describe("createBooking", () => {
           starts_at: "2026-10-20T12:00:00+00:00",
           ends_at: "2026-10-20T13:00:00+00:00",
           service_name: "Coupe",
-          location_label: "Angers",
+          location_label: "Les Ponts-de-Cé",
           cancel_token: TOKEN,
         },
       ],
@@ -145,7 +145,7 @@ describe("createBooking", () => {
       startsAt: "2026-10-20T12:00:00+00:00",
       endsAt: "2026-10-20T13:00:00+00:00",
       serviceName: "Coupe",
-      locationLabel: "Angers",
+      locationLabel: "Les Ponts-de-Cé",
       cancelToken: TOKEN,
     });
     expect(isUuid(receipt.cancelToken)).toBe(true);
@@ -225,7 +225,7 @@ describe("getBooking", () => {
     starts_at: "2026-10-20T12:00:00+00:00",
     ends_at: "2026-10-20T13:00:00+00:00",
     service_name: "Coupe",
-    location_label: "Angers",
+    location_label: "Les Ponts-de-Cé",
     first_name: "Lucas",
     can_cancel: true,
     cancelled_by: null,
@@ -239,7 +239,7 @@ describe("getBooking", () => {
       startsAt: "2026-10-20T12:00:00+00:00",
       endsAt: "2026-10-20T13:00:00+00:00",
       serviceName: "Coupe",
-      locationLabel: "Angers",
+      locationLabel: "Les Ponts-de-Cé",
       firstName: "Lucas",
       canCancel: true,
       cancelledBy: null,

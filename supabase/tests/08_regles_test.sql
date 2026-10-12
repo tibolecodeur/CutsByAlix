@@ -20,7 +20,7 @@ begin
   end loop;
 end $$;
 
-select plan(28);
+select plan(16);
 
 truncate public.bookings, public.availabilities, public.locations, public.services,
          public.gallery_items, public.admins;
@@ -29,8 +29,8 @@ insert into public.services (id, name, duration_min, price_label, active, sort_o
   ('10000000-0000-4000-8000-000000000001', 'Coupe', 70, '12 €', true, 1),
   ('10000000-0000-4000-8000-000000000002', 'Coupe + barbe', 70, '12 €', true, 2),
   ('10000000-0000-4000-8000-000000000003', 'Prestation masquée', 70, null, false, 3);
-insert into public.locations (id, public_label, private_address) values
-  ('20000000-0000-4000-8000-000000000001', 'Lieu un', '1 rue Secrète, 00000 Testville');
+insert into public.locations (id, public_label) values
+  ('20000000-0000-4000-8000-000000000001', 'Lieu un');
 
 -- ---------------------------------------------------------------------------
 -- 1. Valeurs des règles.
@@ -154,55 +154,9 @@ select is(public.cancel_booking('40000000-0000-4000-8000-000000000002'), true,
 reset role;
 
 -- ---------------------------------------------------------------------------
--- 5. Contrainte : un lieu actif ne garde pas d'adresse provisoire (sans casse ni espaces).
+-- 5. (Retirée, consigne 24) Contrainte « pas d'adresse provisoire sur un lieu actif » :
+--    l'adresse n'est plus stockée. Ses cas sont repris dans 23_lieux_sans_adresse_test.sql.
 -- ---------------------------------------------------------------------------
-select throws_ok(
-  $$insert into public.locations (public_label, private_address, active)
-    values ('Test', 'À RENSEIGNER', true)$$,
-  '23514', null, 'lieu actif avec « À RENSEIGNER » : refusé');
-select throws_ok(
-  $$insert into public.locations (public_label, private_address, active)
-    values ('Test', '  à renseigner ', true)$$,
-  '23514', null, 'lieu actif avec « à renseigner » (casse et espaces) : refusé');
-select throws_ok(
-  $$insert into public.locations (public_label, private_address, active)
-    values ('Test', 'ADRESSE RÉELLE', true)$$,
-  '23514', null, 'lieu actif avec « adresse réelle » : refusé');
-select throws_ok(
-  $$insert into public.locations (public_label, private_address, active)
-    values ('Test', U&'\00A0\00E0 renseigner', true)$$,
-  '23514', null, 'lieu actif, adresse provisoire contournée (espace insécable) : refusé');
-select throws_ok(
-  $$insert into public.locations (public_label, private_address, active)
-    values ('Test', U&'\0009\00E0 renseigner\000A', true)$$,
-  '23514', null, 'lieu actif, adresse provisoire contournée (tabulation et retour à la ligne) : refusé');
-select throws_ok(
-  $$insert into public.locations (public_label, private_address, active)
-    values ('Test', 'a renseigner', true)$$,
-  '23514', null, 'lieu actif, adresse provisoire contournée (sans accent) : refusé');
-select throws_ok(
-  $$insert into public.locations (public_label, private_address, active)
-    values ('Test', 'À  RENSEIGNER.', true)$$,
-  '23514', null, 'lieu actif, adresse provisoire contournée (double espace et ponctuation) : refusé');
-select throws_ok(
-  $$insert into public.locations (public_label, private_address, active)
-    values ('Test', U&'a\0300 renseigner', true)$$,
-  '23514', null, 'lieu actif, adresse provisoire contournée (accent écrit en deux caractères) : refusé');
-select throws_ok(
-  $$insert into public.locations (public_label, private_address, active)
-    values ('Test', 'Adresse reelle', true)$$,
-  '23514', null, 'lieu actif, adresse provisoire contournée (« adresse reelle » sans accent) : refusé');
-select lives_ok(
-  $$insert into public.locations (public_label, private_address, active)
-    values ('Inactif', 'À RENSEIGNER', false)$$,
-  'lieu inactif avec « À RENSEIGNER » : accepté (cas du seed)');
-select throws_ok(
-  $$update public.locations set active = true where public_label = 'Inactif'$$,
-  '23514', null, 'activer un lieu sans avoir saisi son adresse : refusé');
-select lives_ok(
-  $$update public.locations set private_address = '3 rue Factice, 00000 Testville', active = true
-     where public_label = 'Inactif'$$,
-  'saisir l''adresse et activer le lieu dans la même requête : accepté');
 
 -- ---------------------------------------------------------------------------
 -- 6. services : anon ne lit que les colonnes d'affichage, et toujours que les lignes actives.

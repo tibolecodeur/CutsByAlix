@@ -71,8 +71,8 @@ select pg_temp.cleanup();
 select extensions.dblink_exec('setup', $sql$
   insert into public.services (id, name, duration_min, active)
   values ('cc000000-0000-4000-8000-000000000001', 'Test concurrence', 60, true);
-  insert into public.locations (id, public_label, private_address, active)
-  values ('cc000000-0000-4000-8000-000000000002', 'Ville test', 'Adresse factice (test)', true);
+  insert into public.locations (id, public_label, active)
+  values ('cc000000-0000-4000-8000-000000000002', 'Ville test', true);
   insert into public.availabilities (location_id, starts_at, ends_at)
   values ('cc000000-0000-4000-8000-000000000002',
           '2030-06-12 10:00 Europe/Paris', '2030-06-12 11:00 Europe/Paris');

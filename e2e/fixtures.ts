@@ -110,7 +110,7 @@ export async function mockRpc(
 
 /**
  * Remplace la lecture d'une table (`GET /rest/v1/<table>`). Renvoie les URL demandées : un
- * test peut vérifier les colonnes réclamées (ex. jamais `private_address`).
+ * test peut vérifier les colonnes réclamées (ex. jamais `select=*`).
  */
 export async function mockTable(page: Page, table: string, rows: unknown[]): Promise<string[]> {
   const requested: string[] = [];

@@ -13,12 +13,12 @@ import { expect, mockRpc, rpcError, test, type RpcResponse } from "./fixtures.ts
 /**
  * Parcours /reserver (Android, iPhone, desktop) contre des RPC Supabase INTERCEPTÉES : aucune
  * requête n'atteint une vraie base (e2e/fixtures.ts coupe tout ce qui n'est pas simulé).
- * Créneaux simulés : chaque jour sauf le lundi, 14:00 « Angers » et 15:10
+ * Créneaux simulés : chaque jour sauf le lundi, 14:00 « Les Ponts-de-Cé » et 15:10
  * « Saint-Christophe-du-Bois » (heure de Paris). Règle affichée : rien à moins de 5 h (jour entièrement
  * trop proche : le site n'interroge même pas la base).
  */
 
-const ANGERS = "a11ce000-0000-4000-8000-000000000101";
+const PONTS_DE_CE = "a11ce000-0000-4000-8000-000000000101";
 const SAINT_CHRISTOPHE = "a11ce000-0000-4000-8000-000000000102";
 const TOKEN = "7f1c2a9e-3b4d-4e5f-8a6b-9c0d1e2f3a4b";
 const HOUR_MS = 3_600_000;
@@ -37,7 +37,7 @@ function slot(day: DayKey, start: string, end: string, locationId: string, label
 function slotsFor(day: DayKey): SlotRow[] {
   if (isoWeekday(day) === 1) return [];
   return [
-    slot(day, "14:00", "15:00", ANGERS, "Angers"),
+    slot(day, "14:00", "15:00", PONTS_DE_CE, "Les Ponts-de-Cé"),
     slot(day, "15:10", "16:10", SAINT_CHRISTOPHE, "Saint-Christophe-du-Bois"),
   ];
 }
@@ -186,7 +186,7 @@ test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation 
       els.map((el) => el.closest("label")!.textContent!.replace(/\s+/g, " ").trim()),
     );
   // Heures de Paris, chacune avec la ville de son lieu.
-  expect(textes).toEqual(["14:00 – 15:00Angers", "15:10 – 16:10Saint-Christophe-du-Bois"]);
+  expect(textes).toEqual(["14:00 – 15:00Les Ponts-de-Cé", "15:10 – 16:10Saint-Christophe-du-Bois"]);
   await creneaux.getByRole("radio").nth(1).check();
   await continuer(page);
 
@@ -204,6 +204,11 @@ test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation 
   // Étape 4 : récapitulatif, puis envoi.
   await expect(page.getByRole("heading", { level: 2, name: "Vérifie et confirme" })).toBeFocused();
   await expect(valeurDuRecap(page, "Lieu")).toHaveText("Saint-Christophe-du-Bois");
+  // Adresse : annoncée sur Instagram, sans lien qui ferait quitter le parcours avant d'envoyer.
+  await expect(
+    page.getByText(/L'adresse exacte n'est pas affichée sur le site : une fois réservé/),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: /Instagram/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Confirmer la réservation" }).click();
 
   // Confirmation : date, heure de Paris, prestation, ville, lien ; pas d'adresse.
@@ -215,6 +220,21 @@ test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation 
   await expect(page.locator("dt", { hasText: /^Adresse$/ })).toHaveCount(0);
   await expect(page.getByText(/pas d'e-mail de confirmation/)).toBeVisible();
   await expect(page.locator("#cancel-link-url")).toHaveText(new RegExp(`/annuler#${TOKEN}$`));
+  await expect(
+    page.getByText(/écris à Alix en message privé sur Instagram pour la recevoir/),
+  ).toBeVisible();
+  const instagram = page.getByRole("link", { name: /@CutsByAlix sur Instagram/ });
+  await expect(instagram).toHaveAttribute("href", "https://www.instagram.com/cutsbyalix/");
+  await expect(instagram).toHaveAttribute("target", "_blank");
+  expect((await instagram.getAttribute("rel"))?.split(" ")).toEqual(
+    expect.arrayContaining(["noopener", "noreferrer"]),
+  );
+  // L'ancien libellé n'apparaît nulle part, et le jeton n'est dans aucun lien sauf l'annulation.
+  await expect(page.getByText("Angers")).toHaveCount(0);
+  const hrefs = await page
+    .locator("a[href]")
+    .evaluateAll((els) => els.map((el) => el.getAttribute("href") ?? ""));
+  expect(hrefs.filter((href) => href.includes(TOKEN))).toEqual([`/annuler#${TOKEN}`]);
 
   // Ce que le site a envoyé : le créneau ET le lieu du créneau choisi, honeypot vide.
   expect(envoye).toMatchObject({

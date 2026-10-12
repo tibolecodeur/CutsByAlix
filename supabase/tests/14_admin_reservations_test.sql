@@ -32,8 +32,8 @@ insert into public.admins (user_id) values ('30000000-0000-4000-8000-00000000000
 
 insert into public.services (id, name, duration_min, active) values
   ('10000000-0000-4000-8000-000000000001', 'Coupe', 60, true);
-insert into public.locations (id, public_label, private_address, active) values
-  ('20000000-0000-4000-8000-000000000001', 'Ville un', 'Adresse secrète un', true);
+insert into public.locations (id, public_label, active) values
+  ('20000000-0000-4000-8000-000000000001', 'Ville un', true);
 
 insert into public.availabilities (location_id, starts_at, ends_at) values
   ('20000000-0000-4000-8000-000000000001', '2030-02-02 07:00 Europe/Paris', '2030-02-02 11:00 Europe/Paris'),

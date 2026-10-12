@@ -25,7 +25,7 @@ const BOOKING: AdminBookingDetails = {
   startsAt: "2026-10-13T12:00:00Z", // aujourd'hui 14 h : moins de 24 h, annulable par Alix
   endsAt: "2026-10-13T13:00:00Z",
   serviceName: "Coupe + barbe",
-  locationLabel: "Angers",
+  locationLabel: "Les Ponts-de-Cé",
   firstName: "Léa",
   lastName: "Martin",
   phone: "0639980001",
@@ -71,7 +71,7 @@ describe("AdminBookingDetailPage", () => {
     expect(data.getAdminBooking).toHaveBeenCalledWith(ID);
     expect(screen.getByText("mardi 13 octobre")).toBeVisible();
     expect(screen.getByText("14:00 – 15:00")).toBeVisible();
-    expect(screen.getByText("Coupe + barbe · Angers")).toBeVisible();
+    expect(screen.getByText("Coupe + barbe · Les Ponts-de-Cé")).toBeVisible();
     expect(screen.getByText("06 39 98 00 01")).toBeVisible();
     expect(screen.getByRole("link", { name: "Appeler" })).toHaveAttribute("href", "tel:0639980001");
     expect(screen.getByRole("link", { name: "SMS" })).toHaveAttribute("href", "sms:0639980001");

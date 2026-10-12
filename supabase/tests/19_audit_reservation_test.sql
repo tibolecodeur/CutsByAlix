@@ -25,9 +25,9 @@ insert into public.services (id, name, duration_min, active) values
   ('19000000-0000-4000-8000-000000000001', 'Coupe', 60, true),
   ('19000000-0000-4000-8000-000000000002', 'Ancienne prestation', 60, false),
   ('19000000-0000-4000-8000-000000000003', 'Longue', 90, true);
-insert into public.locations (id, public_label, private_address, active) values
-  ('29000000-0000-4000-8000-000000000001', 'Lieu un', 'Adresse factice un', true),
-  ('29000000-0000-4000-8000-000000000002', 'Lieu deux', 'Adresse factice deux', true);
+insert into public.locations (id, public_label, active) values
+  ('29000000-0000-4000-8000-000000000001', 'Lieu un', true),
+  ('29000000-0000-4000-8000-000000000002', 'Lieu deux', true);
 -- Mer. 12/06 10 h – 18 h (lieu un) : grille 10:00, 11:10, 12:20, 13:30, 14:40, 15:50, 17:00.
 -- Jeu. 13/06 10 h – 18 h (lieu deux). Ven. 31/05 (déjà passé) 10 h – 12 h (lieu un).
 insert into public.availabilities (location_id, starts_at, ends_at) values

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { Button, ButtonLink } from "@/components/Button";
+import { InstagramLink } from "@/components/InstagramLink";
 import type { BookingReceipt } from "@/features/booking/data";
 import { isWithinCancelNotice } from "@/features/booking/notice";
 import { BOOKING_RULES } from "@/lib/bookingRules";
@@ -14,8 +15,9 @@ type ConfirmationStepProps = {
 };
 
 /**
- * Réservation confirmée : récap (date, heure de Paris, prestation, ville) et lien personnel
- * d'annulation. Le jeton n'est affiché qu'ici, jamais écrit dans la console.
+ * Réservation confirmée : récap (date, heure de Paris, prestation, localité), contact Instagram
+ * pour recevoir l'adresse (jamais stockée, ADR 0008) et lien personnel d'annulation. Le jeton
+ * n'est affiché qu'ici, jamais écrit dans la console ni ajouté à un lien sortant.
  */
 export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProps) {
   // Le jeton est dans le fragment (#) : il ne part jamais vers un serveur ni dans un Referer.
@@ -32,8 +34,6 @@ export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProp
           ["Prestation", receipt.serviceName],
           ["Date", formatLongDay(receipt.startsAt)],
           ["Heure", `${formatTime(receipt.startsAt)} – ${formatTime(receipt.endsAt)}`],
-          // TODO: règle de révélation de l'adresse privée à décider (docs/PLAN.md) ; en
-          // attendant, ni la base ni l'écran ne la donnent.
           ["Lieu", receipt.locationLabel],
           ["Paiement", "En liquide, sur place"],
         ]}
@@ -43,8 +43,8 @@ export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProp
         // Pas d'alerte : l'information est donnée à la lecture de la page, sans interrompre.
         <p className="font-semibold">
           Ton rendez-vous est dans moins de {BOOKING_RULES.cancelNoticeHours} h : tu ne pourras pas
-          l'annuler en ligne. Si tu as un empêchement, contacte Alix directement.
-          {/* TODO contact : ajouter le téléphone ou l'Instagram du barber dès qu'ils sont fournis. */}
+          l'annuler en ligne. Si tu as un empêchement, contacte Alix directement sur Instagram (lien
+          plus bas).
         </p>
       )}
 
@@ -69,6 +69,20 @@ export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProp
           <Link to={cancelPath} className="link inline-flex min-h-tap items-center">
             Ouvrir ma page d'annulation
           </Link>
+        </p>
+      </section>
+
+      {/* Après le lien d'annulation : le client l'a sauvegardé avant de partir sur Instagram
+          (sur iOS, l'app peut décharger cet onglet et le récapitulatif n'existe qu'ici). */}
+      <section aria-labelledby="address-title" className="flex flex-col gap-3">
+        <h3 id="address-title">L'adresse</h3>
+        <p>
+          L'adresse exacte n'est pas affichée sur le site : écris à Alix en message privé sur
+          Instagram pour la recevoir. Donne-lui ton prénom et l'heure du rendez-vous, n'envoie pas
+          ton lien d'annulation.
+        </p>
+        <p>
+          <InstagramLink />
         </p>
       </section>
 

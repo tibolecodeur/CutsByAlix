@@ -67,8 +67,8 @@ select pg_temp.cleanup();
 select extensions.dblink_exec('setup', $sql$
   insert into public.services (id, name, duration_min, active)
   values ('cd000000-0000-4000-8000-000000000001', 'Test audit', 60, true);
-  insert into public.locations (id, public_label, private_address, active)
-  values ('cd000000-0000-4000-8000-000000000002', 'Ville audit', 'Adresse factice (test)', true);
+  insert into public.locations (id, public_label, active)
+  values ('cd000000-0000-4000-8000-000000000002', 'Ville audit', true);
   -- Grille : 10:00, 11:10, 12:20, 13:30.
   insert into public.availabilities (location_id, starts_at, ends_at)
   values ('cd000000-0000-4000-8000-000000000002',

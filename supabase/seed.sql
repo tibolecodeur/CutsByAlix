@@ -5,15 +5,14 @@
 --
 -- Relançable sans risque (idempotent) : une ligne n'est ajoutée que si elle n'existe pas
 -- déjà (même id, même nom de prestation ou même libellé de lieu). Rien n'est jamais modifié
--- ni supprimé : les vraies adresses saisies ensuite, ou les prestations modifiées depuis
--- l'admin, ne sont pas écrasées par une nouvelle exécution. Attention : une ligne SUPPRIMÉE
+-- ni supprimé : les prestations modifiées depuis l'admin ou les lieux activés ne sont pas
+-- écrasés par une nouvelle exécution. Attention : une ligne SUPPRIMÉE
 -- serait recréée (la masquer plutôt que la supprimer, ou ne plus relancer ce script).
 --
--- Le dépôt est public : AUCUNE vraie adresse ici. Les adresses se saisissent dans le SQL
--- Editor, directement sur la base distante.
+-- Aucune adresse, nulle part : le site ne stocke que la localité (ADR 0008).
 -- Contraintes respectées (migration …_tables.sql) : textes sans espace au bord ; nom et
 -- libellé de 1 à 80 caractères ; durée entre 15 et 240 min, multiple de 5 ; prix affiché en
--- texte (pas de centimes), 40 caractères max ; adresse de 1 à 300 caractères.
+-- texte (pas de centimes), 40 caractères max.
 -- =============================================================================
 
 begin;
@@ -32,20 +31,22 @@ where not exists (
   select 1 from public.services s where s.id = v.id or s.name = v.name
 );
 
--- Lieux : libellé public visible de tous. Créés INACTIFS, adresse « À RENSEIGNER » : l'adresse
--- est révélée au client qui réserve, et un lieu inactif ne propose aucun créneau
--- (private.compute_slots filtre sur l.active). On l'active en même temps que la saisie de la
--- vraie adresse, dans le SQL Editor (jamais dans ce fichier, le dépôt est public) :
---   update public.locations set private_address = '…', active = true where id = '…';
+-- Lieux : la localité, visible de tous. Aucune adresse (ADR 0008) : le client la demande à
+-- Alix sur Instagram. Créés INACTIFS : un lieu inactif ne propose aucun créneau
+-- (private.compute_slots filtre sur l.active). L'activation est une décision de mise en
+-- ligne, faite dans le SQL Editor (jamais dans ce fichier) :
+--   update public.locations set active = true where id = '…';
+-- Le lieu …101 s'appelait « Angers » : la migration …_lieux_sans_adresse.sql le renomme. Ici,
+-- la correspondance sur l'id évite de le recréer sous son nouveau nom.
 --
 -- Les lieux d'un ancien seed (« Chez ses parents », « Chez lui », désactivés en production)
 -- ne sont ni réactivés ni recréés : ce script n'insère que les deux lieux ci-dessous et ne
 -- fait jamais d'update ni de delete.
-insert into public.locations (id, public_label, private_address, active, sort_order)
-select v.id, v.public_label, 'À RENSEIGNER', false, v.sort_order
+insert into public.locations (id, public_label, active, sort_order)
+select v.id, v.public_label, false, v.sort_order
 from (
   values
-    ('a11ce000-0000-4000-8000-000000000101'::uuid, 'Angers', 1),
+    ('a11ce000-0000-4000-8000-000000000101'::uuid, 'Les Ponts-de-Cé', 1),
     ('a11ce000-0000-4000-8000-000000000102'::uuid, 'Saint-Christophe-du-Bois', 2)
 ) as v (id, public_label, sort_order)
 where not exists (

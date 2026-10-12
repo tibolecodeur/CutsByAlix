@@ -156,7 +156,7 @@ function NoActiveLocation() {
       <h2 className="text-xl">Aucun lieu actif</h2>
       <p>
         Tu ne peux pas encore ajouter de disponibilité : aucun lieu n'est activé. Les lieux sont
-        activés par le développeur, une fois leur adresse renseignée. Demande-lui de le faire.
+        activés par le développeur, au moment de la mise en ligne. Demande-lui de le faire.
       </p>
     </EmptyMessage>
   );

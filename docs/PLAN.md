@@ -106,7 +106,9 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       et libellé public) arrive avec chaque créneau via `get_available_slots`. Seul cas qui la
       justifierait encore : afficher les lieux hors du parcours (ex. section « Où me trouver »
       de l'accueil), à décider le moment venu.
-- [ ] **Règle de révélation de l'adresse privée à décider** (à quel moment, et à qui, le
+- [x] ~~**Règle de révélation de l'adresse privée à décider**~~ : **résolu par décision le
+      2026-10-12 (source : Alix, consigne 24, ADR 0008)** : aucune adresse stockée, le client
+      la demande sur Instagram. Historique : (à quel moment, et à qui, le
       client l'apprend). Depuis la consigne 15, AUCUNE RPC ne la renvoie (`create_booking`,
       `get_booking`) et l'écran de confirmation ne l'affiche pas (TODO dans
       `ConfirmationStep.tsx` et `CancelPage.tsx`) : un client qui réserve ne sait donc pas où
@@ -261,10 +263,13 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 - [ ] `/check-deploiement` · Données de test supprimées · Compte admin du barber · Domaine
 - [ ] **Purge RGPD codée et planifiée** : suppression des données clients 6 mois après le RDV
       (`private.settings().data_retention`). **Bloquant pour la mise en ligne** (ADR 0002).
-- [ ] **Protéger l'adresse privée** : la révéler tard (ex. quelques heures avant le RDV) ou après
-      validation de la réservation par le barber. Depuis la consigne 15, plus aucune RPC ne la
-      renvoie : il reste à DÉCIDER et coder la règle de révélation (risque n° 1 de l'ADR 0002).
-      **Bloquant pour la mise en ligne.**
+- [x] ~~**Protéger l'adresse privée**~~ (K-04 de l'audit) : **résolu par décision le 2026-10-12
+      (source : Alix)**. Le site ne stocke et n'affiche aucune adresse : la colonne
+      `private_address` est supprimée (migration `…_lieux_sans_adresse.sql`, consigne 24,
+      ADR 0008), le client voit la localité (« Les Ponts-de-Cé », « Saint-Christophe-du-Bois »)
+      et demande l'adresse à Alix sur Instagram. Plus de règle de révélation à coder. Bloquants
+      restants avant la mise en ligne : CSP en blocage (K-01), anti-abus (K-02), purge RGPD (K-03).
+      Les lieux restent inactifs : leur activation est une décision de mise en ligne.
 - [ ] **Messages d'erreur du parcours client** (🟡 depuis l'audit : jamais affiché ; à corriger dans la première consigne de correction, avec C-02) (point 8 de la revue de la consigne 18) :
       `src/features/booking/data.ts:139` (`getServices`) et `:159` (`getAvailableSlots`)
       recopient `error.message` de Supabase dans l'`Error` levée. Ce texte brut (détails SQL,

@@ -107,7 +107,7 @@ export async function getBookingRules(): Promise<BookingRules> {
 }
 
 // ---------------------------------------------------------------------------------------
-// Lieux (table `locations`, colonnes id, public_label, active : jamais l'adresse privée)
+// Lieux (table `locations`, colonnes id, public_label, active ; aucune adresse stockée)
 // ---------------------------------------------------------------------------------------
 
 export type Location = {
@@ -117,7 +117,7 @@ export type Location = {
 
 /**
  * Lieux ACTIFS, par ordre alphabétique (l'admin n'a pas le droit de lire `sort_order`). Seul le
- * développeur active un lieu, en même temps qu'il saisit sa vraie adresse (SQL Editor).
+ * développeur active un lieu, au moment de la mise en ligne (SQL Editor).
  */
 export async function getLocations(): Promise<Location[]> {
   const { data, error } = await client()
@@ -145,7 +145,7 @@ export type AdminBooking = {
   startsAt: string;
   endsAt: string;
   serviceName: string;
-  /** Libellé public du lieu (la ville), jamais l'adresse. */
+  /** Libellé public du lieu (la localité). */
   locationLabel: string;
   firstName: string;
   lastName: string;
