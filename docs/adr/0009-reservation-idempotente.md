@@ -91,6 +91,6 @@ puis fusion de la PR.
   POST en HTTPS, jamais dans une URL. Elle pourrait apparaître dans les journaux de PostgreSQL
   si la base journalisait les paramètres des requêtes en erreur ; c'est déjà le cas du jeton
   pour `get_booking` et `cancel_booking`. Aucun journal du site ne les écrit.
-- Garde-fou « RDV encore à venir » : sans effet aujourd'hui (5 h de délai minimum contre 30 min
+- Garde-fou « RDV encore à venir » : sans effet aujourd'hui (2 h de délai minimum contre 30 min
   de rejeu), il protège un futur réglage de `private.settings()` où le délai deviendrait plus
   court que la fenêtre de rejeu (testé : pgTAP 24, section 8).

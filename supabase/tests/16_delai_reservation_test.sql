@@ -1,9 +1,9 @@
--- Délai minimum de réservation à 5 h (consigne 21) et lien avec l'annulation à 24 h.
+-- Délai minimum de réservation à 2 h (consignes 21 puis 28) et lien avec l'annulation à 24 h.
 -- « Maintenant » est FIXE : private.create_booking_at / get_booking_at / cancel_booking_at
 -- reçoivent dimanche 18 octobre 2026, 8 h 30 à Paris (heure d'été). Rien ne dépend de la date du
--- jour. Limite de réservation : 13 h 30 le même jour.
+-- jour. Limite de réservation : 10 h 30 le même jour.
 --
--- Cas clé : un RDV réservé à 5 h 01 est ACCEPTÉ (il est à moins de 24 h) mais NON annulable en
+-- Cas clé : un RDV réservé à 2 h 01 est ACCEPTÉ (il est à moins de 24 h) mais NON annulable en
 -- ligne, tandis qu'un RDV à plus de 24 h reste annulable.
 begin;
 create extension if not exists pgtap with schema extensions;
@@ -49,43 +49,43 @@ create function pg_temp.token(p_phone text) returns uuid
 language sql as $$ select cancel_token from public.bookings where phone = p_phone; $$;
 
 -- ---------------------------------------------------------------------------
--- 1. Valeurs : réservation à 5 h, annulation toujours à 24 h.
+-- 1. Valeurs : réservation à 2 h, annulation toujours à 24 h.
 -- ---------------------------------------------------------------------------
 select results_eq(
   $$select min_notice, cancel_notice from private.settings()$$,
-  $$values (interval '5 hours', interval '24 hours')$$,
-  'private.settings() : réservation 5 h, annulation 24 h (inchangée)');
+  $$values (interval '2 hours', interval '24 hours')$$,
+  'private.settings() : réservation 2 h, annulation 24 h (inchangée)');
 
 -- ---------------------------------------------------------------------------
--- 2. Réservation : 4 h 59 refusée, 5 h 01 acceptée.
+-- 2. Réservation : 1 h 59 refusée, 2 h 01 acceptée.
 -- ---------------------------------------------------------------------------
 -- Les deux dispos se chevaucheraient : on les pose l'une après l'autre. La dispo existe dans
 -- les deux cas, c'est donc bien le délai qui refuse, pas l'absence de créneau.
 insert into public.availabilities (location_id, starts_at, ends_at) values
-  ('20000000-0000-4000-8000-000000000001', '2026-10-18 13:29 Europe/Paris', '2026-10-18 14:29 Europe/Paris');
+  ('20000000-0000-4000-8000-000000000001', '2026-10-18 10:29 Europe/Paris', '2026-10-18 11:29 Europe/Paris');
 select throws_ok(
-  $$select * from pg_temp.book('2026-10-18 13:29 Europe/Paris', '0700000001')
+  $$select * from pg_temp.book('2026-10-18 10:29 Europe/Paris', '0700000001')
       as (s timestamptz, e timestamptz, n text, l text, t uuid)$$,
-  'P0001', 'too_soon', '4 h 59 avant : réservation refusée (too_soon)');
+  'P0001', 'too_soon', '1 h 59 avant : réservation refusée (too_soon)');
 select is((select count(*) from public.bookings), 0::bigint, 'le refus n''a rien enregistré');
-delete from public.availabilities where starts_at = '2026-10-18 13:29 Europe/Paris';
+delete from public.availabilities where starts_at = '2026-10-18 10:29 Europe/Paris';
 
 insert into public.availabilities (location_id, starts_at, ends_at) values
-  ('20000000-0000-4000-8000-000000000001', '2026-10-18 13:31 Europe/Paris', '2026-10-18 14:31 Europe/Paris');
+  ('20000000-0000-4000-8000-000000000001', '2026-10-18 10:31 Europe/Paris', '2026-10-18 11:31 Europe/Paris');
 select lives_ok(
-  $$select * from pg_temp.book('2026-10-18 13:31 Europe/Paris', '0700000002')
+  $$select * from pg_temp.book('2026-10-18 10:31 Europe/Paris', '0700000002')
       as (s timestamptz, e timestamptz, n text, l text, t uuid)$$,
-  '5 h 01 avant : réservation acceptée');
+  '2 h 01 avant : réservation acceptée');
 
 -- ---------------------------------------------------------------------------
 -- 3. Réservé à moins de 24 h : accepté, mais pas annulable en ligne.
 -- ---------------------------------------------------------------------------
 select is(
   (select can_cancel from private.get_booking_at('2026-10-18 08:30 Europe/Paris', pg_temp.token('0700000002'))),
-  false, 'RDV réservé à 5 h 01 : get_booking annonce « non annulable » (RDV à moins de 24 h)');
+  false, 'RDV réservé à 2 h 01 : get_booking annonce « non annulable » (RDV à moins de 24 h)');
 select throws_ok(
   $$select private.cancel_booking_at('2026-10-18 08:30 Europe/Paris', pg_temp.token('0700000002'))$$,
-  'P0001', 'too_late', 'RDV réservé à 5 h 01 : annulation refusée (too_late)');
+  'P0001', 'too_late', 'RDV réservé à 2 h 01 : annulation refusée (too_late)');
 select is(
   (select status from public.bookings where phone = '0700000002'),
   'confirmed', 'le refus n''a pas annulé le RDV');

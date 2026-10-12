@@ -188,7 +188,7 @@ select throws_ok($$delete from public.availabilities$$, '42501', null,
 
 -- Règles : lues dans private.settings().
 select results_eq('select * from public.admin_booking_rules()',
-  $$values (70, 300, 28)$$, 'admin : règles 70 min / 5 h / 28 jours');
+  $$values (70, 120, 28)$$, 'admin : règles 70 min / 2 h / 28 jours');
 -- Comparaison faite en postgres (seul à lire private.settings()), avec l'identité de l'admin
 -- toujours dans les claims (exigée par admin_booking_rules).
 reset role;

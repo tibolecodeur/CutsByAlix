@@ -142,7 +142,7 @@ select throws_ok(
 
 -- ---------------------------------------------------------------------------
 -- 7. Fonction PUBLIQUE create_booking : p_request_id est bien transmis (now() réel, dispo
---    dans deux jours, sur la grille, dans la fenêtre de 5 h à 4 semaines).
+--    dans deux jours, sur la grille, dans la fenêtre de 2 h à 4 semaines).
 -- ---------------------------------------------------------------------------
 insert into public.availabilities (location_id, starts_at, ends_at) values
   ('24000000-0000-4000-8000-000000000001',
@@ -170,7 +170,7 @@ select is(
 
 -- ---------------------------------------------------------------------------
 -- 8. Garde-fou : jamais le jeton d'un RDV déjà commencé. Impossible avec les règles actuelles
---    (5 h minimum contre 30 min de rejeu) : on ramène min_notice à 0 le temps du test (la
+--    (2 h minimum contre 30 min de rejeu) : on ramène min_notice à 0 le temps du test (la
 --    transaction est annulée à la fin).
 -- ---------------------------------------------------------------------------
 create or replace function private.settings()

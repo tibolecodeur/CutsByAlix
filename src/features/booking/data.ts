@@ -206,7 +206,7 @@ export async function getAvailableDays(serviceId: string): Promise<AvailableDay[
 
 /**
  * RPC `get_available_slots(p_service_id, p_day)` : créneaux libres d'un jour (heure de Paris),
- * déjà filtrés par la base (lieux actifs, au moins 5 h, au plus 4 semaines, grille de 70 min,
+ * déjà filtrés par la base (lieux actifs, au moins 2 h, au plus 4 semaines, grille de 70 min,
  * créneaux pris retirés). Rejette en cas d'erreur réseau, de base ou de config manquante.
  */
 export async function getAvailableSlots(serviceId: string, day: DayKey): Promise<AvailableSlot[]> {

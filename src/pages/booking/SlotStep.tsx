@@ -75,7 +75,7 @@ export function SlotStep(props: SlotStepProps) {
     }
   }
   const now = new Date();
-  // Jour entièrement passé ou à moins de 5 h : inutile d'interroger la base, on explique pourquoi.
+  // Jour entièrement passé ou à moins de 2 h : inutile d'interroger la base, on explique pourquoi.
   const tooSoon = day !== null && isTooSoonDay(day, now);
   const slots = useAsync(day === null || tooSoon ? null : `slots|${serviceId}|${day}`, () =>
     getAvailableSlots(serviceId, day ?? ""),

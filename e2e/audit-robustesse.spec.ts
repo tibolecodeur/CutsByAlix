@@ -240,7 +240,7 @@ const SCREENS: Screen[] = [
       await mockAdminAuth(page);
       await mockTable(page, "locations", [{ id: LOCATION, public_label: "Les Ponts-de-Cé" }]);
       await mockRpc(page, "admin_booking_rules", () => ({
-        body: [{ slot_step_min: 70, min_notice_min: 300, max_advance_days: 28 }],
+        body: [{ slot_step_min: 70, min_notice_min: 120, max_advance_days: 28 }],
       }));
       await mockFaulty(page, /\/rest\/v1\/rpc\/admin_list_availabilities(\?|$)/, () => [], fault);
       await loginAdmin(page, "/admin/disponibilites", "Disponibilités");
@@ -380,7 +380,7 @@ test.describe("robustesse : actions", () => {
     await mockAdminAuth(page);
     await mockTable(page, "locations", [{ id: LOCATION, public_label: "Les Ponts-de-Cé" }]);
     await mockRpc(page, "admin_booking_rules", () => ({
-      body: [{ slot_step_min: 70, min_notice_min: 300, max_advance_days: 28 }],
+      body: [{ slot_step_min: 70, min_notice_min: 120, max_advance_days: 28 }],
     }));
     await mockRpc(page, "admin_list_availabilities", () => ({ body: [] }));
     await mockRpc(page, "admin_create_availability", (args) => {

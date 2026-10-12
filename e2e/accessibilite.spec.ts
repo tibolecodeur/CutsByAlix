@@ -169,7 +169,7 @@ test("axe : toutes les pages admin, connecté", async ({ page }) => {
     { id: "a11ce000-0000-4000-8000-000000000101", public_label: "Les Ponts-de-Cé" },
   ]);
   await mockRpc(page, "admin_booking_rules", () => ({
-    body: [{ slot_step_min: 70, min_notice_min: 300, max_advance_days: 28 }],
+    body: [{ slot_step_min: 70, min_notice_min: 120, max_advance_days: 28 }],
   }));
   await mockRpc(page, "admin_list_availabilities", () => ({ body: [] }));
   await mockRpc(page, "admin_list_bookings", () => ({ body: [] }));

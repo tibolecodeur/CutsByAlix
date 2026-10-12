@@ -79,14 +79,14 @@ Détail et justification : `docs/adr/0002-modele-de-donnees-et-securite.md`.
 
 ## Règles de gestion
 
-Valeurs confirmées par le barber le 2026-10-10 (sauf conservation des données ; délai minimum passé de 48 h à 5 h le 2026-10-11, consigne 21),
+Valeurs confirmées par le barber le 2026-10-10 (sauf conservation des données ; délai minimum passé de 48 h à 5 h le 2026-10-11 (consigne 21), puis à 2 h le 2026-10-12 (consigne 28)),
 centralisées
 dans `private.settings()` (une migration suffit pour les changer) :
 
 - Créneaux proposés = disponibilités découpées toutes les **70 min** à partir du début de chaque
   dispo, selon la durée de la prestation, moins les RDV confirmés (tous lieux), moins les créneaux
-  passés ou à moins de **5 h** (réservation au plus tard 5 h avant ; un créneau devient visible
-  des clients dès qu'il est à plus de « maintenant + 5 h » : il n'y a pas de règle « J+2 »
+  passés ou à moins de **2 h** (réservation au plus tard 2 h avant ; un créneau devient visible
+  des clients dès qu'il est à plus de « maintenant + 2 h » : il n'y a pas de règle « J+2 »
   séparée).
 - Pas de réservation au-delà de **4 semaines**.
 - Annulation client possible jusqu'à **24 h** avant le RDV. Un RDV réservé à moins de 24 h
@@ -102,7 +102,7 @@ dans `private.settings()` (une migration suffit pour les changer) :
 - [x] Durée standard d'un créneau → 70 min
 - [x] Où il coupe → deux lieux, « Les Ponts-de-Cé » et « Saint-Christophe-du-Bois » (localités)
 - [x] Adresses → jamais stockées : données par Alix sur Instagram (décision du 2026-10-12)
-- [x] Délai d'annulation client → 24 h, délai minimum → 5 h (48 h jusqu'à la consigne 21),
+- [x] Délai d'annulation client → 24 h, délai minimum → 2 h (48 h jusqu'à la consigne 21, 5 h jusqu'à la consigne 28),
       horizon → 4 semaines
 - [ ] Nom, logo, couleurs, ambiance, photos disponibles
 - [ ] Réseaux sociaux à mettre en avant

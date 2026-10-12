@@ -1,7 +1,7 @@
 -- Calcul des créneaux libres.
 -- La plupart des cas passent par private.compute_slots avec une date « maintenant » FIXE
 -- (dimanche 18 octobre 2026, 8 h 30 à Paris) : le test ne se périme pas avec le temps.
--- Règles (private.settings) : grille au pas de 70 min, au moins 5 h à l'avance, 4 semaines max.
+-- Règles (private.settings) : grille au pas de 70 min, au moins 2 h à l'avance, 4 semaines max.
 -- Les deux derniers vérifient get_available_slots (la vraie RPC, avec now()) en anonyme.
 begin;
 create extension if not exists pgtap with schema extensions;
@@ -33,9 +33,9 @@ insert into public.locations (id, public_label, active) values
   ('20000000-0000-4000-8000-000000000003', 'Lieu fermé', false);
 
 insert into public.availabilities (location_id, starts_at, ends_at) values
-  -- Dim. 18/10 12 h – 16 h, grille 12:00, 13:10, 14:20 : 12:00 et 13:10 sont à moins de 5 h (limite 18/10
-  -- 13 h 30) → seul 14:20 reste. (15:30 finirait à 16:30, hors dispo.)
-  ('20000000-0000-4000-8000-000000000001', '2026-10-18 12:00 Europe/Paris', '2026-10-18 16:00 Europe/Paris'),
+  -- Dim. 18/10 9 h – 13 h, grille 9:00, 10:10, 11:20 : 9:00 et 10:10 sont à moins de 2 h (limite 18/10
+  -- 10 h 30) → seul 11:20 reste. (12:30 finirait à 13:40, hors dispo.)
+  ('20000000-0000-4000-8000-000000000001', '2026-10-18 09:00 Europe/Paris', '2026-10-18 13:00 Europe/Paris'),
   -- Mer. 21/10 14 h – 18 h, lieu deux, grille 14:00, 15:10, 16:20 : un RDV à 15 h 10.
   ('20000000-0000-4000-8000-000000000002', '2026-10-21 14:00 Europe/Paris', '2026-10-21 18:00 Europe/Paris'),
   -- Jeu. 22/10 10 h – 13 h : pour la prestation de 90 min (10:00, 11:10 ; 12:20 déborde).
@@ -63,8 +63,8 @@ $$;
 
 -- ---------------------------------------------------------------------------
 select is(pg_temp.slots('10000000-0000-4000-8000-000000000001', '2026-10-18'),
-  array['14:20'],
-  'ni créneau passé, ni créneau à moins de 5 h');
+  array['11:20'],
+  'ni créneau passé, ni créneau à moins de 2 h');
 
 select is(pg_temp.slots('10000000-0000-4000-8000-000000000001', '2026-10-21'),
   array['14:00', '16:20'],
@@ -131,7 +131,7 @@ delete from public.bookings;
 delete from public.availabilities;
 
 insert into public.availabilities (location_id, starts_at, ends_at) values
-  -- De 1 h à 9 h après maintenant (heure pile) : le début est à moins de 5 h, la fin non.
+  -- De 1 h à 9 h après maintenant (heure pile) : le début est à moins de 2 h, la fin non.
   ('20000000-0000-4000-8000-000000000002',
    date_trunc('hour', now()) + interval '1 hour', date_trunc('hour', now()) + interval '9 hours'),
   -- Dans 10 jours, 10 h – 12 h 20 : 10:00 et 11:10.
@@ -147,16 +147,16 @@ select is(
      from generate_series(0, 3) as d
     cross join lateral public.get_available_slots('10000000-0000-4000-8000-000000000001',
                                                   (now() at time zone 'Europe/Paris')::date + d) s
-    where s.location_label = 'Lieu deux') near where near.starts_at < now() + interval '5 hours'),
+    where s.location_label = 'Lieu deux') near where near.starts_at < now() + interval '2 hours'),
   0::bigint,
-  'get_available_slots ne renvoie aucun créneau à moins de 5 h');
+  'get_available_slots ne renvoie aucun créneau à moins de 2 h');
 select ok(
   (select count(*) from (select s.*
      from generate_series(0, 3) as d
     cross join lateral public.get_available_slots('10000000-0000-4000-8000-000000000001',
                                                   (now() at time zone 'Europe/Paris')::date + d) s
     where s.location_label = 'Lieu deux') near) > 0,
-  'get_available_slots renvoie bien les créneaux de la même plage situés après 5 h');
+  'get_available_slots renvoie bien les créneaux de la même plage situés après 2 h');
 
 select results_eq(
   $$select to_char(starts_at at time zone 'Europe/Paris', 'HH24:MI'), location_label

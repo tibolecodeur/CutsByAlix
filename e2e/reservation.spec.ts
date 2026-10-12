@@ -14,7 +14,7 @@ import { expect, mockRpc, rpcError, test, type RpcResponse } from "./fixtures.ts
  * Parcours /reserver (Android, iPhone, desktop) contre des RPC Supabase INTERCEPTÉES : aucune
  * requête n'atteint une vraie base (e2e/fixtures.ts coupe tout ce qui n'est pas simulé).
  * Créneaux simulés : chaque jour sauf le lundi, 14:00 « Les Ponts-de-Cé » et 15:10
- * « Saint-Christophe-du-Bois » (heure de Paris). Règle affichée : rien à moins de 5 h (jour entièrement
+ * « Saint-Christophe-du-Bois » (heure de Paris). Règle affichée : rien à moins de 2 h (jour entièrement
  * trop proche : le site n'interroge même pas la base).
  */
 
@@ -64,12 +64,12 @@ function receiptFor(row: SlotRow) {
 
 /**
  * Jours que la base annoncerait (get_available_days) : les 28 jours à partir d'aujourd'hui (Paris),
- * sans ceux qui sont entièrement à moins de 5 h, et seulement ceux qui ont des créneaux simulés
+ * sans ceux qui sont entièrement à moins de 2 h, et seulement ceux qui ont des créneaux simulés
  * (donc sans les lundis).
  */
 function daysFor(now: Date): { day: string; slot_count: number }[] {
   const today = parisDayKey(now);
-  const first = parisDayKey(new Date(now.getTime() + 5 * HOUR_MS));
+  const first = parisDayKey(new Date(now.getTime() + 2 * HOUR_MS));
   return Array.from({ length: 28 }, (_, i) => addDaysToKey(today, i))
     .filter((day) => day >= first)
     .map((day) => ({ day, slot_count: slotsFor(day).length }))
@@ -278,14 +278,14 @@ test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation 
   expect(erreurs).toEqual([]);
 });
 
-test("délai de 5 h : expliqué ; à 19 h 01 aujourd'hui est grisé et non cliquable", async ({
+test("délai de 2 h : expliqué ; à 22 h 01 aujourd'hui est grisé et non cliquable", async ({
   page,
 }) => {
-  const maintenant = new Date("2026-10-13T17:01:00Z"); // mardi 13, 19 h 01 à Paris
+  const maintenant = new Date("2026-10-13T20:01:00Z"); // mardi 13, 22 h 01 à Paris
   await page.clock.setFixedTime(maintenant);
   const requested = await mockSlots(page, undefined, maintenant);
   await allerAuxCreneaux(page);
-  await expect(page.getByText(/On réserve au plus tard 5 h avant le rendez-vous/)).toBeVisible();
+  await expect(page.getByText(/On réserve au plus tard 2 h avant le rendez-vous/)).toBeVisible();
 
   const aujourdhui = page.getByRole("radio", { name: formatDayKey("2026-10-13") });
   await expect(aujourdhui).toBeDisabled();
@@ -296,10 +296,10 @@ test("délai de 5 h : expliqué ; à 19 h 01 aujourd'hui est grisé et non cliqu
   expect(requested).not.toContain("2026-10-13");
 });
 
-test("délai de 5 h, jours impossibles à charger : « Trop tard » explique la règle sans appel à la base", async ({
+test("délai de 2 h, jours impossibles à charger : « Trop tard » explique la règle sans appel à la base", async ({
   page,
 }) => {
-  const maintenant = new Date("2026-10-13T17:01:00Z"); // mardi 13, 19 h 01 à Paris
+  const maintenant = new Date("2026-10-13T20:01:00Z"); // mardi 13, 22 h 01 à Paris
   await page.clock.setFixedTime(maintenant);
   const requested = await mockSlots(page, undefined, maintenant);
   await mockRpc(page, "get_available_days", () => "network-error");
@@ -313,8 +313,8 @@ test("délai de 5 h, jours impossibles à charger : « Trop tard » explique la 
   expect(requested).not.toContain("2026-10-13");
 });
 
-test("délai de 5 h : à 18 h 59, aujourd'hui reste réservable", async ({ page }) => {
-  const maintenant = new Date("2026-10-13T16:59:00Z"); // mardi 13, 18 h 59 à Paris
+test("délai de 2 h : à 21 h 59, aujourd'hui reste réservable", async ({ page }) => {
+  const maintenant = new Date("2026-10-13T19:59:00Z"); // mardi 13, 21 h 59 à Paris
   await page.clock.setFixedTime(maintenant);
   const requested = await mockSlots(page, undefined, maintenant);
   await allerAuxCreneaux(page);
@@ -328,10 +328,10 @@ test("délai de 5 h : à 18 h 59, aujourd'hui reste réservable", async ({ page 
 test("RDV à moins de 24 h : récapitulatif et confirmation préviennent, sans rien bloquer", async ({
   page,
 }) => {
-  const maintenant = new Date("2026-10-13T10:00:00Z"); // mardi 13, 12 h à Paris
+  const maintenant = new Date("2026-10-13T09:00:00Z"); // mardi 13, 11 h à Paris
   await page.clock.setFixedTime(maintenant);
   await mockSlots(page, undefined, maintenant);
-  // Créneau de 14 h le jour même : dans 2 h, donc à moins de 24 h.
+  // Créneau de 14 h le jour même : dans 3 h (au-delà du délai de 2 h), donc à moins de 24 h.
   await mockRpc(page, "create_booking", () => ({
     body: receiptFor(slotsFor("2026-10-13")[0]!),
   }));
@@ -392,7 +392,7 @@ test("un lundi sans créneau est grisé et non cliquable ; « Retour » ramène 
   await expect(page.getByRole("heading", { level: 2, name: "Quelle prestation ?" })).toBeFocused();
 });
 
-/** Le dernier lundi du calendrier (toujours au-delà du délai de 5 h). */
+/** Le dernier lundi du calendrier (toujours au-delà du délai de 2 h). */
 async function lastMonday(page: Page): Promise<DayKey | undefined> {
   // Le calendrier s'affiche une fois les jours disponibles chargés : on l'attend.
   await expect(page.getByRole("radio", { name: /^lundi / }).first()).toBeAttached();
