@@ -11,7 +11,7 @@ import {
  * Calculs de l'écran « Disponibilités » (aperçu en direct, période réservable, liste par
  * semaine). Logique pure, sans React ni réseau.
  *
- * Les valeurs (70 min, 5 h, 28 jours) ne sont JAMAIS écrites ici : elles arrivent de la base
+ * Les valeurs (70 min, 2 h, 28 jours) ne sont JAMAIS écrites ici : elles arrivent de la base
  * (`admin_booking_rules`, lue dans `private.settings()`). La base reste seule juge : ces calculs
  * ne servent qu'à prévenir Alix avant l'envoi.
  */
@@ -80,7 +80,7 @@ export type BookableWindow =
  */
 export function bookableWindow(starts: Date[], rules: BookingRules, now: Date): BookableWindow {
   const notice = rules.minNoticeMin * MINUTE_MS;
-  // `>=` comme `private.compute_slots` : à 5 h pile, le créneau est encore proposé.
+  // `>=` comme `private.compute_slots` : à 2 h pile, le créneau est encore proposé.
   const stillBookable = starts.filter((s) => s.getTime() - notice >= now.getTime());
   const first = stillBookable[0];
   const last = stillBookable.at(-1);
@@ -95,7 +95,7 @@ export function bookableWindow(starts: Date[], rules: BookingRules, now: Date): 
   };
 }
 
-/** « 5 h », « 90 min » : un délai en minutes, lisible. */
+/** « 2 h », « 90 min » : un délai en minutes, lisible. */
 export function formatDelay(minutes: number): string {
   return minutes % 60 === 0 ? `${minutes / 60} h` : `${minutes} min`;
 }

@@ -84,6 +84,12 @@ pour qu'il ne dépende ni du changement d'heure ni du fuseau de la session.
 > prévenu avant et après la réservation, et doit contacter Alix directement. Il n'existe pas de
 > règle « visible à partir de J+2 » à part : l'affichage suit `min_notice`.
 
+> Mise à jour du 2026-10-12 (migration `…_delai_reservation_2h`, consigne 28) : délai minimum
+> de réservation ramené de 5 h à **2 h** (seule `min_notice` change ; annulation toujours à 24 h).
+> Même conséquence qu'à la consigne 21, un peu plus fréquente : un RDV pris à moins de 24 h n'est
+> pas annulable en ligne, le client en est prévenu. Le garde-fou de rejeu de `create_booking`
+> (fenêtre de 30 min) reste inférieur au délai minimum.
+
 ## Alternatives étudiées
 
 - **Lecture directe de `bookings` par l'anon avec une RLS filtrante**

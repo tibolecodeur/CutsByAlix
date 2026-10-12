@@ -119,11 +119,11 @@ select is(pg_temp.n('2030-10-14 08:30 Europe/Paris', '2030-10-27'), 4,
 select is(pg_temp.n('2030-10-14 08:30 Europe/Paris', '2030-10-26'), 0,
   'et aucun la veille (en UTC, les deux premiers y tomberaient)');
 
--- Délai minimum de 5 h : le créneau de 10 h le 20 mars.
-select is(pg_temp.n('2030-03-20 05:00 Europe/Paris', '2030-03-20'), 1,
-  'maintenant + 5 h pile = 10 h : le créneau reste proposé');
-select is(pg_temp.n('2030-03-20 05:01 Europe/Paris', '2030-03-20'), 0,
-  'à 5 h 01, le créneau de 10 h est trop proche : le jour est indisponible');
+-- Délai minimum de 2 h : le créneau de 10 h le 20 mars.
+select is(pg_temp.n('2030-03-20 08:00 Europe/Paris', '2030-03-20'), 1,
+  'maintenant + 2 h pile = 10 h : le créneau reste proposé');
+select is(pg_temp.n('2030-03-20 08:01 Europe/Paris', '2030-03-20'), 0,
+  'à 2 h 01, le créneau de 10 h est trop proche : le jour est indisponible');
 select is(pg_temp.n('2030-03-20 06:00 Europe/Paris', '2030-03-21'), 3,
   'les jours suivants ne changent pas');
 

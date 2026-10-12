@@ -18,6 +18,10 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Modifié
 
+- Délai minimum de réservation ramené de 5 h à **2 h** (consigne 28) : on peut réserver jusqu'à
+  2 h avant le rendez-vous. L'annulation en ligne reste possible jusqu'à 24 h avant : un RDV
+  pris à moins de 24 h n'est pas annulable en ligne (le client en est prévenu). Migration à
+  appliquer AVANT le déploiement du site.
 - Bucket « gallery » **privé** : les photos s'affichent par URL signées d'1 h, une photo
   masquée n'est plus accessible. Fichiers nommés par un uuid (jamais le nom d'origine), WebP
   ou JPEG, 2 Mo max, aucun remplacement. `gallery_items.caption` remplacée par `alt_text`.

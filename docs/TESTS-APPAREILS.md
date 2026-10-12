@@ -179,7 +179,7 @@ dans le journal (section 3).
       l'hébergeur (repli SPA), la page 404 du site pour l'URL inconnue.
 - [ ] **Connexion admin** (`/admin`) avec le compte d'Alix ; déconnexion ; reconnexion.
 - [ ] **Ajout de créneau** : créer une plage, vérifier le texte « réservable par les clients du
-      … » ; elle apparaît côté client dans /reserver (si elle est à plus de 5 h).
+      … » ; elle apparaît côté client dans /reserver (si elle est à plus de 2 h).
 - [ ] **Annulation côté barber** : annuler depuis l'admin la réservation de test ; le lien du
       client affiche « Rendez-vous annulé par Alix ».
 - [ ] **Envoi d'une photo en galerie depuis un vrai téléphone** (« Prendre une photo » ET

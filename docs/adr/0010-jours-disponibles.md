@@ -11,7 +11,7 @@ touché (`get_available_slots(service, jour)`). On veut griser les jours sans cr
 évidence les autres.
 
 La disponibilité d'un jour dépend de choses que seule la base connaît : les plages publiées par
-Alix, les RDV déjà pris, les lieux actifs, la grille de 70 min et le délai de 5 h. Le navigateur
+Alix, les RDV déjà pris, les lieux actifs, la grille de 70 min et le délai de 2 h. Le navigateur
 ne peut pas la deviner.
 
 ## Décision

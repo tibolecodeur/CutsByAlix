@@ -90,6 +90,14 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       fournir). pgTAP 16 + 05, 08, 09, 13 adaptés (4 h 59 refusé / 5 h 01 accepté, 23 h 59 /
       24 h 01), Vitest et Playwright (horloge figée). Appliqué en local seulement. Ordre pour la
       production : fusionner la PR PUIS `db push`.
+- [x] **Délai minimum de réservation à 2 h** (consigne 28) : migration
+      `…_delai_reservation_2h.sql` (seule `min_notice` de `private.settings()` passe de 5 h à
+      2 h ; les 8 colonnes reprises de `…_reservation_idempotente.sql`, la définition en vigueur ;
+      annulation à 24 h inchangée ; aucune donnée touchée). Front via `src/lib/bookingRules.ts`.
+      pgTAP 05, 08, 09, 13, 16 (renommé `16_delai_reservation_test.sql`), 24, 26 ; Vitest et
+      Playwright adaptés (bornes 1 h 59 / 2 h 01, 21 h 59 / 22 h 01). Ordre pour la production :
+      `db push` AVANT de fusionner / déployer le front (un front à 2 h devant une base à 5 h
+      afficherait des créneaux que la base refuse ; l'inverse est sans danger).
 - [ ] Poids du bundle : supabase-js ajoute ~56 kB gzip (107 → 163 kB, avertissement Vite
       « chunk > 500 kB »). Piste à valider : charger le client par import dynamique.
 
@@ -169,8 +177,8 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       Content-Security-Policy stricte à TOUT le site dans `public/_headers`, **bloquant avant la
       mise en ligne de l'admin**. Proposition de la revue (consigne 17), à tester sur le site
       déployé : `default-src 'self'; connect-src 'self' https://<ref>.supabase.co
-  wss://<ref>.supabase.co; img-src 'self' https://<ref>.supabase.co data: blob:;
-  frame-ancestors 'none'; base-uri 'self'; form-action 'self'`. Déjà fait : anti-iframe
+wss://<ref>.supabase.co; img-src 'self' https://<ref>.supabase.co data: blob:;
+frame-ancestors 'none'; base-uri 'self'; form-action 'self'`. Déjà fait : anti-iframe
       (`X-Frame-Options` + `frame-ancestors`) sur `/admin*`. **Consigne 22** : CSP posée sur
       tout le site en `Report-Only` (sans `wss:`, aucun temps réel utilisé) ; mesure locale :
       seule l'`eval` de Zod était signalée, supprimée par `z.config({ jitless: true })`
@@ -194,7 +202,7 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       front). Base : plage future, fin > début, ≤ 24 h, ≥ 1 créneau, lieu actif, chevauchement
       traduit, verrou partagé avec `create_booking`. Suppression refusée dès qu'une réservation
       confirmée touche la plage (passée ou future). L'admin ne lit plus que `id, public_label,
-      active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : liste par
+    active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : liste par
       semaine, aperçu en direct, « Réservable par les clients du … au … », message « aucun lieu
       actif ». pgTAP 13 (date fixe), Vitest, Playwright (3 projets). Appliqué en local
       seulement. Ordre pour la production : migration (`db push`) PUIS front.

@@ -1,9 +1,9 @@
 -- Règles de réservation (migration regles_reservation_et_durcissement) : valeurs de
--- private.settings(), grille de 70 min, limites exactes de 5 h (réservation) et 24 h
+-- private.settings(), grille de 70 min, limites exactes de 2 h (réservation) et 24 h
 -- (annulation), contrainte d'adresse sur les lieux, colonnes de services lisibles par anon.
 --
 -- Indépendant de la date du jour : la grille utilise un « maintenant » fixe ; les limites
--- 5 h / 24 h sont relatives à now(), qui reste FIGÉ pendant toute la transaction du test,
+-- 2 h / 24 h sont relatives à now(), qui reste FIGÉ pendant toute la transaction du test,
 -- sur des données créées ici (truncate au début, aucune date fixe mélangée).
 begin;
 create extension if not exists pgtap with schema extensions;
@@ -38,9 +38,9 @@ insert into public.locations (id, public_label) values
 select results_eq(
   $$select slot_step, min_notice, max_advance, cancel_notice, max_future_bookings
       from private.settings()$$,
-  $$values (interval '70 minutes', interval '5 hours', interval '28 days',
+  $$values (interval '70 minutes', interval '2 hours', interval '28 days',
             interval '24 hours', 2)$$,
-  'private.settings() : pas de 70 min, 5 h minimum, 4 semaines, annulation 24 h, 2 RDV');
+  'private.settings() : pas de 70 min, 2 h minimum, 4 semaines, annulation 24 h, 2 RDV');
 
 -- ---------------------------------------------------------------------------
 -- 2. Grille de 70 min. Dispo de 10 h à 14 h, prestation de 70 min :
@@ -59,57 +59,57 @@ select results_eq(
   $$values ('10:00', '11:10'), ('11:10', '12:20'), ('12:20', '13:30')$$,
   'dispo 10 h – 14 h : 3 créneaux de 70 min (10:00, 11:10, 12:20)');
 
--- La même grille vue 5 h avant : 10:00 est à 5 h pile de
--- « maintenant » (20/10 5 h) → proposé ; à 5 h 01, il ne l'est plus.
+-- La même grille vue 2 h avant : 10:00 est à 2 h pile de
+-- « maintenant » (20/10 8 h) → proposé ; à 2 h 01, il ne l'est plus.
 select is(
   (select count(*) from private.compute_slots('10000000-0000-4000-8000-000000000001',
-     '2026-10-20', '2026-10-20 05:00 Europe/Paris')),
+     '2026-10-20', '2026-10-20 08:00 Europe/Paris')),
   3::bigint,
-  'grille : un créneau à 5 h pile est proposé');
+  'grille : un créneau à 2 h pile est proposé');
 select is(
   (select count(*) from private.compute_slots('10000000-0000-4000-8000-000000000001',
-     '2026-10-20', '2026-10-20 05:01 Europe/Paris')),
+     '2026-10-20', '2026-10-20 08:01 Europe/Paris')),
   2::bigint,
-  'grille : un créneau à 4 h 59 n''est plus proposé');
+  'grille : un créneau à 1 h 59 n''est plus proposé');
 
 delete from public.availabilities;
 
 -- ---------------------------------------------------------------------------
--- 3. Réservation : 4 h 59 refusée, 5 h acceptée (create_booking, en anonyme).
+-- 3. Réservation : 1 h 59 refusée, 2 h acceptée (create_booking, en anonyme).
 -- ---------------------------------------------------------------------------
 insert into public.availabilities (location_id, starts_at, ends_at) values
   ('20000000-0000-4000-8000-000000000001',
-   now() + interval '4 hours 59 minutes', now() + interval '6 hours 9 minutes');
+   now() + interval '1 hour 59 minutes', now() + interval '3 hours 9 minutes');
 
 set local role anon;
 select throws_ok(
   $$select * from public.create_booking('10000000-0000-4000-8000-000000000001',
-      now() + interval '4 hours 59 minutes', '20000000-0000-4000-8000-000000000001', 'Léa', 'Martin', '0612345678')$$,
-  'P0001', 'too_soon', 'réservation à 4 h 59 : refusée (too_soon)');
+      now() + interval '1 hour 59 minutes', '20000000-0000-4000-8000-000000000001', 'Léa', 'Martin', '0612345678')$$,
+  'P0001', 'too_soon', 'réservation à 1 h 59 : refusée (too_soon)');
 select is(
   (select count(*) from public.get_available_slots('10000000-0000-4000-8000-000000000001',
-     ((now() + interval '4 hours 59 minutes') at time zone 'Europe/Paris')::date)),
+     ((now() + interval '1 hour 59 minutes') at time zone 'Europe/Paris')::date)),
   0::bigint,
-  'get_available_slots ne propose pas un créneau à 4 h 59');
+  'get_available_slots ne propose pas un créneau à 1 h 59');
 reset role;
 
 delete from public.availabilities;
 insert into public.availabilities (location_id, starts_at, ends_at) values
   ('20000000-0000-4000-8000-000000000001',
-   now() + interval '5 hours', now() + interval '6 hours 10 minutes');
+   now() + interval '2 hours', now() + interval '3 hours 10 minutes');
 
 set local role anon;
 select is(
   (select count(*) from public.get_available_slots('10000000-0000-4000-8000-000000000001',
-     ((now() + interval '5 hours') at time zone 'Europe/Paris')::date)),
+     ((now() + interval '2 hours') at time zone 'Europe/Paris')::date)),
   1::bigint,
-  'get_available_slots propose un créneau à 5 h pile');
+  'get_available_slots propose un créneau à 2 h pile');
 select results_eq(
   $$select ends_at - starts_at, location_label
       from public.create_booking('10000000-0000-4000-8000-000000000001',
-        now() + interval '5 hours', '20000000-0000-4000-8000-000000000001', 'Léa', 'Martin', '0612345678')$$,
+        now() + interval '2 hours', '20000000-0000-4000-8000-000000000001', 'Léa', 'Martin', '0612345678')$$,
   $$values (interval '70 minutes', 'Lieu un'::text)$$,
-  'réservation à 5 h pile : acceptée, RDV de 70 min');
+  'réservation à 2 h pile : acceptée, RDV de 70 min');
 reset role;
 
 -- ---------------------------------------------------------------------------

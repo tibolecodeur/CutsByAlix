@@ -7,7 +7,7 @@ export const BOOKING_RULES = {
   /** Pas de la grille de créneaux, depuis le début de chaque disponibilité. */
   slotStepMinutes: 70,
   /** Délai minimum entre maintenant et le début du RDV. */
-  minNoticeHours: 5,
+  minNoticeHours: 2,
   /** Horizon de réservation. */
   maxAdvanceDays: 28,
   /** Annulation client possible jusqu'à X heures avant le RDV. */

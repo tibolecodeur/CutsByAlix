@@ -54,7 +54,7 @@ function dayName(day: string): RegExp {
   return new RegExp(`^${formatDayKey(day)}(,|$)`);
 }
 
-/** Case du calendrier du premier jour réservable (au-delà du délai de 5 h). */
+/** Case du calendrier du premier jour réservable (au-delà du délai de 2 h). */
 async function firstBookableDayRadio() {
   // Le calendrier s'affiche une fois les jours disponibles chargés : on l'attend.
   return screen.findByRole("radio", { name: dayName(firstBookableDay(new Date())) });
@@ -62,7 +62,7 @@ async function firstBookableDayRadio() {
 
 /**
  * Jours que la base renverrait par défaut : tous ceux qui ne sont pas trop proches (à moins de
- * 5 h), avec 2 créneaux chacun. Calculé À L'APPEL, avec l'horloge du moment (figée par certains
+ * 2 h), avec 2 créneaux chacun. Calculé À L'APPEL, avec l'horloge du moment (figée par certains
  * tests).
  */
 function defaultDays(): bookingData.AvailableDay[] {
@@ -142,7 +142,7 @@ describe("BookingPage : chargement et erreurs", () => {
   });
 });
 
-describe("BookingPage : délai de 5 h", () => {
+describe("BookingPage : délai de 2 h", () => {
   // Seule `Date` est figée (userEvent et findBy gardent leurs vrais timers).
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -158,11 +158,11 @@ describe("BookingPage : délai de 5 h", () => {
     await user.click(screen.getByRole("button", { name: "Continuer" }));
   }
 
-  it("19 h 01 : la règle est expliquée et aujourd'hui est grisé, non cliquable", async () => {
+  it("22 h 01 : la règle est expliquée et aujourd'hui est grisé, non cliquable", async () => {
     const user = userEvent.setup();
-    vi.setSystemTime(new Date("2026-10-13T17:01:00Z")); // mardi 13, 19 h 01 à Paris
+    vi.setSystemTime(new Date("2026-10-13T20:01:00Z")); // mardi 13, 22 h 01 à Paris
     await openSlotStep(user);
-    expect(screen.getByText(/On réserve au plus tard 5 h avant le rendez-vous/)).toBeVisible();
+    expect(screen.getByText(/On réserve au plus tard 2 h avant le rendez-vous/)).toBeVisible();
 
     const today = await screen.findByRole("radio", { name: dayName("2026-10-13") });
     expect(today).toBeDisabled();
@@ -172,9 +172,9 @@ describe("BookingPage : délai de 5 h", () => {
     expect(screen.getByRole("radio", { name: dayName("2026-10-14") })).toBeEnabled();
   });
 
-  it("19 h 01, jours impossibles à charger : explique « Trop tard » sans interroger la base", async () => {
+  it("22 h 01, jours impossibles à charger : explique « Trop tard » sans interroger la base", async () => {
     const user = userEvent.setup();
-    vi.setSystemTime(new Date("2026-10-13T17:01:00Z")); // mardi 13, 19 h 01 à Paris
+    vi.setSystemTime(new Date("2026-10-13T20:01:00Z")); // mardi 13, 22 h 01 à Paris
     vi.mocked(bookingData.getAvailableDays).mockRejectedValue(new Error("réseau"));
     await openSlotStep(user);
 
@@ -188,9 +188,9 @@ describe("BookingPage : délai de 5 h", () => {
     expect(bookingData.getAvailableSlots).not.toHaveBeenCalled();
   });
 
-  it("18 h 59 : aujourd'hui reste réservable, la base est interrogée", async () => {
+  it("21 h 59 : aujourd'hui reste réservable, la base est interrogée", async () => {
     const user = userEvent.setup();
-    vi.setSystemTime(new Date("2026-10-13T16:59:00Z")); // mardi 13, 18 h 59 à Paris
+    vi.setSystemTime(new Date("2026-10-13T19:59:00Z")); // mardi 13, 21 h 59 à Paris
     vi.mocked(bookingData.getAvailableSlots).mockResolvedValue([]);
     await openSlotStep(user);
 

@@ -3,46 +3,46 @@ import { firstBookableDay, isTooSoonDay, isWithinCancelNotice } from "@/features
 
 // Octobre 2026 : heure d'été à Paris (UTC+2) jusqu'au dimanche 25.
 
-describe("firstBookableDay (délai de 5 h)", () => {
+describe("firstBookableDay (délai de 2 h)", () => {
   it("le matin, le jour même reste réservable", () => {
-    // Mardi 13 octobre, 8 h à Paris + 5 h = 13 h : encore mardi.
+    // Mardi 13 octobre, 8 h à Paris + 2 h = 10 h : encore mardi.
     expect(firstBookableDay(new Date("2026-10-13T06:00:00Z"))).toBe("2026-10-13");
   });
 
-  it("limite nette : 18 h 59 → ce soir encore possible, 19 h 01 → dès demain", () => {
-    // 18 h 59 à Paris (16 h 59 UTC) + 5 h = 23 h 59 : mardi.
-    expect(firstBookableDay(new Date("2026-10-13T16:59:00Z"))).toBe("2026-10-13");
-    // 19 h 01 à Paris (17 h 01 UTC) + 5 h = 0 h 01 : mercredi.
-    expect(firstBookableDay(new Date("2026-10-13T17:01:00Z"))).toBe("2026-10-14");
+  it("limite nette : 21 h 59 → ce soir encore possible, 22 h 01 → dès demain", () => {
+    // 21 h 59 à Paris (19 h 59 UTC) + 2 h = 23 h 59 : mardi.
+    expect(firstBookableDay(new Date("2026-10-13T19:59:00Z"))).toBe("2026-10-13");
+    // 22 h 01 à Paris (20 h 01 UTC) + 2 h = 0 h 01 : mercredi.
+    expect(firstBookableDay(new Date("2026-10-13T20:01:00Z"))).toBe("2026-10-14");
   });
 
   it("raisonne en heure de Paris, pas en UTC", () => {
-    // 23 h 30 à Paris (21 h 30 UTC) + 5 h = mercredi 4 h 30 à Paris, mardi 2 h 30 UTC.
+    // 23 h 30 à Paris (21 h 30 UTC) + 2 h = mercredi 1 h 30 à Paris, mardi 23 h 30 UTC.
     expect(firstBookableDay(new Date("2026-10-13T21:30:00Z"))).toBe("2026-10-14");
-    // 0 h 30 à Paris mercredi (mardi 22 h 30 UTC) + 5 h = mercredi 5 h 30 à Paris.
+    // 0 h 30 à Paris mercredi (mardi 22 h 30 UTC) + 2 h = mercredi 2 h 30 à Paris.
     expect(firstBookableDay(new Date("2026-10-13T22:30:00Z"))).toBe("2026-10-14");
   });
 
-  it("compte 5 h réelles autour du changement d'heure (24 → 25 octobre)", () => {
-    // Avant le changement (UTC+2) : 18 h 59 à Paris + 5 h = 23 h 59 le 24 ; 19 h 01 → le 25.
-    expect(firstBookableDay(new Date("2026-10-24T16:59:00Z"))).toBe("2026-10-24");
-    expect(firstBookableDay(new Date("2026-10-24T17:01:00Z"))).toBe("2026-10-25");
-    // Après (UTC+1) : minuit à Paris tombe à 23 h UTC. 18 h 59 + 5 h = 23 h 59 le 25 ; 19 h 01 → le 26.
-    expect(firstBookableDay(new Date("2026-10-25T17:59:00Z"))).toBe("2026-10-25");
-    expect(firstBookableDay(new Date("2026-10-25T18:01:00Z"))).toBe("2026-10-26");
+  it("compte 2 h réelles autour du changement d'heure (24 → 25 octobre)", () => {
+    // Avant le changement (UTC+2) : 21 h 59 à Paris + 2 h = 23 h 59 le 24 ; 22 h 01 → le 25.
+    expect(firstBookableDay(new Date("2026-10-24T19:59:00Z"))).toBe("2026-10-24");
+    expect(firstBookableDay(new Date("2026-10-24T20:01:00Z"))).toBe("2026-10-25");
+    // Après (UTC+1) : minuit à Paris tombe à 23 h UTC. 21 h 59 + 2 h = 23 h 59 le 25 ; 22 h 01 → le 26.
+    expect(firstBookableDay(new Date("2026-10-25T20:59:00Z"))).toBe("2026-10-25");
+    expect(firstBookableDay(new Date("2026-10-25T21:01:00Z"))).toBe("2026-10-26");
   });
 });
 
 describe("isTooSoonDay", () => {
-  it("avant 19 h, aujourd'hui n'est pas trop tôt ; les jours passés le sont", () => {
-    const now = new Date("2026-10-13T16:59:00Z"); // mardi 13, 18 h 59 à Paris
+  it("avant 22 h, aujourd'hui n'est pas trop tôt ; les jours passés le sont", () => {
+    const now = new Date("2026-10-13T19:59:00Z"); // mardi 13, 21 h 59 à Paris
     expect(isTooSoonDay("2026-10-12", now)).toBe(true);
     expect(isTooSoonDay("2026-10-13", now)).toBe(false);
     expect(isTooSoonDay("2026-10-14", now)).toBe(false);
   });
 
-  it("à partir de 19 h 01, aujourd'hui est trop tôt, demain non", () => {
-    const now = new Date("2026-10-13T17:01:00Z"); // mardi 13, 19 h 01 à Paris
+  it("à partir de 22 h 01, aujourd'hui est trop tôt, demain non", () => {
+    const now = new Date("2026-10-13T20:01:00Z"); // mardi 13, 22 h 01 à Paris
     expect(isTooSoonDay("2026-10-13", now)).toBe(true);
     expect(isTooSoonDay("2026-10-14", now)).toBe(false);
     expect(isTooSoonDay("2026-11-02", now)).toBe(false);

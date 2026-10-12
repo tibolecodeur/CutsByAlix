@@ -19,7 +19,7 @@ export function calendarDays(now: Date): DayKey[] {
 
 /**
  * Nombre de créneaux par jour. Un jour absent de la liste n'a aucun créneau : passé, hors de la
- * période de réservation, à moins de 5 h, entièrement pris, ou sans plage publiée.
+ * période de réservation, à moins de 2 h, entièrement pris, ou sans plage publiée.
  */
 export function countByDay(days: readonly AvailableDay[]): ReadonlyMap<DayKey, number> {
   return new Map(days.map((d) => [d.day, d.slotCount]));
