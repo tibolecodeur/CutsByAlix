@@ -16,8 +16,12 @@ et au barber (étudiant, disponibilités variables) de publier lui-même ses cr�
 
 ## Prestations
 
-- **Coupe** : 60 min, prix à confirmer.
-- **Coupe + barbe** : 60 min, prix à confirmer.
+- **Coupe** : 60 min, **10 €**.
+- **Coupe + barbe** : 70 min, **12 €**.
+
+La durée et le prix sont ceux de l'affichage. Les créneaux restent de 70 min pour toutes les
+prestations (la marge de 10 min de la coupe simple est voulue) : la fin d'un RDV est toujours
+début + 70 min (ADR 0011). Créneaux de durée variable selon la prestation : non fait.
 
 ## Lieux
 
@@ -40,7 +44,10 @@ disponibilité ; le client ne choisit pas, il voit la localité à côté de cha
 ### Public
 
 - Accueil : présentation, photo, CTA « Réserver », adresse / zone, contact (Instagram, téléphone).
-- Prestations et tarifs (affichage). Paiement **sur place, en liquide**.
+- Prestations et tarifs (affichage). Paiement **en liquide ou par virement**
+  (mention « Paiement en liquide ou par virement » au récapitulatif et à la confirmation ; aucune
+  coordonnée bancaire sur le site, Alix les donne en message privé sur Instagram ; aucun paiement
+  en ligne).
 - Galerie des créations (photos + légende courte).
 - Réservation : prestation → jour (calendrier) → créneau libre → prénom, nom, téléphone et/ou email
   → consentement RGPD → confirmation.
@@ -84,7 +91,7 @@ centralisées
 dans `private.settings()` (une migration suffit pour les changer) :
 
 - Créneaux proposés = disponibilités découpées toutes les **70 min** à partir du début de chaque
-  dispo, selon la durée de la prestation, moins les RDV confirmés (tous lieux), moins les créneaux
+  dispo, (70 min pour toutes les prestations), moins les RDV confirmés (tous lieux), moins les créneaux
   passés ou à moins de **2 h** (réservation au plus tard 2 h avant ; un créneau devient visible
   des clients dès qu'il est à plus de « maintenant + 2 h » : il n'y a pas de règle « J+2 »
   séparée).
@@ -98,7 +105,7 @@ dans `private.settings()` (une migration suffit pour les changer) :
 
 ## À confirmer avec le barber
 
-- [ ] Prix affichés des deux prestations (durées : 60 min chacune)
+- [x] Prix et durées affichés → Coupe 60 min / 10 €, Coupe + barbe 70 min / 12 € (consigne 26) ; paiement en liquide ou par virement
 - [x] Durée standard d'un créneau → 70 min
 - [x] Où il coupe → deux lieux, « Les Ponts-de-Cé » et « Saint-Christophe-du-Bois » (localités)
 - [x] Adresses → jamais stockées : données par Alix sur Instagram (décision du 2026-10-12)

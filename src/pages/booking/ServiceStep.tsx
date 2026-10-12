@@ -69,7 +69,7 @@ export function ServiceStep({ serviceId, focusOnMount, onChange, onNext }: Servi
             ))}
             <GroupError id="service-error" message={error} />
           </fieldset>
-          <p>Paiement en liquide, sur place.</p>
+          <p>Paiement en liquide ou par virement.</p>
           <StepActions submitLabel="Continuer" />
         </form>
       )}

@@ -17,13 +17,14 @@
 
 begin;
 
--- Prestations : 70 min, 12 € chacune.
+-- Prestations : Coupe 60 min / 10 €, Coupe + barbe 70 min / 12 €. Les créneaux restent de 70 min
+-- pour toutes (marge de 10 min voulue) : la durée affichée n'entre pas dans la fin du RDV.
 insert into public.services (id, name, duration_min, price_label, active, sort_order)
 select v.id, v.name, v.duration_min, v.price_label, true, v.sort_order
 from (
   values
     -- NOM À CONFIRMER AVEC ALIX
-    ('a11ce000-0000-4000-8000-000000000001'::uuid, 'Coupe', 70, '12 €', 1),
+    ('a11ce000-0000-4000-8000-000000000001'::uuid, 'Coupe', 60, '10 €', 1),
     -- NOM À CONFIRMER AVEC ALIX
     ('a11ce000-0000-4000-8000-000000000002'::uuid, 'Coupe + barbe', 70, '12 €', 2)
 ) as v (id, name, duration_min, price_label, sort_order)

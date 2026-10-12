@@ -55,8 +55,8 @@ describe("getServices", () => {
     const calls = mockSupabase({ data: SERVICE_ROWS, error: null });
 
     expect(await getServices()).toEqual([
-      { id: SERVICE_ROWS[0]!.id, name: "Coupe", durationMin: 60, priceLabel: null },
-      { id: SERVICE_ROWS[1]!.id, name: "Coupe + barbe", durationMin: 60, priceLabel: "20 €" },
+      { id: SERVICE_ROWS[0]!.id, name: "Coupe", durationMin: 60, priceLabel: "10 €" },
+      { id: SERVICE_ROWS[1]!.id, name: "Coupe + barbe", durationMin: 70, priceLabel: "12 €" },
     ]);
     expect(calls.map(({ method, args }) => [method, ...args])).toEqual([
       ["from", "services"],

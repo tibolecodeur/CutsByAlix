@@ -115,7 +115,7 @@ export function SummaryStep(props: SummaryStepProps) {
         ]}
       />
       <p>
-        Paiement en liquide, sur place.{" "}
+        Paiement en liquide ou par virement.{" "}
         {isWithinCancelNotice(slot.startsAt, new Date())
           ? `Ce rendez-vous est dans moins de ${BOOKING_RULES.cancelNoticeHours} h : tu ne pourras pas l'annuler en ligne.`
           : `Tu pourras annuler en ligne jusqu'à ${BOOKING_RULES.cancelNoticeHours} h avant le rendez-vous.`}

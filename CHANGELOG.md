@@ -18,6 +18,10 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Modifié
 
+- Tarifs et paiement (consigne 26, ADR 0011) : Coupe 60 min / 10 €, Coupe + barbe 70 min / 12 € ;
+  paiement « en liquide ou par virement » (aucune coordonnée bancaire sur le site). Les créneaux
+  et la fin des rendez-vous restent de 70 min pour toutes les prestations.
+
 - Délai minimum de réservation ramené de 5 h à **2 h** (consigne 28) : on peut réserver jusqu'à
   2 h avant le rendez-vous. L'annulation en ligne reste possible jusqu'à 24 h avant : un RDV
   pris à moins de 24 h n'est pas annulable en ligne (le client en est prévenu). Migration à

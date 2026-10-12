@@ -19,13 +19,13 @@ export const E2E_SERVICES = [
     id: "e2e00000-0000-4000-8000-000000000001",
     name: "Coupe",
     duration_min: 60,
-    price_label: null,
+    price_label: "10 €",
   },
   {
     id: "e2e00000-0000-4000-8000-000000000002",
     name: "Coupe + barbe",
-    duration_min: 60,
-    price_label: null,
+    duration_min: 70,
+    price_label: "12 €",
   },
 ];
 

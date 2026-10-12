@@ -133,17 +133,17 @@ select throws_ok($$select pg_temp.book('2030-06-12 17:00 Europe/Paris', '0600000
 select isnt(pg_temp.book('2030-06-12 14:40 Europe/Paris', '0600000015'), null, 'RDV de 14 h 40');
 select is(
   (select ends_at - starts_at from public.bookings where phone = '0600000015'),
-  interval '60 minutes', 'ends_at = début + durée de la prestation');
+  interval '70 minutes', 'ends_at = début + durée du créneau');
 update public.bookings set ends_at = starts_at + interval '5 hours' where phone = '0600000015';
 select is(
   (select ends_at - starts_at from public.bookings where phone = '0600000015'),
-  interval '60 minutes', 'ends_at modifié à la main : ignoré par le trigger');
+  interval '70 minutes', 'ends_at modifié à la main : ignoré par le trigger');
 insert into public.bookings (service_id, location_id, starts_at, ends_at, first_name, last_name, phone)
 values ('19000000-0000-4000-8000-000000000001', '29000000-0000-4000-8000-000000000001',
         '2030-06-12 15:50 Europe/Paris', '2030-06-12 15:55 Europe/Paris', 'X', 'Y', '0600000016');
 select is(
   (select ends_at - starts_at from public.bookings where phone = '0600000016'),
-  interval '60 minutes', 'ends_at fourni à l''insertion (5 min) : remplacé par la durée réelle');
+  interval '70 minutes', 'ends_at fourni à l''insertion (5 min) : remplacé par la durée réelle');
 
 select * from finish();
 rollback;

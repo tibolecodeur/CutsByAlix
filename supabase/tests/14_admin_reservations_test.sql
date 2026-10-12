@@ -39,11 +39,11 @@ insert into public.availabilities (location_id, starts_at, ends_at) values
   ('20000000-0000-4000-8000-000000000001', '2030-02-02 07:00 Europe/Paris', '2030-02-02 11:00 Europe/Paris'),
   ('20000000-0000-4000-8000-000000000001', '2030-02-20 10:00 Europe/Paris', '2030-02-20 12:00 Europe/Paris'),
   ('20000000-0000-4000-8000-000000000001', '2030-03-04 08:30 Europe/Paris', '2030-03-04 10:00 Europe/Paris'),
-  ('20000000-0000-4000-8000-000000000001', '2030-03-04 14:00 Europe/Paris', '2030-03-04 16:00 Europe/Paris'),
+  ('20000000-0000-4000-8000-000000000001', '2030-03-04 14:00 Europe/Paris', '2030-03-04 16:10 Europe/Paris'),
   -- Mer. 6 mars 10 h – 13 h 30 : grille 10:00, 11:10, 12:20 (48 h et plus après « maintenant »).
   ('20000000-0000-4000-8000-000000000001', '2030-03-06 10:00 Europe/Paris', '2030-03-06 13:30 Europe/Paris');
 
--- ends_at est recalculé par le trigger (starts_at + 60 min) : la valeur fournie est ignorée.
+-- ends_at est recalculé par le trigger (starts_at + 70 min, durée du créneau) : la valeur fournie est ignorée.
 insert into public.bookings
   (id, cancel_token, service_id, location_id, starts_at, ends_at, first_name, last_name, phone, email,
    status, cancelled_by)
@@ -81,7 +81,7 @@ values
   -- B7 passé, commencé il y a 30 jours et 1 minute : hors fenêtre.
   ('60000000-0000-4000-8000-000000000007', '40000000-0000-4000-8000-000000000007',
    '10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001',
-   '2030-02-02 07:59 Europe/Paris', now(), 'Max', 'Vert', '0700000007', null,
+   '2030-02-02 07:50 Europe/Paris', now(), 'Max', 'Vert', '0700000007', null,
    'confirmed', null),
   -- B8 futur, même téléphone que B1 : Léa a atteint la limite de 2 RDV futurs.
   ('60000000-0000-4000-8000-000000000008', '40000000-0000-4000-8000-000000000008',

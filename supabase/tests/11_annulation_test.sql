@@ -32,17 +32,17 @@ insert into public.locations (id, public_label, active) values
 -- Dispos : de quoi poser un RDV de 60 min à chacune des dates ci-dessous (heure de Paris).
 insert into public.availabilities (location_id, starts_at, ends_at) values
   -- Passé, juste avant « maintenant » : RDV terminé.
-  ('20000000-0000-4000-8000-000000000001', '2026-10-18 06:00 Europe/Paris', '2026-10-18 07:00 Europe/Paris'),
+  ('20000000-0000-4000-8000-000000000001', '2026-10-18 06:00 Europe/Paris', '2026-10-18 07:10 Europe/Paris'),
   -- Commencé et pas fini (8 h 00 – 9 h 00).
-  ('20000000-0000-4000-8000-000000000001', '2026-10-18 08:00 Europe/Paris', '2026-10-18 09:00 Europe/Paris'),
+  ('20000000-0000-4000-8000-000000000001', '2026-10-18 08:00 Europe/Paris', '2026-10-18 09:10 Europe/Paris'),
   -- Lun. 19/10 8 h 30 : exactement 24 h après « maintenant ».
-  ('20000000-0000-4000-8000-000000000001', '2026-10-19 08:30 Europe/Paris', '2026-10-19 09:30 Europe/Paris'),
+  ('20000000-0000-4000-8000-000000000001', '2026-10-19 08:30 Europe/Paris', '2026-10-19 09:40 Europe/Paris'),
   -- Mer. 21/10 8 h 30 : RDV D, testé avec « maintenant » = mar. 20/10 8 h 31 (23 h 59 avant).
-  ('20000000-0000-4000-8000-000000000001', '2026-10-21 08:30 Europe/Paris', '2026-10-21 09:30 Europe/Paris'),
+  ('20000000-0000-4000-8000-000000000001', '2026-10-21 08:30 Europe/Paris', '2026-10-21 09:40 Europe/Paris'),
   -- Mar. 20 : deux RDV du même contact + un créneau pour la 3e réservation.
   ('20000000-0000-4000-8000-000000000001', '2026-10-20 10:00 Europe/Paris', '2026-10-20 13:30 Europe/Paris'),
   -- Heure d'hiver : sam. 24/10 12 h (UTC+2) → dim. 25/10 11 h (UTC+1) = 24 h réelles.
-  ('20000000-0000-4000-8000-000000000001', '2026-10-25 11:00 Europe/Paris', '2026-10-25 12:00 Europe/Paris');
+  ('20000000-0000-4000-8000-000000000001', '2026-10-25 11:00 Europe/Paris', '2026-10-25 12:10 Europe/Paris');
 
 -- Réservations posées en tant que postgres (ends_at est recalculé par le trigger).
 insert into public.bookings (service_id, location_id, starts_at, ends_at, first_name, last_name, phone, email, cancel_token)

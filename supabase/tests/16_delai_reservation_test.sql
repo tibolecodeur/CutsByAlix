@@ -32,9 +32,9 @@ insert into public.locations (id, public_label, active) values
 
 insert into public.availabilities (location_id, starts_at, ends_at) values
   -- Lun. 19/10 8 h 30 : exactement 24 h après « maintenant ».
-  ('20000000-0000-4000-8000-000000000001', '2026-10-19 08:30 Europe/Paris', '2026-10-19 09:30 Europe/Paris'),
+  ('20000000-0000-4000-8000-000000000001', '2026-10-19 08:30 Europe/Paris', '2026-10-19 09:40 Europe/Paris'),
   -- Lun. 19/10 10 h : 25 h 30 après « maintenant ».
-  ('20000000-0000-4000-8000-000000000001', '2026-10-19 10:00 Europe/Paris', '2026-10-19 11:00 Europe/Paris');
+  ('20000000-0000-4000-8000-000000000001', '2026-10-19 10:00 Europe/Paris', '2026-10-19 11:10 Europe/Paris');
 
 -- Raccourci : réserver à la date fixe (tous les autres paramètres sont ceux du site).
 create function pg_temp.book(p_starts_at timestamptz, p_phone text) returns setof record
@@ -62,7 +62,7 @@ select results_eq(
 -- Les deux dispos se chevaucheraient : on les pose l'une après l'autre. La dispo existe dans
 -- les deux cas, c'est donc bien le délai qui refuse, pas l'absence de créneau.
 insert into public.availabilities (location_id, starts_at, ends_at) values
-  ('20000000-0000-4000-8000-000000000001', '2026-10-18 10:29 Europe/Paris', '2026-10-18 11:29 Europe/Paris');
+  ('20000000-0000-4000-8000-000000000001', '2026-10-18 10:29 Europe/Paris', '2026-10-18 11:39 Europe/Paris');
 select throws_ok(
   $$select * from pg_temp.book('2026-10-18 10:29 Europe/Paris', '0700000001')
       as (s timestamptz, e timestamptz, n text, l text, t uuid)$$,
@@ -71,7 +71,7 @@ select is((select count(*) from public.bookings), 0::bigint, 'le refus n''a rien
 delete from public.availabilities where starts_at = '2026-10-18 10:29 Europe/Paris';
 
 insert into public.availabilities (location_id, starts_at, ends_at) values
-  ('20000000-0000-4000-8000-000000000001', '2026-10-18 10:31 Europe/Paris', '2026-10-18 11:31 Europe/Paris');
+  ('20000000-0000-4000-8000-000000000001', '2026-10-18 10:31 Europe/Paris', '2026-10-18 11:41 Europe/Paris');
 select lives_ok(
   $$select * from pg_temp.book('2026-10-18 10:31 Europe/Paris', '0700000002')
       as (s timestamptz, e timestamptz, n text, l text, t uuid)$$,

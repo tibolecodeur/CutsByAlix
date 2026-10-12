@@ -2,7 +2,8 @@
 
 Site vitrine et réservation de créneaux pour un barber étudiant. Les clients réservent **sans
 créer de compte** ; le barber publie ses disponibilités et ses créations depuis un espace admin
-pensé pour le téléphone. Paiement **sur place, en liquide** : aucun paiement en ligne.
+pensé pour le téléphone. Coupe 60 min / 10 €, coupe + barbe 70 min / 12 € (créneaux de 70 min). Paiement **en liquide ou
+par virement** : aucun paiement en ligne.
 
 > Projet en cours. Avancement détaillé dans [`docs/PLAN.md`](docs/PLAN.md),
 > cahier des charges dans [`docs/SPEC.md`](docs/SPEC.md).
@@ -118,7 +119,7 @@ Erreurs renvoyées au front (message de l'exception) : `invalid_input`, `slot_un
 est validée par Zod (`src/lib/schemas.ts`) et aucun message brut de Supabase n'est recopié.
 
 Règles centralisées dans `private.settings()` (une migration suffit pour les changer) : grille
-de créneaux de 70 min, réservation au plus tard 2 h avant et au plus 4 semaines à l'avance,
+de créneaux de 70 min (durée de fin de tous les RDV : la durée affichée d'une prestation ne sert qu'à l'affichage), réservation au plus tard 2 h avant et au plus 4 semaines à l'avance,
 annulation jusqu'à 24 h avant, 2 RDV futurs max par téléphone ou email, conservation des données
 clients 6 mois, rejeu d'une réservation (même clé) accepté 30 min. Le front en garde une copie pour ses textes (`src/lib/bookingRules.ts`).
 

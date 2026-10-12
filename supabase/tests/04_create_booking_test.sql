@@ -51,7 +51,7 @@ select results_eq(
         ((now() at time zone 'Europe/Paris')::date + 3 + time '10:00') at time zone 'Europe/Paris',
         '20000000-0000-4000-8000-000000000001',
         '  Léa ', 'Martin', '06 12 34 56 78', null, null)$$,
-  $$values ('Lieu un'::text, interval '60 minutes', true)$$,
+  $$values ('Lieu un'::text, interval '70 minutes', true)$$,
   'réservation nominale : récap avec lieu, durée et token (sans adresse privée)');
 
 -- ---------------------------------------------------------------------------
