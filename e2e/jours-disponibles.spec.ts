@@ -113,8 +113,11 @@ test("jour grisé : non cliquable et annoncé ; jour disponible : cliquable, ave
   ).toHaveCount(2);
   expect(calls.slots).toEqual([dayAt(3)]);
 
-  // Tous les jours viennent d'UNE seule requête, pas d'une par jour.
-  expect(calls.days).toBe(1);
+  // Tous les jours viennent d'UNE requête, pas d'une par jour (28). Le serveur de développement
+  // (React StrictMode) lance les effets deux fois au montage : on accepte 1 ou 2, jamais 28. Le
+  // nombre exact (1) est vérifié dans BookingPage.test.tsx, qui n'a pas ce doublement.
+  expect(calls.days).toBeGreaterThanOrEqual(1);
+  expect(calls.days).toBeLessThanOrEqual(2);
   await expectNoAxeViolation(page);
 });
 
@@ -192,9 +195,12 @@ test("clavier : les flèches sautent les jours grisés et le focus n'est jamais 
 test("jours impossibles à charger : message, calendrier utilisable, « Réessayer » applique le grisé", async ({
   page,
 }) => {
-  let echecs = 1;
+  // La panne dure jusqu'au « Réessayer » (et non « une seule requête échoue ») : le serveur de
+  // développement lance l'effet deux fois au montage, une panne d'une seule requête serait
+  // consommée par le premier lancement, ignoré, et l'écran n'aurait rien à signaler.
+  let panne = true;
   await mockRpc(page, "get_available_days", () =>
-    echecs-- > 0 ? "network-error" : { body: [{ day: dayAt(3), slot_count: 1 }] },
+    panne ? "network-error" : { body: [{ day: dayAt(3), slot_count: 1 }] },
   );
   await mockRpc(page, "get_available_slots", (args) => ({
     body: slotRows(String(args.p_day), 1),
@@ -208,6 +214,7 @@ test("jours impossibles à charger : message, calendrier utilisable, « Réessay
   await expect(radioOf(page, dayAt(4))).toBeEnabled();
   await expect(radioOf(page, dayAt(4))).toHaveAccessibleName(formatDayKey(dayAt(4)));
 
+  panne = false;
   await page.getByRole("button", { name: "Réessayer" }).click();
   await expect(radioOf(page, dayAt(4))).toBeDisabled();
   await expect(radioOf(page, dayAt(3))).toBeEnabled();
