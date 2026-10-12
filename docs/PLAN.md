@@ -251,6 +251,12 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 
 ## Phase 8 — Mise en ligne
 
+- [x] **Audit complet avant le design** (consigne 23) : rapport `docs/AUDIT-2026-10.md` (constats
+      par gravité, ordre de correction proposé), 84 tests pgTAP et des tests e2e (robustesse, connexion admin, axe) ajoutés, schéma de
+      production comparé au local (identique). Aucune correction faite : elles viendront en
+      consignes séparées, triées avec Thibault. Décision prise : la recopie de `error.message`
+      (C-01) est déclassée en 🟡 (plus bloquante), corrigée dans la première consigne de correction.
+
 - [ ] Version 1.0.0 : tag Git, CHANGELOG, README avec captures
 - [ ] `/check-deploiement` · Données de test supprimées · Compte admin du barber · Domaine
 - [ ] **Purge RGPD codée et planifiée** : suppression des données clients 6 mois après le RDV
@@ -259,11 +265,11 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       validation de la réservation par le barber. Depuis la consigne 15, plus aucune RPC ne la
       renvoie : il reste à DÉCIDER et coder la règle de révélation (risque n° 1 de l'ADR 0002).
       **Bloquant pour la mise en ligne.**
-- [ ] **Messages d'erreur du parcours client** (point 8 de la revue de la consigne 18) :
+- [ ] **Messages d'erreur du parcours client** (🟡 depuis l'audit : jamais affiché ; à corriger dans la première consigne de correction, avec C-02) (point 8 de la revue de la consigne 18) :
       `src/features/booking/data.ts:139` (`getServices`) et `:159` (`getAvailableSlots`)
       recopient `error.message` de Supabase dans l'`Error` levée. Ce texte brut (détails SQL,
       noms de colonnes ou de fonctions) ne doit plus en sortir : message fixe en français, comme
-      les codes stables des autres fonctions. **Bloquant pour la mise en ligne.**
+      les codes stables des autres fonctions. _Plus bloquant_ (décision de Thibault).
 - [ ] **Anti-abus des réservations** (revue sécurité de la consigne 15, décision 2026-10-10 :
       pas maintenant, mais **bloquant pour la mise en ligne**). Deux risques :
   - **Créneaux saturés** : un script qui appelle `create_booking` directement (le honeypot ne
