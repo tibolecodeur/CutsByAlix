@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { InstagramLink } from "@/components/InstagramLink";
 import type { GalleryPhoto } from "@/features/gallery/data";
+import { cx } from "@/lib/cx";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 
 /**
@@ -12,8 +13,9 @@ import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
  *
  * - Le défilement est celui du navigateur : doigt, trackpad, flèches du clavier une fois la
  *   bande focalisée. `scroll-snap` cale chaque photo au bord, sans JavaScript.
- * - Les boutons Précédente / Suivante (44 px et plus) servent à la souris et au clavier ; ils
- *   se désactivent aux extrémités grâce à un IntersectionObserver (aucun écouteur de scroll).
+ * - Pagination par pastilles (la photo en cours en pilule orange), boutons Précédente /
+ *   Suivante de 52 px : souris, clavier, doigt. Un IntersectionObserver suit la photo
+ *   visible et les extrémités (aucun écouteur de scroll).
  * - Photos en noir et blanc (docs/DESIGN.md), `loading="lazy"` : seules les photos proches
  *   de l'écran se téléchargent (4G). `width` / `height` réservent la place (pas de saut).
  * - Aucune photo : état vide avec le lien Instagram, plutôt qu'une bande vide.
@@ -38,71 +40,88 @@ function GalleryEmpty() {
   );
 }
 
-type Edge = "start" | "end";
+/** Au-delà, des pastilles deviennent illisibles : compteur « 3 / 24 » sur tous les écrans. */
+const MAX_DOTS = 10;
+
+type StripState = {
+  /** Photo la plus visible (celle que la pagination met en avant). */
+  active: number;
+  /** Première / dernière photo presque entièrement visibles : bouton correspondant inactif. */
+  atStart: boolean;
+  atEnd: boolean;
+};
+
+/**
+ * État de départ, évalué à l'affichage (et non au chargement du module) : sans
+ * IntersectionObserver (tests, très vieux navigateur), tout reste actif.
+ */
+function initialState(): StripState {
+  return typeof IntersectionObserver === "undefined"
+    ? { active: 0, atStart: false, atEnd: false }
+    : { active: 0, atStart: true, atEnd: false };
+}
 
 function PhotoStrip({ photos }: { photos: GalleryPhoto[] }) {
   const stripRef = useRef<HTMLUListElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
-  // Extrémités atteintes. Au départ, on est au début ; la fin dépend de la largeur d'écran
-  // (sur desktop, deux ou trois photos tiennent sans défiler). Sans IntersectionObserver
-  // (tests, très vieux navigateur), les deux boutons restent actifs : le défilement natif
-  // s'arrête de lui-même aux bords.
-  const [atEdge, setAtEdge] = useState<Record<Edge, boolean>>(() =>
-    typeof IntersectionObserver === "undefined"
-      ? { start: false, end: false }
-      : { start: true, end: false },
-  );
+  const [state, setState] = useState<StripState>(initialState);
+  const count = photos.length;
 
   useEffect(() => {
     const strip = stripRef.current;
-    const first = strip?.firstElementChild;
-    const last = strip?.lastElementChild;
-    if (!strip || !first || !last || typeof IntersectionObserver === "undefined") return;
-    // Une extrémité est « atteinte » quand sa photo est presque entièrement visible dans la
-    // bande (`root`), comme un écouteur de scroll, mais calculé par le navigateur hors du
-    // fil principal et seulement aux franchissements de seuil.
+    if (!strip || typeof IntersectionObserver === "undefined") return;
+    const slides = Array.from(strip.children);
+    // Part visible de chaque photo, mise à jour par le navigateur aux franchissements de seuil
+    // (hors du fil principal) : l'équivalent d'un écouteur de scroll, sans son coût.
+    const ratios = slides.map(() => 0);
     const observer = new IntersectionObserver(
       (entries) => {
-        setAtEdge((previous) => {
-          const next = { ...previous };
-          for (const entry of entries) {
-            next[entry.target === first ? "start" : "end"] = entry.intersectionRatio >= 0.9;
-          }
-          return next;
+        for (const entry of entries) {
+          ratios[slides.indexOf(entry.target)] = entry.intersectionRatio;
+        }
+        const best = Math.max(...ratios);
+        setState({
+          active: Math.max(0, ratios.indexOf(best)),
+          atStart: ratios[0]! >= 0.9,
+          atEnd: ratios[ratios.length - 1]! >= 0.9,
         });
       },
-      { root: strip, threshold: [0, 0.9, 1] },
+      { root: strip, threshold: [0, 0.25, 0.5, 0.75, 0.9, 1] },
     );
-    observer.observe(first);
-    observer.observe(last);
+    for (const slide of slides) observer.observe(slide);
     return () => observer.disconnect();
   }, [photos]);
 
-  function scrollByOnePhoto(direction: 1 | -1) {
+  /** Amène la photo `index` au bord gauche de la bande (là où scroll-snap la cale). */
+  function goTo(index: number) {
     const strip = stripRef.current;
-    const photo = strip?.firstElementChild as HTMLElement | null | undefined;
-    if (!strip || !photo) return;
-    const gap = Number.parseFloat(getComputedStyle(strip).columnGap) || 0;
-    strip.scrollBy({
-      left: direction * (photo.offsetWidth + gap),
+    const slide = strip?.children[index] as HTMLElement | undefined;
+    if (!strip || !slide) return;
+    const padding = Number.parseFloat(getComputedStyle(strip).scrollPaddingLeft) || 0;
+    strip.scrollTo({
+      left: slide.offsetLeft - padding,
       // Le filet CSS (prefers-reduced-motion) ne couvre pas le défilement lancé en JS.
       behavior: prefersReducedMotion ? "auto" : "smooth",
     });
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       {/* Bande focalisable (tabIndex 0) : au clavier, les flèches la font défiler. Elle déborde
-          jusqu'aux bords de l'écran sur mobile pour laisser deviner la photo suivante. */}
+          jusqu'aux bords de l'écran sur mobile pour laisser deviner la photo suivante.
+          `relative` : la position (offsetLeft) des photos se mesure depuis la bande. */}
       <ul
         ref={stripRef}
         role="list"
         tabIndex={0}
         aria-label="Photos de la galerie, défilement horizontal"
-        className="scrollbar-none -mx-4 flex snap-x snap-mandatory scroll-px-4 list-none gap-3 overflow-x-auto overscroll-x-contain px-4 md:mx-0 md:scroll-px-0 md:px-0"
+        className="scrollbar-none relative -mx-4 flex snap-x snap-mandatory scroll-px-4 list-none gap-3 overflow-x-auto overscroll-x-contain px-4 md:mx-0 md:scroll-px-0 md:gap-4 md:px-0"
       >
-        {photos.map((photo) => (
-          <li key={photo.id} className="w-[78%] shrink-0 snap-start sm:w-[45%] md:w-[31%]">
+        {photos.map((photo, index) => (
+          <li
+            key={photo.id}
+            className="w-[85%] shrink-0 snap-start sm:w-[55%] md:w-[calc((100%-2rem)/3)]"
+          >
             <img
               src={photo.url}
               alt={photo.altText}
@@ -112,26 +131,78 @@ function PhotoStrip({ photos }: { photos: GalleryPhoto[] }) {
               decoding="async"
               className="aspect-[4/5] h-auto w-full rounded-photo bg-current/5 object-cover grayscale"
             />
+            <span className="sr-only">
+              Photo {index + 1} sur {count}
+            </span>
           </li>
         ))}
       </ul>
 
-      {photos.length > 1 && (
-        <div className="flex justify-end gap-3">
-          <StripButton
-            label="Photo précédente"
-            glyph="←"
-            disabled={atEdge.start}
-            onClick={() => scrollByOnePhoto(-1)}
-          />
-          <StripButton
-            label="Photo suivante"
-            glyph="→"
-            disabled={atEdge.end}
-            onClick={() => scrollByOnePhoto(1)}
-          />
+      {count > 1 && (
+        <div className="flex items-center justify-between gap-4">
+          {/* Mobile : compteur « 2 / 7 » (tient quel que soit le nombre de photos, chaque pastille
+              prenant 44 px de large). À partir de md : pastilles, jusqu'à MAX_DOTS photos.
+              Le compteur est masqué aux lecteurs d'écran : chaque photo annonce déjà
+              « Photo n sur N ». */}
+          <p
+            aria-hidden="true"
+            className={cx("text-sm font-semibold tabular-nums", count <= MAX_DOTS && "md:hidden")}
+          >
+            {state.active + 1} / {count}
+          </p>
+          {count <= MAX_DOTS && (
+            <div className="hidden md:block">
+              <Dots count={count} active={state.active} onSelect={goTo} />
+            </div>
+          )}
+          <div className="flex gap-3">
+            <StripButton
+              label="Photo précédente"
+              glyph="←"
+              disabled={state.atStart}
+              onClick={() => goTo(Math.max(0, state.active - 1))}
+            />
+            <StripButton
+              label="Photo suivante"
+              glyph="→"
+              disabled={state.atEnd}
+              onClick={() => goTo(Math.min(count - 1, state.active + 1))}
+            />
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+type DotsProps = { count: number; active: number; onSelect: (index: number) => void };
+
+/**
+ * Pagination : une pastille par photo, la photo en cours devient une pilule orange allongée.
+ * Chaque pastille est un bouton de 44 px de côté (zone tactile), la marque visible est petite.
+ * Changement instantané (aucune animation de largeur).
+ */
+function Dots({ count, active, onSelect }: DotsProps) {
+  return (
+    <div className="-ml-3 flex flex-wrap items-center">
+      {Array.from({ length: count }, (_, index) => (
+        <button
+          key={index}
+          type="button"
+          aria-label={`Photo ${index + 1} sur ${count}`}
+          aria-current={index === active ? "true" : undefined}
+          onClick={() => onSelect(index)}
+          className="group inline-flex size-tap items-center justify-center"
+        >
+          <span
+            aria-hidden="true"
+            className={cx(
+              "block h-2 rounded-pill",
+              index === active ? "w-6 bg-orange" : "w-2 bg-current/30",
+            )}
+          />
+        </button>
+      ))}
     </div>
   );
 }

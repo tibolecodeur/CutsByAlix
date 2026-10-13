@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as booking from "@/features/booking/data";
 import * as gallery from "@/features/gallery/data";
+import { FEATURED_PHOTOS } from "@/features/gallery/featuredPhotos";
 import { HomePage } from "@/pages/HomePage";
 
 /** Section « Galerie » de l'accueil, couche données simulée (aucune vraie photo). */
@@ -57,19 +58,19 @@ describe("HomePage : galerie", () => {
     expect(photos[1]).toHaveAttribute("src", "https://example.test/b?token=2");
   });
 
-  it("aucune photo publiée : « Photos bientôt disponibles. »", async () => {
+  it("aucune photo publiée : les photos de la vitrine, servies par notre domaine", async () => {
     vi.mocked(gallery.getPublishedGallery).mockResolvedValue([]);
     const section = renderHome();
-    expect(await within(section).findByText("Photos bientôt disponibles.")).toBeInTheDocument();
-    expect(within(section).queryByRole("img")).not.toBeInTheDocument();
+    const photos = await within(section).findAllByRole("img");
+    expect(photos).toHaveLength(FEATURED_PHOTOS.length);
+    expect(photos[0]).toHaveAttribute("src", "/media/galerie/coupe-01.webp");
+    expect(photos[0]).toHaveAttribute("alt", FEATURED_PHOTOS[0]!.altText);
   });
 
-  it("panne : message discret, le reste de la page s'affiche", async () => {
+  it("panne : les photos de la vitrine quand même, le reste de la page s'affiche", async () => {
     vi.mocked(gallery.getPublishedGallery).mockRejectedValue(new Error("gallery_unavailable"));
     const section = renderHome();
-    expect(
-      await within(section).findByText("Les photos ne sont pas disponibles pour le moment."),
-    ).toBeInTheDocument();
+    expect(await within(section).findAllByRole("img")).toHaveLength(FEATURED_PHOTOS.length);
     expect(screen.getByRole("heading", { level: 1, name: "CutsByAlix" })).toBeInTheDocument();
   });
 });

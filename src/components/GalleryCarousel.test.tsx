@@ -30,10 +30,10 @@ const PHOTOS: GalleryPhoto[] = [
   },
 ];
 
-const originalScrollBy = HTMLElement.prototype.scrollBy;
+const originalScrollTo = HTMLElement.prototype.scrollTo;
 
 afterEach(() => {
-  HTMLElement.prototype.scrollBy = originalScrollBy;
+  HTMLElement.prototype.scrollTo = originalScrollTo;
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -59,20 +59,38 @@ describe("GalleryCarousel", () => {
     expect(photos[1]).toHaveAttribute("height", "1200");
   });
 
-  it("les boutons font défiler d'une photo dans chaque sens", async () => {
+  it("les boutons amènent la photo voisine au bord de la bande", async () => {
     const user = userEvent.setup();
-    // jsdom ne calcule aucune mise en page : scrollBy est espionné, la largeur simulée.
-    const scrollBy = vi.fn();
-    HTMLElement.prototype.scrollBy = scrollBy;
-    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(300);
+    // jsdom ne calcule aucune mise en page : scrollTo est espionné, la position simulée.
+    const scrollTo = vi.fn();
+    HTMLElement.prototype.scrollTo = scrollTo as unknown as typeof HTMLElement.prototype.scrollTo;
+    vi.spyOn(HTMLElement.prototype, "offsetLeft", "get").mockReturnValue(320);
     render(<GalleryCarousel photos={PHOTOS} />);
 
     // jsdom n'a pas d'IntersectionObserver : les deux boutons restent actifs.
     await user.click(screen.getByRole("button", { name: "Photo suivante" }));
-    await user.click(screen.getByRole("button", { name: "Photo précédente" }));
+    expect(scrollTo).toHaveBeenLastCalledWith({ left: 320, behavior: "smooth" });
+  });
 
-    expect(scrollBy).toHaveBeenNthCalledWith(1, { left: 300, behavior: "smooth" });
-    expect(scrollBy).toHaveBeenNthCalledWith(2, { left: -300, behavior: "smooth" });
+  it("pagination : une pastille par photo, la première en cours, chacune cliquable", async () => {
+    const user = userEvent.setup();
+    const scrollTo = vi.fn();
+    HTMLElement.prototype.scrollTo = scrollTo as unknown as typeof HTMLElement.prototype.scrollTo;
+    render(<GalleryCarousel photos={PHOTOS} />);
+
+    const dots = screen.getAllByRole("button", { name: /^Photo \d sur 3$/ });
+    expect(dots).toHaveLength(3);
+    expect(dots[0]).toHaveAttribute("aria-current", "true");
+    expect(dots[1]).not.toHaveAttribute("aria-current");
+    await user.click(dots[2]!);
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+  });
+
+  it("plus de 10 photos : un compteur à la place des pastilles", () => {
+    const many = Array.from({ length: 12 }, (_, index) => ({ ...PHOTOS[0]!, id: String(index) }));
+    render(<GalleryCarousel photos={many} />);
+    expect(screen.queryByRole("button", { name: /^Photo \d+ sur 12$/ })).not.toBeInTheDocument();
+    expect(screen.getByText("1 / 12")).toBeInTheDocument();
   });
 
   it("désactive « Précédente » au début quand le navigateur sait observer la bande", () => {
@@ -88,11 +106,11 @@ describe("GalleryCarousel", () => {
 
     expect(screen.getByRole("button", { name: "Photo précédente" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Photo suivante" })).toBeEnabled();
-    // Seules la première et la dernière photo sont observées (les deux extrémités).
-    expect(observe).toHaveBeenCalledTimes(2);
+    // Chaque photo est observée : la pagination suit la plus visible.
+    expect(observe).toHaveBeenCalledTimes(3);
   });
 
-  it("une seule photo : pas de boutons de défilement", () => {
+  it("une seule photo : ni boutons ni pastilles", () => {
     render(<GalleryCarousel photos={PHOTOS.slice(0, 1)} />);
     expect(screen.getByRole("img", { name: "Dégradé court" })).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();

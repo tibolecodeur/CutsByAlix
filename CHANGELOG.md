@@ -24,7 +24,9 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
   des tarifs façon enseigne de salon (prix en grands chiffres rose foncé), galerie sur une bande
   rose pâle, frise « Comment réserver » à pastilles orange, en-tête commun des pages (titre,
   rayures, accroche), en-tête en verre dépoli avec repli opaque. Galerie en carrousel CSS
-  `scroll-snap` (composant isolé `GalleryCarousel`, état vide avec lien Instagram). Accroche
+  `scroll-snap` (composant isolé `GalleryCarousel` : grandes photos, pastilles ou compteur, flèches),
+  alimentée par 7 photos de la vitrine (`public/media/galerie/`, WebP sans métadonnées, accord des
+  personnes obtenu) tant qu'aucune photo n'est publiée par l'admin. Accroche
   définitive. Lieu : « Lieu exact communiqué par DM sur Instagram, sur demande » sur l'accueil
   et à chaque étape de /reserver ; plus aucune mention de paiement sur /reserver (elle reste
   sur l'accueil). Mentions légales, politique de confidentialité et nouvelle page
