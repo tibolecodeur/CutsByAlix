@@ -25,7 +25,10 @@ export function GalleryCarousel({ photos }: { photos: GalleryPhoto[] }) {
 
 function GalleryEmpty() {
   return (
-    <div role="status" className="flex flex-col items-start gap-2 border border-current/25 p-6">
+    <div
+      role="status"
+      className="flex flex-col items-start gap-2 rounded-panel border border-current/25 p-6"
+    >
       {/* Police de texte, pas de titre condensé : une phrase de plusieurs mots y reste
           lisible (les espaces du condensé italique se resserrent trop sous WebKit). */}
       <p className="text-xl font-bold">Photos bientôt disponibles.</p>
@@ -107,7 +110,7 @@ function PhotoStrip({ photos }: { photos: GalleryPhoto[] }) {
               height={photo.height}
               loading="lazy"
               decoding="async"
-              className="aspect-[4/5] h-auto w-full bg-current/5 object-cover grayscale"
+              className="aspect-[4/5] h-auto w-full rounded-photo bg-current/5 object-cover grayscale"
             />
           </li>
         ))}

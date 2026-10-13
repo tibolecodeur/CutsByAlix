@@ -16,21 +16,27 @@
  */
 @theme {
   --color-*: initial;
-  --color-paper: #f7f7f5; /* fond des sections claires (blanc cassé froid) */
+  /* Base neutre : noir pour la vitrine (accueil), blanc cassé pour les pages « outil ». */
+  --color-ink: #111111; /* fond de la vitrine, texte sur clair */
+  --color-paper: #f7f7f5; /* fond des pages outil (réserver, légal, admin) */
   --color-surface: #ffffff; /* champs, cartes et encadrés posés sur le blanc cassé */
-  --color-ink: #111111; /* texte, sections noires, contours */
   --color-muted: #5c5c5c; /* texte secondaire, sur fond clair UNIQUEMENT */
-  --color-orange: #ff6a1a; /* ACCENT : boutons principaux (texte noir), grands chiffres sur
-                              noir, filets fins. JAMAIS en texte sur fond clair (2,7). */
-  --color-blush: #ffd9e6; /* très rare : jamais en aplat de section */
-  --color-accent: #c2185b; /* barre des messages d'erreur, texte des encadrés d'erreur */
-  --color-white: #ffffff; /* texte sur section noire */
+  --color-white: #ffffff; /* texte sur noir */
+  /* Dominante : l'ACTION. Boutons principaux (texte noir), prix, numéros d'étapes.
+     En texte : sur noir seulement (6,59), jamais sur clair (2,67). */
+  --color-orange: #ff6a1a;
+  /* Secondaire : la VOIX. Rose pâle = grands titres et liens sur noir (14,67) ; rose foncé =
+     liens et titres d'accent sur clair (5,48), lumière des halos. */
+  --color-blush: #ffd9e6;
+  --color-accent: #c2185b;
 
   --font-*: initial;
   --font-sans: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
 
-  --radius-pill: 9999px; /* boutons « pilule » */
+  --radius-pill: 9999px; /* tout ce qui est interactif : boutons « pilule » */
+  --radius-panel: 1.75rem; /* panneaux de verre, encadrés de la vitrine */
+  --radius-photo: 1rem; /* photos de la galerie */
 
   --spacing-tap: 2.75rem; /* 44 px : zone tactile minimale */
   --spacing-button: 3.25rem; /* 52 px : hauteur minimale des boutons */
@@ -38,8 +44,8 @@
   --spacing-gutter: 1rem; /* marge latérale minimale */
   --spacing-section: 3.5rem; /* espacement vertical des sections, mobile */
   --spacing-section-lg: 5rem; /* idem, à partir de md */
-  --spacing-section-roomy: 6rem; /* sections aérées de la vitrine (accueil), mobile */
-  --spacing-section-roomy-lg: 9rem; /* idem, à partir de md */
+  --spacing-section-roomy: 4.5rem; /* sections aérées de la vitrine (accueil), mobile */
+  --spacing-section-roomy-lg: 7rem; /* idem, à partir de md */
 
   --container-content: 48rem; /* largeur maximale du contenu */
   --container-content-wide: 64rem; /* colonne large des sections de la vitrine (desktop) */
@@ -61,15 +67,15 @@
 }
 
 /*
- * Lien dans le texte : couleur du texte courant (noir sur clair, blanc sur noir), semi-gras,
- * souligné fin orange. L'orange y est un filet décoratif, jamais la couleur du texte (2,7 sur
- * le blanc cassé, sous l'AA). Les sections et le pied de page règlent --link-color.
+ * Lien dans le texte : le rose est la couleur des liens. Rose foncé sur clair (5,48 sur blanc
+ * cassé, 5,87 sur blanc), rose pâle sur noir (14,67) : les sections, Card et le pied de page
+ * règlent --link-color. Souligné de la couleur du lien, semi-transparent.
  */
 @utility link {
-  color: var(--link-color, var(--color-ink));
+  color: var(--link-color, var(--color-accent));
   font-weight: var(--link-weight, 600);
   text-decoration-line: underline;
-  text-decoration-color: var(--color-orange);
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
   text-decoration-thickness: 2px;
   text-underline-offset: 0.3em;
 }
@@ -107,6 +113,53 @@
   font-weight: 700;
   border-left: 4px solid var(--color-accent);
   padding-left: 0.5rem;
+}
+
+/*
+ * Verre dépoli (backdrop-filter), utilisé à TROIS endroits seulement : en-tête une fois le
+ * hero passé, dock du bouton « Réserver » sur mobile, panneaux posés sur les halos de l'accueil.
+ * - Toujours statique : on ne déplace ni n'anime jamais un élément flouté (coût GPU sur mobile).
+ * - `-webkit-` d'abord : Safari iOS 16.4 ne connaît que la version préfixée.
+ * - Repli : sans backdrop-filter, ou si l'utilisateur réduit la transparence, le fond devient
+ *   presque opaque. Le contraste du texte ne dépend donc jamais du flou.
+ */
+@utility glass-dark {
+  background-color: rgb(17 17 17 / 0.55);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    background-color: rgb(17 17 17 / 0.94);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: rgb(17 17 17 / 0.94);
+  }
+}
+
+@utility glass-light {
+  background-color: rgb(247 247 245 / 0.72);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    background-color: rgb(247 247 245 / 0.96);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: rgb(247 247 245 / 0.96);
+  }
+}
+
+/* Panneau de verre sur fond noir : laisse deviner le halo derrière lui, liseré clair fin. */
+@utility glass-panel {
+  background-color: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    background-color: rgb(32 32 32 / 0.92);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: rgb(32 32 32 / 0.92);
+  }
 }
 
 /* Défilement horizontal sans barre visible : les boutons du carrousel la remplacent. */

@@ -63,9 +63,13 @@ export function Layout() {
         onKeyDown={handleHeaderKeyDown}
         className={cx(
           "fixed inset-x-0 top-0 z-40 pt-[env(safe-area-inset-top)]",
+          // Sur le hero : transparent. Ensuite, verre dépoli (index.css, repli opaque) : sombre
+          // sur la vitrine noire, clair sur les pages outil.
           isOverHero
             ? "bg-transparent text-white [--focus-ring:var(--color-white)]"
-            : "border-b border-ink/10 bg-paper text-ink",
+            : isHome
+              ? "glass-dark border-b border-white/10 text-white [--focus-ring:var(--color-white)]"
+              : "glass-light border-b border-ink/10 text-ink",
         )}
       >
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between px-safe">
@@ -122,9 +126,9 @@ export function Layout() {
         <Outlet />
       </main>
 
-      {/* Pied de page en blanc cassé, séparé par un filet net : il suit la dernière section
-          noire de l'accueil, et se distingue des sections claires des autres pages. */}
-      <footer className="border-t border-ink/15 bg-paper text-ink">
+      {/* Pied de page noir, liens rose pâle (14,67), filet clair en haut : il prolonge la
+          vitrine et ferme nettement les pages outil en blanc cassé. */}
+      <footer className="border-t border-white/10 bg-ink text-white [--focus-ring:var(--color-white)] [--link-color:var(--color-blush)]">
         <div className="mx-auto flex max-w-content flex-col gap-4 px-safe pt-12 pb-[max(3rem,env(safe-area-inset-bottom))]">
           <p className="title-display text-3xl uppercase">CutsByAlix</p>
           <nav aria-label="Informations légales">

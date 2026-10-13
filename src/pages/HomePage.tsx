@@ -3,7 +3,7 @@ import { GalleryCarousel } from "@/components/GalleryCarousel";
 import { HeroVideo } from "@/components/HeroVideo";
 import { InstagramLink } from "@/components/InstagramLink";
 import { PageMeta } from "@/components/PageMeta";
-import { Section } from "@/components/Section";
+import { Glow, Section } from "@/components/Section";
 import { getServices, type Service } from "@/features/booking/data";
 import { getPublishedGallery } from "@/features/gallery/data";
 import { LOCATION_NOTICE } from "@/lib/contact";
@@ -29,14 +29,9 @@ const BOOKING_STEPS = [
   "Choisis un créneau libre.",
 ] as const;
 
-/** Filet orange fin au-dessus d'un titre de section : l'accent, sans décor de plus. */
-function Rule() {
-  return <span aria-hidden="true" className="block h-0.5 w-12 bg-orange" />;
-}
-
 /**
  * Accueil : une seule longue page, chaque section a une ancre (#prestations, #galerie…).
- * Fonds unis en alternance, transitions nettes : hero (vidéo), noir, blanc cassé, noir.
+ * Vitrine en noir d'un seul tenant avec le hero, rythmée par des halos et du verre dépoli.
  */
 export function HomePage() {
   const services = useAsync("services", getServices);
@@ -85,13 +80,25 @@ export function HomePage() {
         </p>
       </section>
 
-      {/* Noir : les prix en grands chiffres orange (6,59 sur noir, interdit sur clair). */}
-      <Section id="prestations" aria-labelledby="prestations-titre" variant="ink" roomy>
-        <Rule />
-        <h2 id="prestations-titre" className="title-section">
+      {/* Vitrine en noir, d'un seul tenant avec le hero. Chaque section est rythmée par des
+          halos (orange = dominante, rose foncé = secondaire) ; les titres sont en rose pâle,
+          les prix et numéros en orange (6,59 sur noir, jamais sur clair). */}
+      <Section
+        id="prestations"
+        aria-labelledby="prestations-titre"
+        variant="ink"
+        roomy
+        glows={
+          <>
+            {/* Rose à droite, sous les prix orange (4,07 au pire) ; orange à gauche. */}
+            <Glow tone="rose" className="top-0 -right-32 size-[28rem] md:size-[44rem]" />
+            <Glow tone="orange" className="bottom-0 -left-40 size-[24rem] md:size-[36rem]" />
+          </>
+        }
+      >
+        <h2 id="prestations-titre" className="title-section text-blush">
           Prestations
         </h2>
-        {/* Messages en texte blanc hérité : les StatusMessage sont faits pour fond clair. */}
         {services.status === "loading" && <p role="status">Chargement des prestations…</p>}
         {services.status === "error" && (
           <div role="alert" className="flex flex-col items-start gap-3">
@@ -116,31 +123,47 @@ export function HomePage() {
         <p className="text-white/75">Paiement en liquide ou par virement.</p>
       </Section>
 
-      {/* Blanc cassé : les photos en noir et blanc y gagnent en netteté. Le carrousel est un
-          composant isolé, remplaçable (GalleryCarousel). */}
-      <Section id="galerie" aria-labelledby="galerie-titre" roomy>
-        <Rule />
-        <h2 id="galerie-titre" className="title-section">
+      {/* Le carrousel est un composant isolé, remplaçable (GalleryCarousel). Un seul halo rose :
+          les photos noir et blanc restent le sujet. */}
+      <Section
+        id="galerie"
+        aria-labelledby="galerie-titre"
+        variant="ink"
+        roomy
+        glows={
+          <Glow
+            tone="rose"
+            className="top-1/2 -right-40 size-[28rem] -translate-y-1/2 md:size-[40rem]"
+          />
+        }
+      >
+        <h2 id="galerie-titre" className="title-section text-blush">
           Galerie
         </h2>
-        {gallery.status === "loading" && (
-          <p role="status" className="text-muted">
-            Chargement des photos…
-          </p>
-        )}
+        {gallery.status === "loading" && <p role="status">Chargement des photos…</p>}
         {gallery.status === "error" && (
-          <p role="status" className="text-muted">
-            Les photos ne sont pas disponibles pour le moment.
-          </p>
+          <p role="status">Les photos ne sont pas disponibles pour le moment.</p>
         )}
         {gallery.status === "success" && <GalleryCarousel photos={gallery.data} />}
       </Section>
 
-      {/* Noir, grands numéros orange. pb-32 sur mobile : place pour le bouton collé en bas
-          quand il revient à sa position. */}
-      <Section id="reserver" aria-labelledby="reserver-titre" variant="ink" roomy className="pb-36">
-        <Rule />
-        <h2 id="reserver-titre" className="title-section">
+      {/* Grands numéros orange, lieu sur un panneau de verre. pb-36 sur mobile : place pour le
+          dock du bouton « Réserver » quand il revient à sa position. */}
+      <Section
+        id="reserver"
+        aria-labelledby="reserver-titre"
+        variant="ink"
+        roomy
+        className="pb-36"
+        glows={
+          <>
+            {/* Rose à gauche, sous les numéros orange (4,61 au pire) ; orange à droite. */}
+            <Glow tone="rose" className="top-0 -left-40 size-[28rem] md:size-[40rem]" />
+            <Glow tone="orange" className="bottom-0 -right-40 size-[26rem] md:size-[36rem]" />
+          </>
+        }
+      >
+        <h2 id="reserver-titre" className="title-section text-blush">
           Comment réserver
         </h2>
         {/* `list-none` retire la sémantique de liste dans Safari / VoiceOver : role="list" la rend. */}
@@ -157,7 +180,7 @@ export function HomePage() {
             </li>
           ))}
         </ol>
-        <div className="flex flex-col items-start gap-1 border-t border-white/20 pt-6">
+        <div className="glass-panel flex flex-col items-start gap-1 rounded-panel p-6 md:p-8">
           <p className="font-semibold">{LOCATION_NOTICE}</p>
           <InstagramLink />
         </div>
@@ -166,27 +189,34 @@ export function HomePage() {
         </p>
       </Section>
 
-      {/* Mobile : LE bouton « Réserver », collé en bas d'écran au-dessus de la barre d'accueil.
-          `sticky` (et non `fixed`) : en fin de page il reprend sa place, sans masquer le pied
-          de page. La marge négative le superpose au bas de #reserver plutôt qu'à un vide.
-          Le conteneur laisse passer les touchers ; seul le bouton les capte. */}
-      <div className="pointer-events-none sticky bottom-0 z-30 -mt-28 flex h-28 items-end px-safe pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden">
-        <ButtonLink to="/reserver" className="pointer-events-auto w-full">
-          Réserver
-        </ButtonLink>
+      {/* Mobile : LE bouton « Réserver », dans un dock de verre dépoli collé en bas d'écran,
+          au-dessus de la barre d'accueil. `sticky` (et non `fixed`) : en fin de page il
+          reprend sa place, sans masquer le pied de page. La marge négative le superpose au bas
+          de #reserver plutôt qu'à un vide. Le conteneur laisse passer les touchers ; seul le
+          dock les capte. */}
+      <div className="pointer-events-none sticky bottom-0 z-30 -mt-28 flex h-28 items-end px-safe pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
+        <div className="glass-panel pointer-events-auto w-full rounded-pill p-1">
+          <ButtonLink to="/reserver" className="w-full">
+            Réserver
+          </ButtonLink>
+        </div>
       </div>
     </>
   );
 }
 
 /**
- * Grille tarifaire façon tableau de salon : « Coupe ········ 10 € », prix en grands chiffres
- * orange, durée en dessous. Les libellés « Prix : » et « Durée : » sont lus par les lecteurs
- * d'écran, cachés à l'œil (les points de conduite font ce travail visuellement).
+ * Grille tarifaire façon tableau de salon, sur un panneau de verre posé sur les halos :
+ * « COUPE ········ 10 € », prix en grands chiffres orange, durée en dessous. Les libellés
+ * « Prix : » et « Durée : » sont lus par les lecteurs d'écran, cachés à l'œil (les points de
+ * conduite font ce travail visuellement).
  */
 function PriceList({ services }: { services: Service[] }) {
   return (
-    <ul role="list" className="flex list-none flex-col gap-10">
+    <ul
+      role="list"
+      className="glass-panel flex list-none flex-col gap-8 rounded-panel p-6 md:gap-10 md:p-10"
+    >
       {services.map((service) => (
         <li key={service.id} className="flex flex-col gap-2">
           <div className="flex items-end gap-3">

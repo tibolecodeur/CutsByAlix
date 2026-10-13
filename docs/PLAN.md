@@ -44,7 +44,7 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 - [x] Squelette des pages : structure HTML, textes provisoires, sans style ni base
       (accueil à sections, /reserver, /annuler, /admin, pages légales, 404), tests e2e et axe
 - [ ] Accueil · Prestations · Galerie · Contact · Pages légales
-      _(design v1 fait, consigne 27 : fonds unis blanc cassé / noir, accent orange, grille tarifaire, carrousel, pages légales
+      _(design v1 fait, consigne 27 : vitrine sur noir, orange dominant, rose secondaire, halos et verre dépoli, grille tarifaire, carrousel, pages légales
       rédigées avec placeholders. Restent : informations personnelles des pages légales, vraies
       photos, logo HD, avis d'Alix sur le design)_
 
