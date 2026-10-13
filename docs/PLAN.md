@@ -213,7 +213,7 @@ frame-ancestors 'none'; base-uri 'self'; form-action 'self'`. Déjà fait : anti
       front). Base : plage future, fin > début, ≤ 24 h, ≥ 1 créneau, lieu actif, chevauchement
       traduit, verrou partagé avec `create_booking`. Suppression refusée dès qu'une réservation
       confirmée touche la plage (passée ou future). L'admin ne lit plus que `id, public_label,
-  active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : liste par
+active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : liste par
       semaine, aperçu en direct, « Réservable par les clients du … au … », message « aucun lieu
       actif ». pgTAP 13 (date fixe), Vitest, Playwright (3 projets). Appliqué en local
       seulement. Ordre pour la production : migration (`db push`) PUIS front.
@@ -249,6 +249,13 @@ frame-ancestors 'none'; base-uri 'self'; form-action 'self'`. Déjà fait : anti
       Playwright 3 projets (photo dessinée par canvas + EXIF fabriqué : part redressée, sans
       EXIF, nom uuid). Appliqué en local seulement. Ordre pour la production : migration
       (`db push`) PUIS front.
+- [x] **Galerie gérée par l'admin** (2026-10-13) : l'accueil n'affiche que les photos
+      publiées ; import en un geste des 7 photos de la vitrine (même chemin qu'un ajout,
+      accord exigé, reprise sans doublon) ; aperçu « Sur le site » ; « En premier / En
+      dernier » ; carte réorganisée. Aucun changement SQL. Revues sécurité et design faites.
+- [ ] **Après l'import en production** : retirer `public/media/galerie/`, `featuredPhotos.ts`
+      et l'import (`showcaseImport.ts`, `AdminShowcaseImport.tsx`, tests) : les originaux
+      restent publics tant qu'ils sont servis (docs/DEPLOIEMENT.md, § 6 bis).
 - [ ] Données admin : Prestations sur Supabase · duplication d'une semaine · modification
       d'une plage.
 - [ ] Galerie, suites mineures (revue de la consigne 20) : refuser avant décodage une image

@@ -54,7 +54,9 @@ async function ouvrirGalerie(page: Page, rows: Record<string, unknown>[] = []) {
   await mockRpc(page, "admin_gallery_orphans", () => ({ body: [] }));
   await mockRpc(page, "admin_add_gallery_item", (args) => {
     record("add")(args);
-    const added = row("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d", String(args.p_alt_text), {
+    // Un identifiant différent par ajout (l'import de la vitrine en ajoute 7 d'affilée).
+    const n = rpcCalls.filter((call) => call.name === "add").length;
+    const added = row(`a1b2c3d${n}-e5f6-4a7b-8c9d-0e1f2a3b4c5d`, String(args.p_alt_text), {
       image_path: args.p_image_path,
       width: args.p_width,
       height: args.p_height,
@@ -193,7 +195,11 @@ test("ajout : photo réduite à 1200 px, redressée, sans EXIF ni GPS, nom uuid,
   await expect(
     page.getByText("Coche l'accord de la personne photographiée pour publier."),
   ).toBeVisible();
-  await expect(page.getByRole("checkbox", { name: /d'accord/ })).toBeFocused();
+  await expect(
+    page
+      .getByRole("region", { name: "Ajouter une photo" })
+      .getByRole("checkbox", { name: /d'accord/ }),
+  ).toBeFocused();
   expect(storage.uploads).toEqual([]);
   await page.getByText("La personne photographiée est d'accord pour la publication.").click();
   await page.getByLabel("Texte alternatif (obligatoire)").fill("Dégradé bas, côtés rasés");
@@ -242,7 +248,17 @@ test("ajout : photo réduite à 1200 px, redressée, sans EXIF ni GPS, nom uuid,
     },
   ]);
   // La nouvelle photo apparaît dans la liste (relue), avec son URL signée.
-  await expect(page.getByRole("img", { name: "Dégradé bas, côtés rasés" })).toBeVisible();
+  // Visible dans sa carte (et aussi dans l'aperçu « Sur le site », puisqu'elle est publiée).
+  await expect(
+    page
+      .getByRole("list", { name: "Toutes les photos" })
+      .getByRole("img", { name: "Dégradé bas, côtés rasés" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("region", { name: "Sur le site" })
+      .getByRole("img", { name: "Dégradé bas, côtés rasés" }),
+  ).toBeVisible();
   expect(storage.signings.at(-1)).toEqual([upload.path]);
 
   // Aucune requête vers un tiers.
@@ -313,13 +329,17 @@ test("liste : monter / descendre, publier avec accord, masquer, supprimer avec c
     .analyze();
   expect(audit.violations.map((v) => v.id)).toEqual([]);
 
-  // Monter / descendre : boutons de 44 px au moins, focus conservé après le déplacement.
+  // Monter / descendre, dans le tiroir « Changer l'ordre » (fermé par défaut) : boutons de
+  // 44 px au moins, focus conservé après le déplacement (le tiroir reste ouvert).
+  const cartes = page.getByRole("list", { name: "Toutes les photos" }).getByRole("listitem");
+  await cartes.first().getByText("Changer l'ordre").click();
   const descendre = page.getByRole("button", { name: "Descendre la photo 1" });
   const box = await descendre.boundingBox();
   expect(box!.height).toBeGreaterThanOrEqual(44);
   await descendre.click();
   await expect(page.getByRole("button", { name: "Descendre la photo 2" })).toBeFocused();
-  const photos = page.getByRole("region", { name: "Photos" }).getByRole("listitem");
+  // Les cartes (« Toutes les photos »), pas les vignettes de l'aperçu « Sur le site ».
+  const photos = page.getByRole("list", { name: "Toutes les photos" }).getByRole("listitem");
   await expect(photos.nth(1)).toContainText("Dégradé court");
 
   // Publier une photo masquée : l'accord est exigé.
@@ -359,4 +379,49 @@ test("liste : monter / descendre, publier avec accord, masquer, supprimer avec c
     { name: "admin_hide_gallery_item", args: { p_id: rows[1]!.id, p_new_path: copie } },
   ]);
   expect(storage.removals).toEqual([[rows[2]!.image_path], [rows[1]!.image_path]]);
+});
+
+test("galerie vide : import des 7 photos de la vitrine, traitées et publiées dans l'ordre, puis « En premier »", async ({
+  page,
+}) => {
+  const { storage, rpcCalls, urls } = await ouvrirGalerie(page);
+  const bloc = page.getByRole("region", { name: "Photos de la vitrine" });
+  await expect(bloc.getByRole("img")).toHaveCount(7);
+  await expect(page.getByText("Aucune photo n'est affichée sur le site.")).toBeVisible();
+
+  // Sans l'accord : rien ne part.
+  await bloc.getByRole("button", { name: "Importer les 7 photos" }).click();
+  await expect(bloc.getByText(/Coche l'accord des personnes photographiées/)).toBeVisible();
+  expect(rpcCalls.filter((call) => call.name === "add")).toHaveLength(0);
+
+  await bloc.getByText(/sont d'accord pour que ces photos soient publiées/).click();
+  await bloc.getByRole("button", { name: "Importer les 7 photos" }).click();
+
+  // Liste rechargée : 7 photos publiées, le bloc d'import a disparu.
+  await expect(page.getByText("7 photos, dont 7 publiées.")).toBeVisible({ timeout: 20_000 });
+  await expect(bloc).toHaveCount(0);
+  const ajouts = rpcCalls.filter((call) => call.name === "add").map((call) => call.args);
+  expect(ajouts.map((args) => args.p_consent)).toEqual(Array(7).fill(true));
+  expect(String(ajouts[0]!.p_alt_text)).toMatch(/^Coupe courte texturée/);
+  // Même traitement qu'un ajout depuis le téléphone : nom uuid, 1200 px au plus.
+  for (const args of ajouts) {
+    expect(String(args.p_image_path)).toMatch(UUID_FILE);
+    expect(Math.max(Number(args.p_width), Number(args.p_height))).toBeLessThanOrEqual(1200);
+  }
+  expect(storage.uploads).toHaveLength(7);
+
+  // « Sur le site » montre les 7, dans l'ordre ; « En premier » remonte la dernière en tête.
+  const apercu = page.getByRole("region", { name: "Sur le site" });
+  await expect(apercu.getByRole("img")).toHaveCount(7);
+  await page
+    .getByRole("list", { name: "Toutes les photos" })
+    .getByRole("listitem")
+    .nth(6)
+    .getByText("Changer l'ordre")
+    .click();
+  await page.getByRole("button", { name: "Mettre la photo 7 en premier" }).click();
+  await expect(page.getByText("Photo déplacée en position 1 sur 7.")).toBeVisible();
+  expect(rpcCalls.filter((call) => call.name === "admin_move_gallery_item")).toHaveLength(6);
+
+  expect(urls.filter((url) => !ALLOWED_HOSTS.has(new URL(url).host))).toEqual([]);
 });

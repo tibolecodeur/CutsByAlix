@@ -6,6 +6,7 @@ import { AdminError } from "@/features/admin/data";
 import * as gallery from "@/features/admin/gallery";
 import type { AdminGalleryItem } from "@/features/admin/gallery";
 import * as images from "@/features/gallery/processImage";
+import { FEATURED_PHOTOS } from "@/features/gallery/featuredPhotos";
 import { ImageError, type ProcessedImage } from "@/features/gallery/processImage";
 import { AdminGalleryPage } from "@/pages/admin/AdminGalleryPage";
 
@@ -65,7 +66,11 @@ beforeEach(() => {
   vi.mocked(gallery.setGalleryItemPublished).mockReset().mockResolvedValue();
   vi.mocked(gallery.hideGalleryItem)
     .mockReset()
-    .mockResolvedValue({ imagePath: "neuf.webp", imageUrl: "https://example.test/neuf", linksRevoked: true });
+    .mockResolvedValue({
+      imagePath: "neuf.webp",
+      imageUrl: "https://example.test/neuf",
+      linksRevoked: true,
+    });
   vi.mocked(gallery.updateGalleryItemAltText).mockReset().mockResolvedValue();
   vi.mocked(gallery.moveGalleryItem).mockReset().mockResolvedValue(true);
   vi.mocked(gallery.deleteGalleryItem).mockReset().mockResolvedValue();
@@ -97,11 +102,14 @@ async function choosePhoto(user: ReturnType<typeof userEvent.setup>) {
   return screen.findByRole("img", { name: "Aperçu de la photo choisie" });
 }
 
+/** Liste des cartes (toutes les photos), distincte de l'aperçu « Sur le site ». */
+const allPhotos = () => screen.getByRole("list", { name: "Toutes les photos" });
+
 describe("AdminGalleryPage : liste", () => {
   it("affiche les photos, leur statut et ramasse les fichiers orphelins", async () => {
     renderPage();
     expect(await screen.findByText("3 photos, dont 2 publiées.")).toBeInTheDocument();
-    const cards = screen.getAllByRole("listitem");
+    const cards = within(allPhotos()).getAllByRole("listitem");
     expect(cards).toHaveLength(3);
     expect(within(cards[1]!).getByText("Masquée")).toBeInTheDocument();
     const thumb = within(cards[0]!).getByRole("img", { name: "Dégradé court" });
@@ -113,10 +121,25 @@ describe("AdminGalleryPage : liste", () => {
     expect(screen.getByRole("button", { name: /Descendre la photo 3/ })).toBeDisabled();
   });
 
-  it("galerie vide : invite à ajouter une photo", async () => {
+  it("galerie vide : propose l'import de la vitrine et l'ajout, le site n'affiche rien", async () => {
     vi.mocked(gallery.getAdminGallery).mockResolvedValue([]);
     renderPage();
-    expect(await screen.findByText(/Ajoute ta première photo/)).toBeInTheDocument();
+    expect(await screen.findByText(/ajoute ta première photo/i)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Photos de la vitrine" })).toBeInTheDocument();
+    expect(screen.getByText("Aucune photo n'est affichée sur le site.")).toBeInTheDocument();
+  });
+
+  it("« Sur le site » : seulement les photos publiées, dans l'ordre du carrousel", async () => {
+    renderPage();
+    const preview = await screen.findByRole("region", { name: "Sur le site" });
+    expect(within(preview).getByText(/2 photos affichées, dans cet ordre/)).toBeInTheDocument();
+    expect(
+      within(preview)
+        .getAllByRole("img")
+        .map((img) => img.getAttribute("alt")),
+    ).toEqual(["Dégradé court", "Barbe taillée"]);
+    // Une galerie non vide ne repropose jamais l'import (supprimer reste définitif).
+    expect(screen.queryByRole("region", { name: "Photos de la vitrine" })).not.toBeInTheDocument();
   });
 
   it("erreur de chargement : message et « Réessayer »", async () => {
@@ -214,11 +237,9 @@ describe("AdminGalleryPage : actions sur une photo", () => {
     await user.click(await screen.findByRole("button", { name: /Descendre la photo 1/ }));
 
     expect(gallery.moveGalleryItem).toHaveBeenCalledWith("p1", "down");
-    const cards = await screen.findAllByRole("listitem");
+    const cards = within(allPhotos()).getAllByRole("listitem");
     expect(within(cards[1]!).getByText("Dégradé court")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Descendre la photo 2" }),
-    ).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Descendre la photo 2" })).toHaveFocus();
     expect(screen.getByText("Photo déplacée en position 2 sur 3.")).toBeInTheDocument();
   });
 
@@ -244,7 +265,9 @@ describe("AdminGalleryPage : actions sur une photo", () => {
     await user.click(await screen.findByRole("button", { name: /Masquer la photo 1/ }));
     expect(gallery.hideGalleryItem).toHaveBeenCalledWith(ITEMS[0]);
     expect(await screen.findByText("3 photos, dont 1 publiée.")).toBeInTheDocument();
-    expect(screen.getByText(/liens vers elle qui auraient été copiés ne fonctionnent plus/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/liens vers elle qui auraient été copiés ne fonctionnent plus/),
+    ).toBeInTheDocument();
     // Le focus revient sur le même emplacement (devenu « Publier »).
     expect(screen.getByRole("button", { name: "Publier la photo 1" })).toHaveFocus();
     expect(screen.getByRole("img", { name: "Dégradé court" })).toHaveAttribute(
@@ -262,7 +285,9 @@ describe("AdminGalleryPage : actions sur une photo", () => {
     const user = userEvent.setup();
     renderPage();
     await user.click(await screen.findByRole("button", { name: /Masquer la photo 1/ }));
-    expect(await screen.findByText(/des liens copiés avant peuvent encore l'afficher/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/des liens copiés avant peuvent encore l'afficher/),
+    ).toBeInTheDocument();
   });
 
   it("modifier le texte alternatif", async () => {
@@ -276,7 +301,10 @@ describe("AdminGalleryPage : actions sur une photo", () => {
     await user.type(field, "Barbe courte");
     await user.click(screen.getByRole("button", { name: "Enregistrer" }));
     expect(gallery.updateGalleryItemAltText).toHaveBeenCalledWith("p3", "Barbe courte");
-    expect(await screen.findByRole("img", { name: "Barbe courte" })).toBeInTheDocument();
+    // Le nouveau texte vaut pour la carte ET pour l'aperçu « Sur le site ».
+    expect(
+      await within(allPhotos()).findByRole("img", { name: "Barbe courte" }),
+    ).toBeInTheDocument();
   });
 
   it("supprimer demande une confirmation, « Garder » n'efface rien", async () => {
@@ -302,6 +330,127 @@ describe("AdminGalleryPage : actions sur une photo", () => {
     await user.click(await screen.findByRole("button", { name: /Supprimer la photo 1/ }));
     await user.click(screen.getByRole("button", { name: "Oui, supprimer" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Cette photo n'existe plus.");
-    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(within(allPhotos()).getAllByRole("listitem")).toHaveLength(3);
+  });
+});
+describe("AdminGalleryPage : ordre rapide", () => {
+  it("« En premier » : autant d'échanges qu'il faut, la photo passe en tête", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Mettre la photo 3 en premier",
+      }),
+    );
+
+    expect(gallery.moveGalleryItem).toHaveBeenCalledTimes(2);
+    expect(gallery.moveGalleryItem).toHaveBeenCalledWith("p3", "up");
+    const cards = within(allPhotos()).getAllByRole("listitem");
+    expect(within(cards[0]!).getByText("Barbe taillée")).toBeInTheDocument();
+    expect(screen.getByText("Photo déplacée en position 1 sur 3.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mettre la photo 1 en premier" })).toBeDisabled();
+  });
+
+  it("« En dernier » s'arrête si la base répond « déjà au bout »", async () => {
+    vi.mocked(gallery.moveGalleryItem).mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Mettre la photo 1 en dernier",
+      }),
+    );
+
+    await waitFor(() => expect(gallery.moveGalleryItem).toHaveBeenCalledTimes(2));
+    const cards = within(allPhotos()).getAllByRole("listitem");
+    expect(within(cards[1]!).getByText("Dégradé court")).toBeInTheDocument();
+  });
+
+  it("deux photos seulement : pas de « En premier / En dernier », « Monter » suffit", async () => {
+    vi.mocked(gallery.getAdminGallery).mockResolvedValue(ITEMS.slice(0, 2));
+    renderPage();
+    expect(await screen.findByRole("button", { name: "Monter la photo 2" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /en premier/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("AdminGalleryPage : import des photos de la vitrine", () => {
+  beforeEach(() => {
+    vi.mocked(gallery.getAdminGallery).mockResolvedValueOnce([]);
+    // Fichiers de /media/galerie/ : quelques octets suffisent, le traitement est simulé.
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () => new Response(new Blob([new Uint8Array(8)], { type: "image/webp" })),
+    );
+  });
+
+  it("exige l'accord, puis importe les 7 photos dans l'ordre et recharge la liste", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const block = await screen.findByRole("region", {
+      name: "Photos de la vitrine",
+    });
+    await user.click(within(block).getByRole("button", { name: "Importer les 7 photos" }));
+    expect(within(block).getByText(/Coche l'accord des personnes photographiées/)).toBeVisible();
+    expect(gallery.addGalleryItem).not.toHaveBeenCalled();
+
+    await user.click(within(block).getByRole("checkbox", { name: /sont d'accord/ }));
+    await user.click(within(block).getByRole("button", { name: "Importer les 7 photos" }));
+
+    await waitFor(() => expect(gallery.addGalleryItem).toHaveBeenCalledTimes(7));
+    const added = vi.mocked(gallery.addGalleryItem).mock.calls.map(([input]) => input);
+    expect(added.every((input) => input.consent && input.image === PROCESSED)).toBe(true);
+    expect(added[0]!.altText).toMatch(/^Coupe courte texturée/);
+    expect(images.processImage).toHaveBeenCalledTimes(7);
+    // Liste rechargée : la galerie n'est plus vide, le bloc d'import disparaît.
+    expect(await screen.findByText("3 photos, dont 2 publiées.")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Photos de la vitrine" })).not.toBeInTheDocument();
+  });
+
+  it("coupure : message, puis « Reprendre l'import » sans renvoyer les photos déjà importées", async () => {
+    vi.mocked(gallery.addGalleryItem)
+      .mockResolvedValueOnce(ITEMS[0]!)
+      .mockResolvedValueOnce(ITEMS[1]!)
+      .mockRejectedValueOnce(new AdminError("unknown"));
+    const user = userEvent.setup();
+    renderPage();
+    const block = await screen.findByRole("region", {
+      name: "Photos de la vitrine",
+    });
+    await user.click(within(block).getByRole("checkbox", { name: /sont d'accord/ }));
+    await user.click(within(block).getByRole("button", { name: "Importer les 7 photos" }));
+
+    expect(await within(block).findByText(/L'import s'est arrêté \(2 photos sur 7/)).toBeVisible();
+    await user.click(within(block).getByRole("button", { name: "Reprendre l'import" }));
+
+    await waitFor(() => expect(gallery.addGalleryItem).toHaveBeenCalledTimes(3 + 5));
+    // La reprise commence à la 3e photo : les 2 premières ne sont pas renvoyées.
+    const altTexts = vi.mocked(gallery.addGalleryItem).mock.calls.map(([input]) => input.altText);
+    expect(altTexts.slice(3)).not.toContain(altTexts[0]);
+    expect(altTexts.slice(3)).not.toContain(altTexts[1]);
+  });
+
+  it("reprise : une photo créée malgré la coupure (réponse perdue) n'est pas renvoyée", async () => {
+    vi.mocked(gallery.addGalleryItem)
+      .mockResolvedValueOnce(ITEMS[0]!)
+      .mockRejectedValueOnce(new AdminError("unknown"));
+    const user = userEvent.setup();
+    renderPage();
+    const block = await screen.findByRole("region", {
+      name: "Photos de la vitrine",
+    });
+    await user.click(within(block).getByRole("checkbox", { name: /sont d'accord/ }));
+    await user.click(within(block).getByRole("button", { name: "Importer les 7 photos" }));
+    await within(block).findByText(/L'import s'est arrêté \(1 photo sur 7/);
+
+    // La 2e photo existe en base (réponse perdue) : la galerie relue la contient.
+    const firstTwo = FEATURED_PHOTOS.slice(0, 2).map((photo, index) =>
+      item(`v${index}`, photo.altText),
+    );
+    vi.mocked(gallery.getAdminGallery).mockResolvedValueOnce(firstTwo);
+    await user.click(within(block).getByRole("button", { name: "Reprendre l'import" }));
+
+    await waitFor(() => expect(gallery.addGalleryItem).toHaveBeenCalledTimes(2 + 5));
+    const resumed = vi.mocked(gallery.addGalleryItem).mock.calls.slice(2);
+    expect(resumed[0]![0].altText).toBe(FEATURED_PHOTOS[2]!.altText);
   });
 });

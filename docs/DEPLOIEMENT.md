@@ -137,6 +137,25 @@ ajoutant `frame-ancestors 'none'`, et retirer de `/admin*` la ligne
   `Strict-Transport-Security: max-age=31536000; includeSubDomains`, ou le réglage HSTS du
   tableau de bord Cloudflare (pas les deux : doublon).
 
+## 6 bis. Galerie : importer les photos de la vitrine (une fois, juste après la mise en ligne)
+
+L'accueil n'affiche QUE les photos publiées depuis l'admin. Juste après le déploiement de la
+galerie gérée, elle est donc vide (« Photos bientôt disponibles »). Pour la remplir :
+
+1. Ouvrir `/admin/galerie` (galerie vide : le bloc « Photos de la vitrine » apparaît).
+2. Cocher l'accord des personnes photographiées, toucher « Importer les 7 photos ».
+3. Vérifier l'aperçu « Sur le site » et la galerie de l'accueil.
+
+Si l'import s'arrête (réseau), « Reprendre l'import » continue sans doublon. Le bloc ne
+réapparaît plus dès qu'une photo existe : supprimer une photo importée est définitif.
+
+**Ensuite (revue sécurité)** : les originaux restent servis par `/media/galerie/` (jamais
+indexés, `X-Robots-Tag: noindex, noimageindex`), même si Alix masque ou supprime une photo
+dans l'admin. Une fois l'import fait en production, retirer dans un commit dédié le dossier
+`public/media/galerie/`, `src/features/gallery/featuredPhotos.ts`, l'import
+(`showcaseImport.ts`, `AdminShowcaseImport.tsx`) et leurs tests. Le dépôt étant public, les
+fichiers restent dans l'historique git : un retrait total demanderait de réécrire l'historique.
+
 ## 7. Anti-pause Supabase
 
 Le plan gratuit met le projet en pause après 7 jours sans activité. Le workflow

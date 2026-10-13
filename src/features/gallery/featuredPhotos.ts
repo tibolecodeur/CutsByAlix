@@ -6,8 +6,9 @@ import type { GalleryPhoto } from "@/features/gallery/data";
  *
  * - Tirées de media-source/ (hors git) : métadonnées supprimées (EXIF, GPS, appareil), largeur
  *   1000 px, WebP. Vérifié par galleryMedia.files.test.ts.
- * - Affichées tant qu'AUCUNE photo n'est publiée par l'admin (ou si la galerie Supabase est
- *   injoignable) : dès qu'Alix publie ses photos, ce sont elles qui s'affichent.
+ * - Elles ne s'affichent PAS directement sur le site : elles servent de source à l'import
+ *   « Photos de la vitrine » de /admin/galerie (showcaseImport.ts), qui les fait entrer dans la
+ *   galerie gérée (masquer, supprimer, ordre). L'accueil n'affiche que la galerie gérée.
  * - Pour en retirer une : supprimer la ligne ET le fichier. Attention, le dépôt est public :
  *   un fichier commité reste dans l'historique git.
  */

@@ -13,10 +13,11 @@ import {
   updateGalleryItemAltText,
   type AdminGalleryItem,
 } from "@/features/admin/gallery";
+import { moveToEdge } from "@/features/admin/galleryOrder";
 import { galleryErrorMessage } from "@/pages/admin/galleryMessages";
 
 export type GalleryCardChange =
-  | { type: "moved"; direction: "up" | "down" }
+  | { type: "moved"; direction: "up" | "down"; steps: number }
   | { type: "published"; published: true }
   | { type: "hidden"; imagePath: string; imageUrl: string | null; linksRevoked: boolean }
   | { type: "alt"; altText: string }
@@ -128,7 +129,20 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
 
   const move = (direction: "up" | "down") =>
     run(async () => {
-      if (await moveGalleryItem(item.id, direction)) onChange({ type: "moved", direction });
+      if (await moveGalleryItem(item.id, direction)) {
+        onChange({ type: "moved", direction, steps: 1 });
+      }
+    });
+
+  /**
+   * « En premier » / « En dernier » : autant d'échanges avec la voisine qu'il faut
+   * (galleryOrder.ts). L'écran suit le nombre de places réellement parcourues.
+   */
+  const moveToEnd = (direction: "up" | "down") =>
+    run(async () => {
+      const steps = direction === "up" ? position - 1 : total - position;
+      const moved = await moveToEdge(item.id, steps, direction, moveGalleryItem);
+      if (moved > 0) onChange({ type: "moved", direction, steps: moved });
     });
 
   const publish = () => {
@@ -176,13 +190,13 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
             height={item.height}
             loading="lazy"
             decoding="async"
-            className="size-28 shrink-0 border border-ink/15 object-cover"
+            className="size-28 shrink-0 rounded-photo border border-ink/15 object-cover"
           />
         ) : (
           <div
             role="img"
             aria-label={`${item.altText} (aperçu indisponible)`}
-            className="flex size-28 shrink-0 items-center justify-center border border-ink/40 p-2 text-center text-sm"
+            className="flex size-28 shrink-0 items-center justify-center rounded-photo border border-ink/40 p-2 text-center text-sm"
           >
             <span aria-hidden="true">Aperçu indisponible</span>
           </div>
@@ -195,8 +209,8 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
             <span
               className={
                 item.published
-                  ? "border-2 border-ink bg-blush px-2 text-sm font-semibold"
-                  : "border border-ink px-2 text-sm font-semibold"
+                  ? "inline-flex rounded-pill border-2 border-ink bg-blush px-3 py-0.5 text-sm font-semibold"
+                  : "inline-flex rounded-pill border border-ink/40 px-3 py-0.5 text-sm font-semibold text-muted"
               }
             >
               {item.published ? "Publiée" : "Masquée"}
@@ -209,73 +223,118 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
 
       {error && <ErrorMessage>{error}</ErrorMessage>}
 
+      {/* Hiérarchie (revue design) : les actions courantes d'abord, l'ordre dans un tiroir natif
+          (<details> : aucun JavaScript, rien au survol), « Supprimer » en lien discret. */}
       {mode === "idle" && (
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            ref={upButton}
-            variant="secondary"
-            className="px-3"
-            disabled={isFirst || busy}
-            aria-label={`Monter la ${label}`}
-            onClick={() => void move("up")}
-          >
-            Monter
-          </Button>
-          <Button
-            ref={downButton}
-            variant="secondary"
-            className="px-3"
-            disabled={isLast || busy}
-            aria-label={`Descendre la ${label}`}
-            onClick={() => void move("down")}
-          >
-            Descendre
-          </Button>
-          {item.published ? (
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            {item.published ? (
+              <Button
+                ref={publishToggle}
+                variant="secondary"
+                className="px-3"
+                disabled={busy}
+                aria-label={`Masquer la ${label}`}
+                onClick={() => void hide()}
+              >
+                Masquer
+              </Button>
+            ) : (
+              <Button
+                ref={publishToggle}
+                className="px-3"
+                disabled={busy}
+                aria-label={`Publier la ${label}`}
+                onClick={() => open("publishing")}
+              >
+                Publier
+              </Button>
+            )}
             <Button
-              ref={publishToggle}
+              ref={editButton}
               variant="secondary"
               className="px-3"
               disabled={busy}
-              aria-label={`Masquer la ${label}`}
-              onClick={() => void hide()}
+              aria-label={`Modifier le texte de la ${label}`}
+              onClick={() => {
+                setAltDraft(item.altText);
+                open("editing");
+              }}
             >
-              Masquer
+              Modifier
             </Button>
-          ) : (
-            <Button
-              ref={publishToggle}
-              className="px-3"
-              disabled={busy}
-              aria-label={`Publier la ${label}`}
-              onClick={() => open("publishing")}
-            >
-              Publier
-            </Button>
+          </div>
+
+          {total > 1 && (
+            // Le tiroir garde son état ouvert/fermé après un déplacement : la carte est déplacée
+            // dans la liste (clé stable), pas recréée.
+            <details className="rounded-field border border-ink/15">
+              <summary className="flex min-h-tap cursor-pointer list-none items-center justify-between gap-2 px-4 font-semibold [&::-webkit-details-marker]:hidden">
+                Changer l'ordre
+                <span aria-hidden="true">▾</span>
+              </summary>
+              <div className="grid grid-cols-2 gap-3 px-3 pb-3">
+                <p className="col-span-2 text-sm text-muted">
+                  La position 1 est la première photo du carrousel.
+                </p>
+                <Button
+                  ref={upButton}
+                  variant="secondary"
+                  className="px-3"
+                  disabled={isFirst || busy}
+                  aria-label={`Monter la ${label}`}
+                  onClick={() => void move("up")}
+                >
+                  Monter
+                </Button>
+                <Button
+                  ref={downButton}
+                  variant="secondary"
+                  className="px-3"
+                  disabled={isLast || busy}
+                  aria-label={`Descendre la ${label}`}
+                  onClick={() => void move("down")}
+                >
+                  Descendre
+                </Button>
+                {/* Utile seulement au-delà de 2 photos : sinon « Monter / Descendre » suffit. */}
+                {total > 2 && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      className="px-3 text-sm"
+                      disabled={isFirst || busy}
+                      aria-label={`Mettre la ${label} en premier`}
+                      onClick={() => void moveToEnd("up")}
+                    >
+                      En premier
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      className="px-3 text-sm"
+                      disabled={isLast || busy}
+                      aria-label={`Mettre la ${label} en dernier`}
+                      onClick={() => void moveToEnd("down")}
+                    >
+                      En dernier
+                    </Button>
+                  </>
+                )}
+              </div>
+            </details>
           )}
-          <Button
-            ref={editButton}
-            variant="secondary"
-            className="px-3"
-            disabled={busy}
-            aria-label={`Modifier le texte de la ${label}`}
-            onClick={() => {
-              setAltDraft(item.altText);
-              open("editing");
-            }}
-          >
-            Modifier
-          </Button>
-          <Button
+
+          {/* Action rare et destructrice : lien rose foncé (5,87), confirmation à l'étape suivante. */}
+          <button
             ref={deleteButton}
-            variant="secondary"
-            className="col-span-2 px-3"
+            type="button"
+            className="link inline-flex min-h-tap items-center self-start disabled:opacity-60"
             disabled={busy}
             aria-label={`Supprimer la ${label}`}
             onClick={() => open("deleting")}
           >
             Supprimer
-          </Button>
+          </button>
         </div>
       )}
 

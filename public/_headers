@@ -23,7 +23,7 @@
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: accelerometer=(), bluetooth=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), hid=(), magnetometer=(), microphone=(), midi=(), payment=(), serial=(), usb=()
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://ffamilzutmiukspofcmf.supabase.co; media-src 'self'; font-src 'self'; connect-src https://ffamilzutmiukspofcmf.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://ffamilzutmiukspofcmf.supabase.co; media-src 'self'; font-src 'self'; connect-src 'self' https://ffamilzutmiukspofcmf.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'
 
 # --- Aperçus *.pages.dev : jamais indexés, même après la mise en ligne du domaine ---------------
 https://:project.pages.dev/*
@@ -52,6 +52,14 @@ https://:version.:project.pages.dev/*
   ! X-Robots-Tag
   X-Robots-Tag: noindex, nofollow
   Content-Security-Policy: frame-ancestors 'none'
+
+# --- Photos de la vitrine (source de l'import admin, consigne 27) ---------------------------------
+# Servies telles quelles par le site : jamais indexées par un moteur, même après la mise en ligne.
+# Les masquer ou les supprimer dans l'admin n'agit que sur la COPIE importée : pour un retrait
+# effectif, supprimer aussi le fichier ici (docs/DEPLOIEMENT.md, revue sécurité).
+/media/galerie/*
+  ! X-Robots-Tag
+  X-Robots-Tag: noindex, nofollow, noimageindex
 
 # Manifeste de la PWA admin, servi avec son type exact.
 /admin.webmanifest

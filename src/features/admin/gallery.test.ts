@@ -174,6 +174,23 @@ describe("addGalleryItem", () => {
     const uploaded = calls.find((c) => c.method === "storage.upload")!.args[0];
     expect(calls.find((c) => c.method === "storage.remove")!.args[0]).toEqual([uploaded]);
   });
+
+  it("coupure réseau (réponse perdue) : le fichier est GARDÉ, la ligne a pu être créée", async () => {
+    // supabase-js signale une coupure par une erreur SANS code : la base n'a peut-être rien
+    // reçu, ou a créé la ligne sans que la réponse revienne. Effacer le fichier casserait
+    // alors une photo publiée ; le ramassage des orphelins efface le fichier s'il est seul.
+    const calls = mockSupabase({
+      admin_add_gallery_item: {
+        data: null,
+        error: { code: "", message: "TypeError: Failed to fetch" },
+      },
+    });
+    await expectAdminError(
+      addGalleryItem({ image: IMAGE, altText: "Coupe", consent: true }),
+      "unknown",
+    );
+    expect(methods(calls)).toEqual(["storage.upload", "rpc"]);
+  });
 });
 
 describe("écritures admin", () => {

@@ -23,8 +23,7 @@ de 1 Go.
   d'une URL signée est choisie par l'APPELANT (anon peut demander 10 ans pour une photo
   publiée) et Storage ne relit pas la RLS quand on s'en sert. Masquer une photo publiée copie
   donc son fichier sous un nouvel uuid (API Storage), `admin_hide_gallery_item` pointe la
-  ligne vers la copie, puis le front efface l'ancien fichier : toute URL déjà émise répond
-  400. Si la copie échoue (réseau), la photo est masquée quand même et l'écran prévient Alix
+  ligne vers la copie, puis le front efface l'ancien fichier : toute URL déjà émise répond 400. Si la copie échoue (réseau), la photo est masquée quand même et l'écran prévient Alix
   que d'anciens liens peuvent rester valables (supprimer la photo les coupe).
 - **Traitement dans le navigateur avant l'envoi** (`src/features/gallery/processImage.ts`) :
   type annoncé ET octets d'en-tête vérifiés (JPEG, PNG, WebP ; SVG, HEIC non converti, HTML
@@ -88,6 +87,15 @@ de 1 Go.
   depuis le domaine de Supabase, jamais en SVG ni en HTML) ; le plafond de 65 fichiers est
   compté sans verrou (1 ou 2 fichiers de plus au pire).
 - Safari iOS envoie du JPEG, les autres navigateurs du WebP : les deux formats coexistent.
+- **Complément du 2026-10-13 (galerie gérée par l'admin)** : l'accueil n'affiche plus que la
+  galerie gérée. Les 7 photos de la vitrine (`public/media/galerie/`) s'importent depuis
+  /admin/galerie quand la galerie est vide, par le MÊME chemin qu'un ajout (`processImage`,
+  bucket privé, `admin_add_gallery_item` avec accord) : aucune fonction SQL ni aucun droit
+  nouveau. `connect-src 'self'` ajouté à la CSP pour lire ces fichiers. Revue sécurité : un
+  échec SANS code (coupure, réponse perdue) ne fait plus effacer le fichier envoyé (la ligne a
+  pu être créée ; le ramassage des orphelins s'en charge sinon), et la reprise relit la
+  galerie pour ne pas envoyer deux fois la même photo. Les originaux restent publics (noindex)
+  jusqu'à leur retrait après l'import (docs/DEPLOIEMENT.md, § 6 bis).
 - Tests : pgTAP 15 (date fixe : chemins, types, limite, plafond, accord, ordre, orphelins,
   droits), Vitest (traitement d'image, couche données, écrans), Playwright sur les 3 projets
   (photo dessinée par canvas avec un EXIF fabriqué : orientation 6 + GPS ; on vérifie qu'elle
