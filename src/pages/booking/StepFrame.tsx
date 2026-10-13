@@ -43,7 +43,10 @@ export function StepFrame({ number, title, focusOnMount, children }: StepFramePr
           {/* Barre de progression décorative : le texte au-dessus porte l'information. */}
           <div aria-hidden="true" className="grid grid-cols-4 gap-1">
             {Array.from({ length: STEP_COUNT }, (_, index) => (
-              <span key={index} className={cx("h-1.5", index < number ? "bg-ink" : "bg-ink/15")} />
+              <span
+                key={index}
+                className={cx("h-1.5 rounded-pill", index < number ? "bg-orange" : "bg-ink/10")}
+              />
             ))}
           </div>
         </div>

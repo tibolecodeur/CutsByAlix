@@ -61,7 +61,7 @@ export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProp
         </p>
         <p
           id="cancel-link-url"
-          className="border border-ink/15 bg-surface p-3 text-sm break-all select-all"
+          className="rounded-field border border-ink/15 bg-surface p-3 text-sm break-all select-all"
         >
           {cancelUrl}
         </p>

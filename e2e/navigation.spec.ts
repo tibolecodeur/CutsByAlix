@@ -11,6 +11,11 @@ const PAGES = [
     onglet: "Annuler ma réservation · CutsByAlix",
   },
   { chemin: "/admin", h1: "Espace admin", onglet: "Espace admin · CutsByAlix" },
+  {
+    chemin: "/conditions",
+    h1: "Conditions de réservation",
+    onglet: "Conditions de réservation · CutsByAlix",
+  },
   { chemin: "/mentions-legales", h1: "Mentions légales", onglet: "Mentions légales · CutsByAlix" },
   {
     chemin: "/politique-confidentialite",
@@ -143,6 +148,7 @@ test("le site public ne contient aucun lien vers l'espace admin", async ({ page 
     "/",
     "/reserver",
     "/annuler",
+    "/conditions",
     "/mentions-legales",
     "/une-url-qui-nexiste-pas",
   ]) {

@@ -1,7 +1,7 @@
 import { InstagramLink } from "@/components/InstagramLink";
 import { LegalList, LegalSection, ToComplete } from "@/components/Legal";
 import { PageMeta } from "@/components/PageMeta";
-import { Section } from "@/components/Section";
+import { PageHeader, Section } from "@/components/Section";
 import { BOOKING_RULES } from "@/lib/bookingRules";
 
 /** Durée de conservation des données clients (docs/SPEC.md, « Règles de gestion »). */
@@ -20,13 +20,10 @@ export function PrivacyPolicyPage() {
         title="Politique de confidentialité"
         description="Comment CutsByAlix traite tes données personnelles lors d'une réservation."
       />
-      <Section>
-        <h1>Politique de confidentialité</h1>
-        <p className="max-w-[65ch] text-lg">
-          Pour réserver, le site te demande le strict minimum. Voici ce qui est collecté, pourquoi,
-          combien de temps, et comment exercer tes droits.
-        </p>
-      </Section>
+      <PageHeader
+        title="Politique de confidentialité"
+        lead="Pour réserver, le site te demande le strict minimum. Voici ce qui est collecté, pourquoi, combien de temps, et comment exercer tes droits."
+      />
       <Section className="pt-0 md:pt-0">
         <LegalSection title="Responsable du traitement">
           <LegalList>

@@ -63,13 +63,11 @@ export function Layout() {
         onKeyDown={handleHeaderKeyDown}
         className={cx(
           "fixed inset-x-0 top-0 z-40 pt-[env(safe-area-inset-top)]",
-          // Sur le hero : transparent. Ensuite, verre dépoli (index.css, repli opaque) : sombre
-          // sur la vitrine noire, clair sur les pages outil.
+          // Sur la vidéo : transparent, texte blanc. Ensuite, verre dépoli blanc (index.css,
+          // repli opaque si backdrop-filter n'est pas supporté).
           isOverHero
             ? "bg-transparent text-white [--focus-ring:var(--color-white)]"
-            : isHome
-              ? "glass-dark border-b border-white/10 text-white [--focus-ring:var(--color-white)]"
-              : "glass-light border-b border-ink/10 text-ink",
+            : "glass-light border-b border-ink/10 text-ink",
         )}
       >
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between px-safe">
@@ -126,13 +124,19 @@ export function Layout() {
         <Outlet />
       </main>
 
-      {/* Pied de page noir, liens rose pâle (14,67), filet clair en haut : il prolonge la
-          vitrine et ferme nettement les pages outil en blanc cassé. */}
-      <footer className="border-t border-white/10 bg-ink text-white [--focus-ring:var(--color-white)] [--link-color:var(--color-blush)]">
-        <div className="mx-auto flex max-w-content flex-col gap-4 px-safe pt-12 pb-[max(3rem,env(safe-area-inset-bottom))]">
+      {/* Pied de page blanc, ouvert par la bande « poteau de barbier » pleine largeur. */}
+      <footer className="bg-paper text-ink">
+        <span aria-hidden="true" className="bg-barber block h-2.5" />
+        <div className="mx-auto flex max-w-content-wide flex-col gap-5 px-safe pt-12 pb-[max(3rem,env(safe-area-inset-bottom))]">
           <p className="title-display text-3xl uppercase">CutsByAlix</p>
+          <p className="text-muted">Coupes et barbes sur rendez-vous.</p>
           <nav aria-label="Informations légales">
-            <ul className="flex flex-col sm:flex-row sm:gap-x-6">
+            <ul className="flex flex-col sm:flex-row sm:flex-wrap sm:gap-x-6">
+              <li>
+                <NavLink to="/conditions" className={FOOTER_LINK_CLASS}>
+                  Conditions de réservation
+                </NavLink>
+              </li>
               <li>
                 <NavLink to="/mentions-legales" className={FOOTER_LINK_CLASS}>
                   Mentions légales

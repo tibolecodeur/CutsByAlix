@@ -14,7 +14,7 @@ export function Card({ as: Tag = "div", className, ...props }: CardProps) {
   return (
     <Tag
       className={cx(
-        "flex flex-col gap-2 border border-ink/15 bg-surface p-5 text-ink",
+        "flex flex-col gap-2 rounded-panel border border-ink/10 bg-surface p-5 text-ink",
         "[--focus-ring:var(--color-ink)] [--link-color:var(--color-accent)]",
         className,
       )}

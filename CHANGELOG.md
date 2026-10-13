@@ -18,17 +18,17 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Modifié
 
-- Design v1 (consigne 27) : vitrine sur noir d'un seul tenant avec le hero vidéo (`100svh`).
-  Orange dominant (boutons principaux à texte noir, prix et numéros d'étapes en grands
-  chiffres), rose secondaire (grands titres et liens). Halos en dégradés radiaux statiques et
-  verre dépoli (en-tête, dock du bouton mobile, panneaux tarifs et lieu), avec repli opaque sans
-  `backdrop-filter` ou si la transparence est réduite ; 60 images/s mesurées au défilement
-  mobile. Pages outil (/reserver, légal, admin) en blanc cassé. Grille tarifaire façon tableau
-  de salon. Galerie en carrousel CSS `scroll-snap` (composant isolé `GalleryCarousel`, état
-  vide avec lien Instagram). Accroche définitive. Lieu : « Lieu exact communiqué par DM sur
-  Instagram, sur demande » sur l'accueil et à chaque étape de /reserver ; plus aucune mention
-  de paiement sur /reserver (elle reste sur l'accueil). Mentions légales et politique de
-  confidentialité rédigées, informations personnelles à compléter.
+- Design v1 (consigne 27) : arrivée sur la vidéo plein écran (`100svh`) et son bouton orange,
+  puis un site blanc aux couleurs orange et rose, sur toutes les pages (admin compris).
+  Signature « poteau de barbier » (rayures orange / blanc / rose foncé en bandes fines), carte
+  des tarifs façon enseigne de salon (prix en grands chiffres rose foncé), galerie sur une bande
+  rose pâle, frise « Comment réserver » à pastilles orange, en-tête commun des pages (titre,
+  rayures, accroche), en-tête en verre dépoli avec repli opaque. Galerie en carrousel CSS
+  `scroll-snap` (composant isolé `GalleryCarousel`, état vide avec lien Instagram). Accroche
+  définitive. Lieu : « Lieu exact communiqué par DM sur Instagram, sur demande » sur l'accueil
+  et à chaque étape de /reserver ; plus aucune mention de paiement sur /reserver (elle reste
+  sur l'accueil). Mentions légales, politique de confidentialité et nouvelle page
+  **Conditions de réservation** (/conditions) rédigées, informations personnelles à compléter.
 - Tarifs et paiement (consigne 26, ADR 0011) : Coupe 60 min / 10 €, Coupe + barbe 70 min / 12 € ;
   paiement « en liquide ou par virement » (aucune coordonnée bancaire sur le site). Les créneaux
   et la fin des rendez-vous restent de 70 min pour toutes les prestations.

@@ -29,6 +29,7 @@ const ROUTES = [
   "/reserver",
   "/annuler",
   "/admin",
+  "/conditions",
   "/mentions-legales",
   "/politique-confidentialite",
   "/une-url-qui-nexiste-pas",

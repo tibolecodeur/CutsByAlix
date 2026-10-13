@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
  */
 export function BookingSummary({ rows }: { rows: [label: string, value: ReactNode][] }) {
   return (
-    <dl className="flex flex-col border border-ink/15 bg-surface">
+    <dl className="flex flex-col overflow-hidden rounded-panel border border-ink/15 bg-surface">
       {rows.map(([label, value]) => (
         <div
           key={label}

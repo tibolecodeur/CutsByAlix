@@ -10,6 +10,7 @@ import { AdminLayout } from "@/pages/admin/AdminLayout";
 import { AdminLoginPage } from "@/pages/admin/AdminLoginPage";
 import { BookingPage } from "@/pages/BookingPage";
 import { CancelPage } from "@/pages/CancelPage";
+import { ConditionsPage } from "@/pages/ConditionsPage";
 import { HomePage } from "@/pages/HomePage";
 import { LegalNoticePage } from "@/pages/LegalNoticePage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -31,6 +32,7 @@ export default function App() {
         <Route index element={<HomePage />} />
         <Route path="reserver" element={<BookingPage />} />
         <Route path="annuler" element={<CancelPage />} />
+        <Route path="conditions" element={<ConditionsPage />} />
         <Route path="mentions-legales" element={<LegalNoticePage />} />
         <Route path="politique-confidentialite" element={<PrivacyPolicyPage />} />
         <Route path="*" element={<NotFoundPage />} />

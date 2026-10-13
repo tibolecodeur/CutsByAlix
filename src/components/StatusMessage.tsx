@@ -17,7 +17,10 @@ export function LoadingMessage({ children }: { children: ReactNode }) {
 
 export function EmptyMessage({ children }: { children: ReactNode }) {
   return (
-    <div role="status" className="flex flex-col gap-1 border border-ink/15 bg-surface p-4">
+    <div
+      role="status"
+      className="flex flex-col gap-1 rounded-field border border-ink/15 bg-surface p-4"
+    >
       {children}
     </div>
   );
@@ -34,7 +37,7 @@ export function ErrorMessage({ children, onRetry }: ErrorMessageProps) {
   return (
     <div
       role="alert"
-      className="flex flex-col items-start gap-3 border-2 border-accent bg-surface p-4"
+      className="flex flex-col items-start gap-3 rounded-field border-2 border-accent bg-surface p-4"
     >
       <p className="font-bold text-accent">{children}</p>
       {onRetry && (
@@ -49,7 +52,10 @@ export function ErrorMessage({ children, onRetry }: ErrorMessageProps) {
 /** Confirmation d'une action réussie. */
 export function SuccessMessage({ children }: { children: ReactNode }) {
   return (
-    <p role="status" className="border-2 border-ink bg-blush p-4 font-semibold text-ink">
+    <p
+      role="status"
+      className="rounded-field border-2 border-ink bg-blush p-4 font-semibold text-ink"
+    >
       {children}
     </p>
   );

@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
+import { ConditionsPage } from "@/pages/ConditionsPage";
 import { LegalNoticePage } from "@/pages/LegalNoticePage";
 import { PrivacyPolicyPage } from "@/pages/PrivacyPolicyPage";
 
@@ -50,5 +51,31 @@ describe("politique de confidentialité", () => {
     expect(screen.getByText(/au plus 2 rendez-vous à venir/)).toBeInTheDocument();
     expect(screen.getByText(/n'utilise aucun cookie/)).toBeInTheDocument();
     expect(screen.getAllByText(/^\[À COMPLÉTER : /).length).toBeGreaterThan(0);
+  });
+});
+
+describe("conditions de réservation", () => {
+  it("reprend les règles réelles du site et laisse à Alix ce qu'elle seule peut décider", () => {
+    expect(renderPage(<ConditionsPage />)).toEqual([
+      "Qui propose le service",
+      "Réserver",
+      "Le lieu",
+      "Annuler",
+      "Retard et absence",
+      "Prix et paiement",
+      "Données personnelles",
+      "Litiges",
+      "Contact",
+    ]);
+    // Chiffres issus de BOOKING_RULES (copie de private.settings()).
+    expect(
+      screen.getByText(/jusqu'à 2 h avant le rendez-vous, et au plus 4 semaines/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Au plus 2 rendez-vous à venir/)).toBeInTheDocument();
+    expect(screen.getByText(/jusqu'à 24 h avant le rendez-vous/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Lieu exact communiqué par DM sur Instagram, sur demande\./),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/retard \(tolérance\)/)).toHaveTextContent(/^\[À COMPLÉTER : /);
   });
 });

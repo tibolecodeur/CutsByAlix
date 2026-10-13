@@ -3,7 +3,7 @@ import { useLocation } from "react-router";
 import { Button, ButtonLink } from "@/components/Button";
 import { InstagramLink } from "@/components/InstagramLink";
 import { PageMeta } from "@/components/PageMeta";
-import { Section } from "@/components/Section";
+import { PageHeader, Section } from "@/components/Section";
 import { ErrorMessage, LoadingMessage } from "@/components/StatusMessage";
 import {
   BookingError,
@@ -44,10 +44,8 @@ export function CancelPage() {
         noindex
         noReferrer
       />
-      <Section>
-        <h1>Annuler ma réservation</h1>
-      </Section>
-      <Section>
+      <PageHeader title="Annuler ma réservation" />
+      <Section className="pt-0 md:pt-0">
         {booking.status === "idle" && <InvalidLink />}
         {booking.status === "loading" && (
           <LoadingMessage>Chargement de ton rendez-vous…</LoadingMessage>

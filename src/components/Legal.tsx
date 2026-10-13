@@ -18,7 +18,7 @@ export function ToComplete({ children }: { children: ReactNode }) {
 /** Une rubrique : titre de niveau 2, puis paragraphes ou listes, en largeur de lecture. */
 export function LegalSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="flex max-w-[65ch] flex-col gap-3">
+    <section className="flex max-w-[65ch] flex-col gap-3 border-t border-ink/10 pt-8 first:border-t-0 first:pt-0">
       <h2 className="text-3xl">{title}</h2>
       {children}
     </section>

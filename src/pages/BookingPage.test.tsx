@@ -783,7 +783,7 @@ describe("BookingPage : jours disponibles", () => {
     expect(chosen).toBeChecked();
     expect(chosen).toBeEnabled();
     expect(chosen).toHaveAccessibleName(`${formatDayKey(dayAt(2))}, aucun créneau disponible`);
-    expect(chosen.closest("label")).toHaveClass("line-through", "has-checked:bg-ink");
+    expect(chosen.closest("label")).toHaveClass("line-through", "has-checked:bg-orange");
     expect(await screen.findByText(/Aucun créneau libre le/)).toBeVisible();
     // Les autres jours sans créneau restent désactivés, l'autre jour disponible reste choisissable.
     expect(screen.getByRole("radio", { name: dayName(dayAt(4)) })).toBeDisabled();

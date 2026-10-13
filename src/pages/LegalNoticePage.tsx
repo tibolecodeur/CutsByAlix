@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { InstagramLink } from "@/components/InstagramLink";
 import { LegalList, LegalSection, ToComplete } from "@/components/Legal";
 import { PageMeta } from "@/components/PageMeta";
-import { Section } from "@/components/Section";
+import { PageHeader, Section } from "@/components/Section";
 
 /**
  * Mentions légales (loi pour la confiance dans l'économie numérique, art. 6 III).
@@ -14,9 +14,7 @@ export function LegalNoticePage() {
   return (
     <>
       <PageMeta title="Mentions légales" description="Mentions légales du site CutsByAlix." />
-      <Section>
-        <h1>Mentions légales</h1>
-      </Section>
+      <PageHeader title="Mentions légales" />
       <Section className="pt-0 md:pt-0">
         <LegalSection title="Éditeur du site">
           <p>Le site CutsByAlix est édité par :</p>

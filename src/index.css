@@ -16,26 +16,29 @@
  */
 @theme {
   --color-*: initial;
-  /* Base neutre : noir pour la vitrine (accueil), blanc cassé pour les pages « outil ». */
-  --color-ink: #111111; /* fond de la vitrine, texte sur clair */
-  --color-paper: #f7f7f5; /* fond des pages outil (réserver, légal, admin) */
-  --color-surface: #ffffff; /* champs, cartes et encadrés posés sur le blanc cassé */
-  --color-muted: #5c5c5c; /* texte secondaire, sur fond clair UNIQUEMENT */
-  --color-white: #ffffff; /* texte sur noir */
-  /* Dominante : l'ACTION. Boutons principaux (texte noir), prix, numéros d'étapes.
-     En texte : sur noir seulement (6,59), jamais sur clair (2,67). */
+  /* Fond : BLANC partout (vitrine, réservation, pages légales, admin). */
+  --color-paper: #ffffff; /* fond des pages */
+  --color-surface: #ffffff; /* champs, cartes, encadrés (bordure fine pour les détacher) */
+  --color-ink: #111111; /* texte, contours */
+  --color-muted: #5c5c5c; /* texte secondaire (6,69 sur blanc, 5,20 sur rose pâle) */
+  --color-white: #ffffff; /* texte sur la vidéo du hero */
+  /* Couleur principale n° 1, ORANGE = l'action : boutons (texte noir, 6,59), pastilles,
+     jour choisi, progression, rayures. JAMAIS en texte sur blanc (2,87). */
   --color-orange: #ff6a1a;
-  /* Secondaire : la VOIX. Rose pâle = grands titres et liens sur noir (14,67) ; rose foncé =
-     liens et titres d'accent sur clair (5,48), lumière des halos. */
-  --color-blush: #ffd9e6;
+  /* Couleur principale n° 2, ROSE = la voix et la douceur. Rose foncé : prix, liens, accents
+     de titre (5,87 sur blanc ; en gras sur rose pâle, 4,56). Rose pâle : bande de la
+     galerie, choix cochés, étiquettes (jamais du texte sur blanc). */
   --color-accent: #c2185b;
+  --color-blush: #ffd9e6;
 
   --font-*: initial;
   --font-sans: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
 
-  --radius-pill: 9999px; /* tout ce qui est interactif : boutons « pilule » */
-  --radius-panel: 1.75rem; /* panneaux de verre, encadrés de la vitrine */
+  /* Formes : pilule pour ce qui se touche (boutons), angles doux pour le reste. */
+  --radius-pill: 9999px; /* boutons, étiquettes */
+  --radius-panel: 1.5rem; /* cartes, encadrés, carte des tarifs */
+  --radius-field: 0.75rem; /* champs, choix, jours du calendrier */
   --radius-photo: 1rem; /* photos de la galerie */
 
   --spacing-tap: 2.75rem; /* 44 px : zone tactile minimale */
@@ -67,9 +70,9 @@
 }
 
 /*
- * Lien dans le texte : le rose est la couleur des liens. Rose foncé sur clair (5,48 sur blanc
- * cassé, 5,87 sur blanc), rose pâle sur noir (14,67) : les sections, Card et le pied de page
- * règlent --link-color. Souligné de la couleur du lien, semi-transparent.
+ * Lien dans le texte : rose foncé, semi-gras (5,87 sur blanc). Sur la bande rose pâle de la
+ * galerie, la section passe --link-weight à 700 (4,56, AA de justesse). Souligné de la couleur
+ * du lien, semi-transparent.
  */
 @utility link {
   color: var(--link-color, var(--color-accent));
@@ -90,6 +93,9 @@
   line-height: 0.9;
   text-transform: uppercase;
   text-wrap: balance;
+  /* Pas de césure automatique dans un grand titre (« PRESTA-TIONS ») : le mot passe entier. */
+  -webkit-hyphens: manual;
+  hyphens: manual;
 }
 
 /*
@@ -116,50 +122,37 @@
 }
 
 /*
- * Verre dépoli (backdrop-filter), utilisé à TROIS endroits seulement : en-tête une fois le
- * hero passé, dock du bouton « Réserver » sur mobile, panneaux posés sur les halos de l'accueil.
- * - Toujours statique : on ne déplace ni n'anime jamais un élément flouté (coût GPU sur mobile).
- * - `-webkit-` d'abord : Safari iOS 16.4 ne connaît que la version préfixée.
- * - Repli : sans backdrop-filter, ou si l'utilisateur réduit la transparence, le fond devient
- *   presque opaque. Le contraste du texte ne dépend donc jamais du flou.
+ * Verre dépoli (backdrop-filter), à UN seul endroit : l'en-tête une fois la vidéo passée.
+ * Statique (jamais animé). `-webkit-` d'abord : Safari iOS 16.4 ne connaît que lui.
+ * Repli : sans backdrop-filter, ou si la transparence est réduite, fond blanc presque opaque.
  */
-@utility glass-dark {
-  background-color: rgb(17 17 17 / 0.55);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  backdrop-filter: blur(16px) saturate(160%);
-  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-    background-color: rgb(17 17 17 / 0.94);
-  }
-  @media (prefers-reduced-transparency: reduce) {
-    background-color: rgb(17 17 17 / 0.94);
-  }
-}
-
 @utility glass-light {
-  background-color: rgb(247 247 245 / 0.72);
+  background-color: rgb(255 255 255 / 0.8);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
   backdrop-filter: blur(16px) saturate(160%);
   @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-    background-color: rgb(247 247 245 / 0.96);
+    background-color: rgb(255 255 255 / 0.97);
   }
   @media (prefers-reduced-transparency: reduce) {
-    background-color: rgb(247 247 245 / 0.96);
+    background-color: rgb(255 255 255 / 0.97);
   }
 }
 
-/* Panneau de verre sur fond noir : laisse deviner le halo derrière lui, liseré clair fin. */
-@utility glass-panel {
-  background-color: rgb(255 255 255 / 0.05);
-  border: 1px solid rgb(255 255 255 / 0.12);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
-  backdrop-filter: blur(24px) saturate(150%);
-  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-    background-color: rgb(32 32 32 / 0.92);
-  }
-  @media (prefers-reduced-transparency: reduce) {
-    background-color: rgb(32 32 32 / 0.92);
-  }
+/*
+ * Signature « poteau de barbier » : rayures diagonales orange / blanc / rose foncé, comme
+ * l'enseigne tournante des barbiers (rouge / blanc / bleu), aux couleurs du site. Toujours
+ * en bande FINE et décorative (aria-hidden), à quelques endroits choisis : sous la vidéo,
+ * en tête de la carte des tarifs, sous les titres de page, en haut du pied de page.
+ * Statique : jamais animée.
+ */
+@utility bg-barber {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--color-orange) 0 10px,
+    var(--color-white) 10px 15px,
+    var(--color-accent) 15px 25px,
+    var(--color-white) 25px 30px
+  );
 }
 
 /* Défilement horizontal sans barre visible : les boutons du carrousel la remplacent. */

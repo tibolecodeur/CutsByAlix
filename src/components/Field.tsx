@@ -34,7 +34,7 @@ export function Field({ id, label, hint, error, describedBy, suffix, ...inputPro
       aria-describedby={ariaDescribedBy}
       className={cx(
         // 16 px minimum (zoom Safari) et 44 px de haut. Bordure grise : 6,69 sur blanc.
-        "block min-h-tap w-full border bg-surface px-3 py-2 text-base text-ink",
+        "block min-h-tap w-full rounded-field border bg-surface px-3 py-2 text-base text-ink",
         // Safari iOS centre la date affichée dans un champ date : on la ramène à gauche.
         "[&::-webkit-date-and-time-value]:text-left",
         error ? "border-2 border-accent" : "border-muted",
