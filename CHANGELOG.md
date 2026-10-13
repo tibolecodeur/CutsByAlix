@@ -18,6 +18,13 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Modifié
 
+- Galerie gérée par l'admin (/admin/galerie) : l'accueil n'affiche plus que les photos
+  publiées depuis l'admin. Galerie vide : import en un geste des 7 photos de la vitrine (même
+  traitement qu'un ajout, accord exigé, reprise sans doublon). Aperçu « Sur le site » (photos
+  publiées dans l'ordre du carrousel), « En premier » / « En dernier », carte réorganisée
+  (ordre dans un tiroir, Supprimer en lien). Envoi : un fichier n'est plus effacé quand la
+  réponse de la base se perd. Photos de la vitrine jamais indexées (`noindex, noimageindex`).
+
 - Design v1 (consigne 27) : arrivée sur la vidéo plein écran (`100svh`) et son bouton orange,
   puis un site blanc aux couleurs orange et rose, sur toutes les pages (admin compris).
   Signature « poteau de barbier » (rayures orange / blanc / rose foncé en bandes fines), carte

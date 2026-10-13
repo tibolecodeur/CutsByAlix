@@ -47,23 +47,13 @@ test("photos publiées : URL signées, texte alternatif, dimensions, chargement 
   expect(urls.filter((url) => !ALLOWED_HOSTS.has(new URL(url).host))).toEqual([]);
 });
 
-test("aucune photo publiée : photos de la vitrine, servies par notre domaine, aucune signature", async ({
+test("aucune photo publiée : message d'attente, aucune signature, aucune photo figée", async ({
   page,
 }) => {
   const storage = await mockStorage(page);
   await page.goto("/");
   const galerie = page.getByRole("region", { name: "Galerie" });
-  const photos = galerie.getByRole("img");
-  await expect(photos).toHaveCount(7);
-  await expect(photos.first()).toHaveAttribute("src", "/media/galerie/coupe-01.webp");
-  // Pagination : compteur sous 768 px (point de rupture md), pastilles au-delà.
-  if (page.viewportSize()!.width < 768) {
-    await expect(galerie.getByText("1 / 7")).toBeVisible();
-  } else {
-    await expect(galerie.getByRole("button", { name: "Photo 1 sur 7" })).toHaveAttribute(
-      "aria-current",
-      "true",
-    );
-  }
+  await expect(galerie.getByText("Photos bientôt disponibles.")).toBeVisible();
+  await expect(galerie.getByRole("img")).toHaveCount(0);
   expect(storage.signings).toEqual([]);
 });

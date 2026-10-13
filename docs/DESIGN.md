@@ -116,9 +116,13 @@ décoratif).
 - **Galerie** : carrousel horizontal en CSS `scroll-snap` (composant isolé et remplaçable,
   `GalleryCarousel`), grandes photos 4:5 en noir et blanc aux angles arrondis, la suivante
   dépasse au bord. Pagination : pastilles (la photo en cours en pilule orange) à partir de md,
-  compteur « 2 / 7 » sur mobile ; flèches de 52 px. Photos : celles publiées par l'admin, sinon
-  les 7 photos de la vitrine (`public/media/galerie/`, EXIF retirés, accord des personnes
-  obtenu, décision du 2026-10-13). Vue détail en couleur : non faite.
+  compteur « 2 / 7 » sur mobile ; flèches de 52 px. Photos : uniquement celles publiées par
+  l'admin (aucun repli) ; les 7 photos de la vitrine (`public/media/galerie/`) s'importent en
+  un geste depuis /admin/galerie. Vue détail en couleur : non faite.
+- **Admin galerie** : aperçu « Sur le site » (photos publiées, dans l'ordre du carrousel,
+  pastille orange numérotée) ; carte : Publier / Masquer et Modifier en premier, ordre dans un
+  tiroir « Changer l'ordre » (Monter / Descendre, En premier / En dernier au-delà de 2 photos),
+  Supprimer en lien rose foncé ; statut en pilule.
 - **Formes** : pilule pour ce qui se touche (boutons, étiquettes) ; cartes 1,5 rem ; champs,
   choix et jours 0,75 rem ; photos 1 rem.
 - **Espacement** : sections de l'accueil aérées (4,5 rem mobile, 7 rem desktop), colonne

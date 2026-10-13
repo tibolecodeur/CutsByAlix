@@ -12,9 +12,11 @@ import {
   sweepGalleryOrphans,
   type AdminGalleryItem,
 } from "@/features/admin/gallery";
+import { moveInList } from "@/features/admin/galleryOrder";
 import { useAsync } from "@/lib/useAsync";
 import { AdminGalleryCard, type GalleryCardChange } from "@/pages/admin/AdminGalleryCard";
 import { AdminGalleryUpload } from "@/pages/admin/AdminGalleryUpload";
+import { AdminShowcaseImport } from "@/pages/admin/AdminShowcaseImport";
 
 /** Galerie : ajout de photos depuis le téléphone, publication, ordre, suppression. */
 export function AdminGalleryPage() {
@@ -42,7 +44,9 @@ export function AdminGalleryPage() {
         {items.status === "error" && (
           <ErrorMessage onRetry={items.reload}>Impossible de charger les photos.</ErrorMessage>
         )}
-        {items.status === "success" && <GalleryList initialItems={items.data} />}
+        {items.status === "success" && (
+          <GalleryList initialItems={items.data} onReload={items.reload} />
+        )}
       </Section>
     </>
   );
@@ -54,7 +58,14 @@ export function AdminGalleryPage() {
  * La base a déjà validé l'action : on applique le même changement ici. `initialItems` ne sert
  * qu'au premier rendu : un rechargement complet (après un ajout) recrée ce composant.
  */
-function GalleryList({ initialItems }: { initialItems: AdminGalleryItem[] }) {
+function GalleryList({
+  initialItems,
+  onReload,
+}: {
+  initialItems: AdminGalleryItem[];
+  /** Rechargement complet (après l'import des photos de la vitrine). */
+  onReload: () => void;
+}) {
   const [list, setList] = useState(initialItems);
   const [lastMoved, setLastMoved] = useState<{ id: string; direction: "up" | "down" }>();
   const [announce, setAnnounce] = useState("");
@@ -67,10 +78,8 @@ function GalleryList({ initialItems }: { initialItems: AdminGalleryItem[] }) {
     if (index < 0) return;
     switch (change.type) {
       case "moved": {
-        const target = change.direction === "up" ? index - 1 : index + 1;
-        const next = [...list];
-        [next[index], next[target]] = [next[target]!, next[index]!];
-        setList(next);
+        const target = change.direction === "up" ? index - change.steps : index + change.steps;
+        setList(moveInList(list, index, target));
         setLastMoved({ id: item.id, direction: change.direction });
         setAnnounce(`Photo déplacée en position ${target + 1} sur ${list.length}.`);
         break;
@@ -120,12 +129,16 @@ function GalleryList({ initialItems }: { initialItems: AdminGalleryItem[] }) {
         {announce}
       </p>
       {notice && <SuccessMessage>{notice}</SuccessMessage>}
+      <SitePreview items={list.filter((i) => i.published)} />
       {list.length === 0 ? (
-        <EmptyMessage>
-          <p>Ajoute ta première photo avec les boutons ci-dessus.</p>
-        </EmptyMessage>
+        <>
+          <AdminShowcaseImport onImported={onReload} />
+          <EmptyMessage>
+            <p>Ou ajoute ta première photo avec les boutons ci-dessus.</p>
+          </EmptyMessage>
+        </>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul aria-label="Toutes les photos" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((item, index) => (
             <AdminGalleryCard
               key={item.id}
@@ -139,5 +152,66 @@ function GalleryList({ initialItems }: { initialItems: AdminGalleryItem[] }) {
         </ul>
       )}
     </div>
+  );
+}
+
+/**
+ * « Sur le site » : les photos PUBLIÉES, dans l'ordre exact du carrousel de l'accueil, en noir
+ * et blanc comme là-bas. Alix voit d'un coup d'œil ce que voient les clients.
+ */
+function SitePreview({ items }: { items: AdminGalleryItem[] }) {
+  return (
+    <section
+      aria-labelledby="site-preview-title"
+      className="flex flex-col gap-3 rounded-panel border border-ink/15 bg-surface p-4"
+    >
+      <h3 id="site-preview-title" className="text-xl">
+        Sur le site
+      </h3>
+      {items.length === 0 ? (
+        <p className="text-muted">Aucune photo n'est affichée sur le site.</p>
+      ) : (
+        <>
+          <p className="text-sm text-muted">
+            {items.length} photo{items.length > 1 ? "s" : ""} affichée{items.length > 1 ? "s" : ""},
+            dans cet ordre :
+          </p>
+          {/* Bande défilante focalisable (clavier : flèches), nommée pour les lecteurs d'écran. */}
+          <ol
+            role="list"
+            tabIndex={0}
+            aria-label="Ordre du carrousel"
+            className="scrollbar-none -mx-1 flex list-none gap-2 overflow-x-auto px-1 pb-1"
+          >
+            {items.map((item, index) => (
+              <li key={item.id} className="relative w-16 shrink-0">
+                {item.imageUrl ? (
+                  <img
+                    src={item.imageUrl}
+                    alt={item.altText}
+                    width={item.width}
+                    height={item.height}
+                    loading="lazy"
+                    decoding="async"
+                    className="aspect-[4/5] h-auto w-full rounded-field object-cover grayscale"
+                  />
+                ) : (
+                  <span className="flex aspect-[4/5] w-full items-center justify-center rounded-field bg-ink/5 text-xs text-muted">
+                    Aperçu indisponible
+                  </span>
+                )}
+                {/* Position dans le carrousel : décorative, la liste ordonnée la porte déjà. */}
+                <span
+                  aria-hidden="true"
+                  className="absolute top-1 left-1 flex size-6 items-center justify-center rounded-pill bg-orange text-sm font-bold text-ink"
+                >
+                  {index + 1}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+    </section>
   );
 }

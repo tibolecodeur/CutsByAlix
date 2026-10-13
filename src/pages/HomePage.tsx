@@ -7,7 +7,6 @@ import { BarberStripe, Section } from "@/components/Section";
 import { EmptyMessage, ErrorMessage, LoadingMessage } from "@/components/StatusMessage";
 import { getServices, type Service } from "@/features/booking/data";
 import { getPublishedGallery } from "@/features/gallery/data";
-import { FEATURED_PHOTOS } from "@/features/gallery/featuredPhotos";
 import { LOCATION_NOTICE } from "@/lib/contact";
 import { useAsync } from "@/lib/useAsync";
 
@@ -123,15 +122,12 @@ export function HomePage() {
         </h2>
         <BarberStripe />
         {gallery.status === "loading" && <LoadingMessage>Chargement des photos…</LoadingMessage>}
-        {/* Photos publiées par l'admin si elles existent ; sinon (aucune publiée, ou galerie
-            injoignable) les photos de la vitrine, servies par notre domaine. */}
-        {gallery.status === "success" && gallery.data.length > 0 && (
-          <GalleryCarousel photos={gallery.data} />
+        {gallery.status === "error" && (
+          <p role="status">Les photos ne sont pas disponibles pour le moment.</p>
         )}
-        {(gallery.status === "error" ||
-          (gallery.status === "success" && gallery.data.length === 0)) && (
-          <GalleryCarousel photos={FEATURED_PHOTOS} />
-        )}
+        {/* Exactement ce qu'Alix publie depuis l'admin (aucun repli) : rien de publié = état vide
+            avec le lien Instagram. */}
+        {gallery.status === "success" && <GalleryCarousel photos={gallery.data} />}
       </Section>
 
       {/* pb-36 sur mobile : place pour le bouton collé en bas quand il revient à sa position. */}

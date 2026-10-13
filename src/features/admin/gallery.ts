@@ -128,10 +128,15 @@ export async function addGalleryItem(input: NewGalleryItem): Promise<AdminGaller
     p_consent: input.consent,
   });
   if (error) {
-    // Pas de fichier sans ligne : on efface l'envoi (au pire, le ramassage s'en chargera).
-    await storage()
-      .remove([path])
-      .catch(() => undefined);
+    // La base a RÉPONDU (code PostgreSQL / PostgREST) : la ligne n'existe pas, on efface
+    // l'envoi. Sans code, c'est une coupure : la ligne a pu être créée sans que la réponse
+    // revienne, effacer le fichier casserait une photo publiée. On le garde : s'il est seul,
+    // `sweepGalleryOrphans` l'effacera (fichiers sans ligne de plus d'1 h). Revue sécurité.
+    if (error.code) {
+      await storage()
+        .remove([path])
+        .catch(() => undefined);
+    }
     throw toAdminError(error);
   }
   const row = data[0];

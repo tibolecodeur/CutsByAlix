@@ -130,6 +130,13 @@ describe("public/_headers : en-têtes effectifs", () => {
     expect(robotsOf(`${PREVIEW}/`)).toBe("noindex, nofollow");
     expect(robotsOf(`${SITE}/annuler`)).toBe("noindex, nofollow");
     expect(robotsOf(`${SITE}/admin`)).toBe("noindex, nofollow");
+    expect(robotsOf(`${SITE}/media/galerie/coupe-01.webp`)).toBe("noindex, nofollow, noimageindex");
+  });
+
+  it("photos de la vitrine : jamais indexées (ni la page, ni l'image), un seul X-Robots-Tag", () => {
+    const photo = `${SITE}/media/galerie/coupe-01.webp`;
+    expect(header(photo, "X-Robots-Tag")).toBe("noindex, nofollow, noimageindex");
+    expect(header(photo, "X-Content-Type-Options")).toBe("nosniff");
   });
 
   it("/annuler : aucun Referer (le jeton est dans le fragment de l'URL)", () => {
@@ -150,7 +157,8 @@ describe("public/_headers : en-têtes effectifs", () => {
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("script-src 'self';");
     expect(csp).toContain("style-src 'self';");
-    expect(csp).toContain(`connect-src ${supabase};`);
+    // 'self' : l'import des photos de la vitrine lit /media/galerie/ (même domaine).
+    expect(csp).toContain(`connect-src 'self' ${supabase};`);
     expect(csp).toContain(`img-src 'self' data: blob: ${supabase};`);
     expect(csp).toContain("media-src 'self';");
     expect(csp).toContain("font-src 'self';");
