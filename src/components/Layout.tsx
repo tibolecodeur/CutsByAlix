@@ -8,9 +8,6 @@ import { useScrolledPast } from "@/lib/useScrolledPast";
 /** Hauteur de l'en-tête en pixels, identique au token --spacing-header (4rem). */
 const HEADER_HEIGHT_PX = 64;
 
-const FOOTER_LINK_CLASS =
-  "link inline-flex min-h-tap items-center aria-[current=page]:[--link-weight:700]";
-
 /** Trait de l'icône du menu, dessinée en CSS (aucune librairie d'icônes). */
 const BAR_CLASS = "absolute left-0 h-0.5 w-5 bg-current";
 
@@ -130,25 +127,6 @@ export function Layout() {
         <div className="mx-auto flex max-w-content-wide flex-col gap-5 px-safe pt-12 pb-[max(3rem,env(safe-area-inset-bottom))]">
           <p className="title-display text-3xl uppercase">CutsByAlix</p>
           <p className="text-muted">Coupes et barbes sur rendez-vous.</p>
-          <nav aria-label="Informations légales">
-            <ul className="flex flex-col sm:flex-row sm:flex-wrap sm:gap-x-6">
-              <li>
-                <NavLink to="/conditions" className={FOOTER_LINK_CLASS}>
-                  Conditions de réservation
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/mentions-legales" className={FOOTER_LINK_CLASS}>
-                  Mentions légales
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/politique-confidentialite" className={FOOTER_LINK_CLASS}>
-                  Politique de confidentialité
-                </NavLink>
-              </li>
-            </ul>
-          </nav>
         </div>
       </footer>
     </div>
