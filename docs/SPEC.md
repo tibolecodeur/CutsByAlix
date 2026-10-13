@@ -45,7 +45,7 @@ disponibilité ; le client ne choisit pas, il voit la localité à côté de cha
 
 - Accueil : présentation, photo, CTA « Réserver », adresse / zone, contact (Instagram, téléphone).
 - Prestations et tarifs (affichage). Paiement **en liquide ou par virement**
-  (mention « Paiement en liquide ou par virement » au récapitulatif et à la confirmation ; aucune
+  (mention « Paiement en liquide ou par virement » sur l'accueil uniquement : depuis la consigne 27, plus aucune mention de paiement sur /reserver, récapitulatif et confirmation compris ; aucune
   coordonnée bancaire sur le site, Alix les donne en message privé sur Instagram ; aucun paiement
   en ligne).
 - Galerie des créations (photos + légende courte).

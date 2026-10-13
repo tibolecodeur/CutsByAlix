@@ -25,20 +25,30 @@ menu par-dessus), adapté à nos couleurs : on n'en copie pas l'identité.
 
 ## Couleurs _(validé)_
 
-| Rôle                 | Hex       | Usage                                                        |
-| -------------------- | --------- | ------------------------------------------------------------ |
-| Fond principal       | `#FFFFFF` | sections blanches                                            |
-| Fond alterné         | `#FFD9E6` | sections rose pâle, en alternance avec le blanc              |
-| Blocs sombres        | `#111111` | quelques blocs noirs ponctuels                               |
-| Texte                | `#111111` | texte courant, titres, texte et contour des boutons          |
-| Texte secondaire     | `#5C5C5C` | légendes, durées, aides de champ (sur fond clair uniquement) |
-| Action principale    | `#FFD9E6` | fond des boutons principaux, texte et contour `#111111`      |
-| Orange               | `#FF6A1A` | duotone du hero uniquement (plus utilisé pour les boutons)   |
-| Liens et accents     | `#C2185B` | liens, accents texte ; **en gras** sur le rose pâle          |
-| Texte sur bloc noir  | `#FFFFFF` | texte courant sur `#111111`                                  |
-| Accent sur bloc noir | `#FFD9E6` | liens (soulignés) et texte secondaire sur `#111111`          |
+| Rôle                                                                                         | Hex | Usage |
+| -------------------------------------------------------------------------------------------- | --- | ----- |
+| Rôles mis à jour le 2026-10-13 (consigne 27) : fond continu, orange sur toute la page, liens |
+| noirs soulignés de rose foncé.                                                               |
 
-**Interdit** : texte orange sur fond clair (2,87 sur blanc, 2,23 sur rose pâle).
+| Rôle                 | Hex       | Usage                                                                                                                   |
+| -------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Fond continu         | `#FFFFFF` | dégradé vertical blanc / rose pâle sous toute la page (un seul calque, aucune section ne peint son fond)                |
+| Fond continu         | `#FFD9E6` | idem, en alternance fondue avec le blanc                                                                                |
+| Blocs sombres        | `#111111` | galerie et pied de page, entrés et sortis par un fondu orange (« crépuscule »)                                          |
+| Texte                | `#111111` | texte courant, titres, liens, texte et contour des boutons, chiffres sur pastille orange                                |
+| Texte secondaire     | `#5C5C5C` | légendes, aides de champ (sur fond clair uniquement)                                                                    |
+| Action principale    | `#FFD9E6` | fond des boutons principaux, texte et contour `#111111`                                                                 |
+| Orange               | `#FF6A1A` | duotone du hero, halos du fond (10 % max), fondus « crépuscule », pastilles (durées, étapes), marqueurs « à compléter » |
+| Accent rose foncé    | `#C2185B` | souligné épais des liens, barre des messages d'erreur ; en texte : seulement sur blanc pur (encadré d'erreur)           |
+| Texte sur bloc noir  | `#FFFFFF` | texte courant sur `#111111`                                                                                             |
+| Accent sur bloc noir | `#FFD9E6` | liens (texte et souligné) sur `#111111`                                                                                 |
+
+**Interdit** : texte orange, quel que soit le fond (2,87 sur blanc, 2,23 sur rose pâle). Texte
+rose foncé ou gris sur une zone orange saturée (fondus, pastilles) : seul le noir y est posé.
+
+**Pourquoi des liens noirs** : sur le fond continu, un halo orange à 10 % sur le rose pâle fait
+tomber le rose foncé à 4,19 (sous l'AA). Le noir y reste à 13,49 ; la couleur passe dans le
+souligné, décoratif.
 
 ### Contrastes vérifiés (WCAG 2.1, AA = 4,5 texte normal, 3 grand texte)
 
@@ -55,6 +65,16 @@ menu par-dessus), adapté à nos couleurs : on n'en copie pas l'identité.
 | `#FFD9E6` / `#111111` | 14,67 | oui                                            |
 | `#C2185B` / `#111111` | 3,22  | **non** : pas de rose foncé sur bloc noir      |
 | `#5C5C5C` / `#111111` | 2,82  | **non** : pas de gris secondaire sur bloc noir |
+
+Fond continu, pire cas (cœur d'un halo orange sur le rose pâle), calculé le 2026-10-13 :
+
+| Texte / fond                        | Ratio | AA texte normal                              |
+| ----------------------------------- | ----- | -------------------------------------------- |
+| `#111111` / rose pâle + 10 % orange | 13,49 | oui                                          |
+| `#5C5C5C` / rose pâle + 10 % orange | 4,78  | oui                                          |
+| `#C2185B` / rose pâle + 10 % orange | 4,19  | **non** : d'où les liens noirs               |
+| `#111111` / rose pâle + 25 % orange | 11,87 | oui (marqueurs « À COMPLÉTER »)              |
+| `#5C5C5C` / rose pâle + 20 % orange | 4,39  | **non** : les halos ne dépassent jamais 10 % |
 
 **Bouton principal (2026-10-08)** : fond rose pâle `#FFD9E6`, texte `#111111` (14,67), contour
 `#111111` de 2 px. Sans contour, le bouton disparaîtrait sur les sections rose pâle (même
@@ -78,11 +98,21 @@ couleur) et se verrait à peine sur le blanc ; le contour noir contraste à 14,6
   fixe, non animé), voile sombre par-dessus, logo blanc centré, menu blanc par-dessus.
   Au défilement, le menu passe en noir sur fond clair. Le voile doit garantir le contraste du
   texte blanc (au moins 4,5) quel que soit l'image de la vidéo.
-- Sections suivantes en alternance blanc / rose pâle `#FFD9E6`, avec quelques blocs noirs
-  `#111111`.
+- **Fond continu** _(appliqué le 2026-10-13, consigne 27)_ : plus de bandes. Un seul calque
+  sous toute la page (`bg-flow` sur `<main>`) : dégradé vertical rose pâle / blanc en fondu,
+  et quatre halos orange (10 % max) alternés à droite et à gauche. Fixe, jamais animé.
+- **Blocs noirs « crépuscule »** : la galerie et le pied de page entrent (et la galerie sort)
+  par un fondu clair → orange → noir de 6 rem, qui reprend la rampe du duotone du hero. Le
+  hero se fond dans la page par la rampe inverse (voile → orange → rose pâle). Aucun texte
+  dans les fondus.
+- **Prestations** : grille tarifaire façon tableau de salon, « Coupe ········ 10 € » (points de
+  conduite), durée en pastille orange à texte noir.
+- **Comment réserver** : étapes numérotées dans des pastilles orange, chiffres noirs.
 - **Mobile** : un seul bouton « Réserver » rose pâle collé en bas de l'écran (zones sûres
   `env(safe-area-inset-bottom)`).
-- **Galerie** : photos en noir et blanc dans la grille, en couleur dans la vue détail.
+- **Galerie** : carrousel horizontal en CSS `scroll-snap` (composant isolé et remplaçable,
+  `GalleryCarousel`), photos en noir et blanc, boutons précédente / suivante de 52 px. Vue
+  détail en couleur : non faite.
 - **Vidéo du hero** _(appliqué le 2026-10-08, consigne 11 bis)_ :
   `autoplay muted loop playsinline`, `preload="metadata"`, avec image `poster` ; seul le poster s'affiche si
   `prefers-reduced-motion`, si la lecture automatique est refusée ou si aucune source ne se
@@ -125,9 +155,10 @@ _Aucune librairie d'animation installée pour l'instant._
 
 ## Historique des décisions
 
-| Date       | Décision                                                                                                                                                                                 |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-07 | Nom CutsByAlix. Intentions (non appliquées) : logo 3 lignes, ton professionnel, rose / orange + gris / blanc, accueil long avec grande photo, loader ciseaux ou tondeuse.                |
-| 2026-10-08 | Direction B + C : fond blanc, sections rose pâle et blocs noirs, Archivo auto-hébergée, boutons pilule orange, hero vidéo duotone, galerie N&B → couleur. Logo texte provisoire (TODO).  |
-| 2026-10-08 | Boutons principaux en rose pâle `#FFD9E6`, texte et contour noirs (au lieu de l'orange). L'orange ne sert plus qu'au duotone du hero.                                                    |
-| 2026-10-08 | Vidéo du hero (consigne 11 bis) : boucle de 14,6 s tirée du reel, 360×640 (résolution de la source), WebM AV1 0,71 Mo + MP4 H.264 1,13 Mo + poster 20 Ko. Remplace « 6 s max, ~1,5 Mo ». |
+| Date       | Décision                                                                                                                                                                                                                                             |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-07 | Nom CutsByAlix. Intentions (non appliquées) : logo 3 lignes, ton professionnel, rose / orange + gris / blanc, accueil long avec grande photo, loader ciseaux ou tondeuse.                                                                            |
+| 2026-10-08 | Direction B + C : fond blanc, sections rose pâle et blocs noirs, Archivo auto-hébergée, boutons pilule orange, hero vidéo duotone, galerie N&B → couleur. Logo texte provisoire (TODO).                                                              |
+| 2026-10-08 | Boutons principaux en rose pâle `#FFD9E6`, texte et contour noirs (au lieu de l'orange). L'orange ne sert plus qu'au duotone du hero.                                                                                                                |
+| 2026-10-08 | Vidéo du hero (consigne 11 bis) : boucle de 14,6 s tirée du reel, 360×640 (résolution de la source), WebM AV1 0,71 Mo + MP4 H.264 1,13 Mo + poster 20 Ko. Remplace « 6 s max, ~1,5 Mo ».                                                             |
+| 2026-10-13 | Design v1 (consigne 27) : fond continu dégradé (plus de bandes), orange sur toute la page (halos, fondus « crépuscule » autour des blocs noirs, pastilles), liens noirs soulignés de rose foncé, grille tarifaire, galerie en carrousel scroll-snap. |
