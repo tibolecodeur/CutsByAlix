@@ -25,10 +25,7 @@ export function GalleryCarousel({ photos }: { photos: GalleryPhoto[] }) {
 
 function GalleryEmpty() {
   return (
-    <div
-      role="status"
-      className="flex flex-col items-start gap-2 border-2 border-dashed border-white/40 p-6"
-    >
+    <div role="status" className="flex flex-col items-start gap-2 border border-current/25 p-6">
       {/* Police de texte, pas de titre condensé : une phrase de plusieurs mots y reste
           lisible (les espaces du condensé italique se resserrent trop sous WebKit). */}
       <p className="text-xl font-bold">Photos bientôt disponibles.</p>
@@ -110,7 +107,7 @@ function PhotoStrip({ photos }: { photos: GalleryPhoto[] }) {
               height={photo.height}
               loading="lazy"
               decoding="async"
-              className="aspect-[4/5] h-auto w-full bg-white/10 object-cover grayscale"
+              className="aspect-[4/5] h-auto w-full bg-current/5 object-cover grayscale"
             />
           </li>
         ))}
@@ -143,7 +140,7 @@ type StripButtonProps = {
   onClick: () => void;
 };
 
-/** Bouton rond de 52 px, contour blanc sur bloc noir ; la flèche est décorative. */
+/** Bouton rond de 52 px, contour de la couleur du texte (noir ou blanc) ; flèche décorative. */
 function StripButton({ label, glyph, disabled, onClick }: StripButtonProps) {
   return (
     <button

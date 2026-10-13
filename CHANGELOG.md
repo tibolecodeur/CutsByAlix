@@ -18,15 +18,16 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Modifié
 
-- Design v1 (consigne 27) : fond continu en dégradé rose pâle / blanc sous toute la page, avec
-  des halos orange ; la galerie et le pied de page entrent par un fondu orange ; le hero se
-  fond dans la page. Grille tarifaire façon tableau de salon, étapes en pastilles orange,
-  liens noirs soulignés de rose foncé (contraste AA sur tout le fond). Galerie en carrousel
-  CSS `scroll-snap` (composant isolé `GalleryCarousel`, état vide avec lien Instagram).
-  Accroche définitive. Lieu : « Lieu exact communiqué par DM sur Instagram, sur demande » sur
-  l'accueil et à chaque étape de /reserver ; plus aucune mention de paiement sur /reserver
-  (elle reste sur l'accueil). Mentions légales et politique de confidentialité rédigées, les
-  informations personnelles restant à compléter.
+- Design v1 (consigne 27) : fonds unis en alternance nette, blanc cassé `#F7F7F5` et noir
+  `#111111` ; orange en accent seulement (boutons principaux à texte noir, prix et numéros
+  d'étapes en grands chiffres sur noir, filets fins, soulignés des liens) ; rose presque absent.
+  Grands titres en capitales condensées, sections de l'accueil aérées en colonne large, hero
+  en `100svh`. Grille tarifaire façon tableau de salon. Galerie en carrousel CSS `scroll-snap`
+  (composant isolé `GalleryCarousel`, état vide avec lien Instagram). Accroche définitive.
+  Lieu : « Lieu exact communiqué par DM sur Instagram, sur demande » sur l'accueil et à chaque
+  étape de /reserver ; plus aucune mention de paiement sur /reserver (elle reste sur
+  l'accueil). Mentions légales et politique de confidentialité rédigées, informations
+  personnelles à compléter.
 - Tarifs et paiement (consigne 26, ADR 0011) : Coupe 60 min / 10 €, Coupe + barbe 70 min / 12 € ;
   paiement « en liquide ou par virement » (aucune coordonnée bancaire sur le site). Les créneaux
   et la fin des rendez-vous restent de 70 min pour toutes les prestations.

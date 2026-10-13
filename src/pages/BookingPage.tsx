@@ -258,7 +258,8 @@ export function BookingPage() {
         <h1>Réserver</h1>
         <p className="text-lg">Réserve ta coupe en une minute.</p>
       </Section>
-      <Section>
+      {/* Même fond que l'en-tête de page : pas de double marge entre le titre et l'étape. */}
+      <Section className="pt-0 md:pt-0">
         {/* `key` : un cadre neuf à chaque étape (voir StepFrame, gestion du focus). */}
         <div key={view} className="w-full">
           {renderStep()}

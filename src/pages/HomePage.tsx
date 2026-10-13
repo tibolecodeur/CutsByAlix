@@ -4,7 +4,6 @@ import { HeroVideo } from "@/components/HeroVideo";
 import { InstagramLink } from "@/components/InstagramLink";
 import { PageMeta } from "@/components/PageMeta";
 import { Section } from "@/components/Section";
-import { EmptyMessage, ErrorMessage, LoadingMessage } from "@/components/StatusMessage";
 import { getServices, type Service } from "@/features/booking/data";
 import { getPublishedGallery } from "@/features/gallery/data";
 import { LOCATION_NOTICE } from "@/lib/contact";
@@ -30,7 +29,15 @@ const BOOKING_STEPS = [
   "Choisis un créneau libre.",
 ] as const;
 
-/** Accueil : une seule longue page, chaque section a une ancre (#prestations, #galerie…). */
+/** Filet orange fin au-dessus d'un titre de section : l'accent, sans décor de plus. */
+function Rule() {
+  return <span aria-hidden="true" className="block h-0.5 w-12 bg-orange" />;
+}
+
+/**
+ * Accueil : une seule longue page, chaque section a une ancre (#prestations, #galerie…).
+ * Fonds unis en alternance, transitions nettes : hero (vidéo), noir, blanc cassé, noir.
+ */
 export function HomePage() {
   const services = useAsync("services", getServices);
   const gallery = useAsync("gallery", getPublishedGallery);
@@ -39,21 +46,16 @@ export function HomePage() {
     <>
       <PageMeta description="CutsByAlix, barber : coupe et coupe + barbe sur rendez-vous. Réserve ton créneau en ligne, paiement en liquide ou par virement." />
 
-      {/* Hero plein écran : 100dvh (et non 100vh, faussé par la barre d'adresse mobile).
-          `isolate` crée un contexte d'empilement : le fond (-z-10) reste DANS le hero.
-          `pb-24` remonte le contenu au-dessus du fondu du bas (texte blanc jamais sur l'orange). */}
+      {/* Hero plein écran en 100svh : la hauteur de l'écran barres du navigateur affichées,
+          stable pendant le défilement (100vh, faussé par la barre d'adresse mobile, déborde ;
+          100dvh change de taille quand la barre se replie). `isolate` crée un contexte
+          d'empilement : le fond (-z-10) reste DANS le hero. */}
       <section
         id="accueil"
         aria-labelledby="accueil-titre"
-        className="relative isolate flex h-dvh min-h-[30rem] flex-col items-center justify-center overflow-hidden bg-ink px-safe pb-24 text-center text-white [--focus-ring:var(--color-white)]"
+        className="relative isolate flex h-svh min-h-[30rem] flex-col items-center justify-center overflow-hidden bg-ink px-safe text-center text-white [--focus-ring:var(--color-white)]"
       >
         <HeroVideo {...HERO_MEDIA} />
-        {/* Le hero se fond dans la page : voile sombre, orange, puis le rose pâle par lequel
-            commence le fond continu (bg-dawn). Décoratif, sous le contenu. */}
-        <div
-          aria-hidden="true"
-          className="bg-dawn absolute inset-x-0 bottom-0 -z-10 h-[min(7rem,16%)]"
-        />
 
         {/* TODO logo : logo texte provisoire, à remplacer par le fichier HD / SVG.
             Le nom accessible reste « CutsByAlix » ; les trois lignes sont décoratives. */}
@@ -83,58 +85,79 @@ export function HomePage() {
         </p>
       </section>
 
-      <Section id="prestations" aria-labelledby="prestations-titre">
-        <h2 id="prestations-titre">Prestations</h2>
-        {services.status === "loading" && (
-          <LoadingMessage>Chargement des prestations…</LoadingMessage>
-        )}
+      {/* Noir : les prix en grands chiffres orange (6,59 sur noir, interdit sur clair). */}
+      <Section id="prestations" aria-labelledby="prestations-titre" variant="ink" roomy>
+        <Rule />
+        <h2 id="prestations-titre" className="title-section">
+          Prestations
+        </h2>
+        {/* Messages en texte blanc hérité : les StatusMessage sont faits pour fond clair. */}
+        {services.status === "loading" && <p role="status">Chargement des prestations…</p>}
         {services.status === "error" && (
-          <ErrorMessage onRetry={services.reload}>
-            Impossible de charger les prestations pour le moment. Réessaie dans quelques instants.
-          </ErrorMessage>
+          <div role="alert" className="flex flex-col items-start gap-3">
+            <p className="font-bold">
+              Impossible de charger les prestations pour le moment. Réessaie dans quelques instants.
+            </p>
+            <button
+              type="button"
+              onClick={services.reload}
+              className="link inline-flex min-h-tap items-center"
+            >
+              Réessayer
+            </button>
+          </div>
         )}
         {services.status === "success" && services.data.length === 0 && (
-          <EmptyMessage>
-            <p>Aucune prestation disponible pour l'instant.</p>
-          </EmptyMessage>
+          <p role="status">Aucune prestation disponible pour l'instant.</p>
         )}
         {services.status === "success" && services.data.length > 0 && (
           <PriceList services={services.data} />
         )}
-        <p>Paiement en liquide ou par virement.</p>
+        <p className="text-white/75">Paiement en liquide ou par virement.</p>
       </Section>
 
-      {/* Bloc noir, entré et sorti par un fondu orange : les photos en noir et blanc y
-          ressortent. Le carrousel est un composant isolé, remplaçable (GalleryCarousel). */}
-      <Section id="galerie" aria-labelledby="galerie-titre" variant="ink">
-        <h2 id="galerie-titre">Galerie</h2>
-        {/* Messages en texte blanc hérité : les StatusMessage sont faits pour fond clair. */}
-        {gallery.status === "loading" && <p role="status">Chargement des photos…</p>}
+      {/* Blanc cassé : les photos en noir et blanc y gagnent en netteté. Le carrousel est un
+          composant isolé, remplaçable (GalleryCarousel). */}
+      <Section id="galerie" aria-labelledby="galerie-titre" roomy>
+        <Rule />
+        <h2 id="galerie-titre" className="title-section">
+          Galerie
+        </h2>
+        {gallery.status === "loading" && (
+          <p role="status" className="text-muted">
+            Chargement des photos…
+          </p>
+        )}
         {gallery.status === "error" && (
-          <p role="status">Les photos ne sont pas disponibles pour le moment.</p>
+          <p role="status" className="text-muted">
+            Les photos ne sont pas disponibles pour le moment.
+          </p>
         )}
         {gallery.status === "success" && <GalleryCarousel photos={gallery.data} />}
       </Section>
 
-      {/* pb-32 sur mobile : place pour le bouton collé en bas quand il revient à sa position. */}
-      <Section id="reserver" aria-labelledby="reserver-titre" className="pb-32">
-        <h2 id="reserver-titre">Comment réserver</h2>
+      {/* Noir, grands numéros orange. pb-32 sur mobile : place pour le bouton collé en bas
+          quand il revient à sa position. */}
+      <Section id="reserver" aria-labelledby="reserver-titre" variant="ink" roomy className="pb-36">
+        <Rule />
+        <h2 id="reserver-titre" className="title-section">
+          Comment réserver
+        </h2>
         {/* `list-none` retire la sémantique de liste dans Safari / VoiceOver : role="list" la rend. */}
-        <ol role="list" className="flex list-none flex-col gap-4">
+        <ol role="list" className="flex list-none flex-col gap-6">
           {BOOKING_STEPS.map((step, index) => (
-            <li key={step} className="flex items-center gap-4">
-              {/* Pastille orange, chiffre noir (6,59) : jamais d'orange en texte. */}
+            <li key={step} className="flex items-baseline gap-5">
               <span
                 aria-hidden="true"
-                className="title-display flex size-14 shrink-0 items-center justify-center rounded-pill border-2 border-ink bg-orange text-3xl text-ink"
+                className="title-display w-16 shrink-0 text-6xl leading-none text-orange"
               >
-                {index + 1}
+                {String(index + 1).padStart(2, "0")}
               </span>
-              <span className="text-lg">{step}</span>
+              <span className="text-xl">{step}</span>
             </li>
           ))}
         </ol>
-        <div className="flex flex-col items-start gap-1">
+        <div className="flex flex-col items-start gap-1 border-t border-white/20 pt-6">
           <p className="font-semibold">{LOCATION_NOTICE}</p>
           <InstagramLink />
         </div>
@@ -157,29 +180,27 @@ export function HomePage() {
 }
 
 /**
- * Grille tarifaire façon tableau de salon : « Coupe ········ 10 € », la durée en pastille
- * orange dessous. Les libellés « Prix : » et « Durée : » sont lus par les lecteurs d'écran,
- * cachés à l'œil (les points de conduite font ce travail visuellement).
+ * Grille tarifaire façon tableau de salon : « Coupe ········ 10 € », prix en grands chiffres
+ * orange, durée en dessous. Les libellés « Prix : » et « Durée : » sont lus par les lecteurs
+ * d'écran, cachés à l'œil (les points de conduite font ce travail visuellement).
  */
 function PriceList({ services }: { services: Service[] }) {
   return (
-    <ul role="list" className="flex list-none flex-col gap-8">
+    <ul role="list" className="flex list-none flex-col gap-10">
       {services.map((service) => (
         <li key={service.id} className="flex flex-col gap-2">
           <div className="flex items-end gap-3">
             {/* Interligne 1,1 : les jambages de l'italique ne sont pas rognés. */}
-            <h3 className="text-[2rem] leading-[1.1]">{service.name}</h3>
-            <span aria-hidden="true" className="leader-dots mb-2.5 min-w-6 flex-1 text-ink/60" />
-            <p className="title-display shrink-0 text-5xl leading-none">
+            <h3 className="text-[2rem] leading-[1.1] uppercase">{service.name}</h3>
+            <span aria-hidden="true" className="leader-dots mb-2.5 min-w-6 flex-1 text-white/40" />
+            <p className="title-display shrink-0 text-6xl leading-none text-orange">
               <span className="sr-only">Prix : </span>
               {service.priceLabel ?? "À confirmer"}
             </p>
           </div>
-          <p>
-            <span className="inline-flex items-center rounded-pill bg-orange px-3 py-1 text-sm font-semibold text-ink">
-              <span className="sr-only">Durée : </span>
-              {service.durationMin} min
-            </span>
+          <p className="text-white/75">
+            <span className="sr-only">Durée : </span>
+            {service.durationMin} min
           </p>
         </li>
       ))}

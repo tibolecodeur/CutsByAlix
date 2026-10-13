@@ -1,28 +1,54 @@
 import type { ComponentProps } from "react";
 import { cx } from "@/lib/cx";
 
-export type SectionVariant = "plain" | "ink";
+export type SectionVariant = "paper" | "ink";
 
 /**
- * Fond de chaque variante, conforme au tableau de contrastes de docs/DESIGN.md.
- * - `plain` : transparente, elle laisse voir le fond continu de la page (`bg-flow`, posé sur
- *   <main> par Layout). Aucune section claire ne peint son propre fond : pas de coupure.
- * - `ink` : bloc noir qui entre et sort par un fondu orange (`bg-dusk`). Les marges haute et
- *   basse s'allongent de la hauteur du fondu : le contenu commence toujours sur le noir plein.
- *   Texte blanc, liens rose pâle soulignés, focus blanc. Ni gris ni rose foncé.
+ * Fonds UNIS, en alternance blanc cassé / noir, transitions nettes (aucun dégradé) :
+ * - `paper` : blanc cassé #F7F7F5, texte noir (17,6), gris secondaire autorisé (6,2).
+ * - `ink` : noir #111111, texte blanc (18,9), liens blancs soulignés d'orange, focus blanc,
+ *   grands chiffres orange autorisés (6,59). Ni gris secondaire ni rose foncé.
+ * Contrastes : docs/DESIGN.md.
  */
 const VARIANT_CLASS: Record<SectionVariant, string> = {
-  plain: "py-section text-ink md:py-section-lg",
-  ink: "bg-dusk py-[calc(var(--dusk)+var(--spacing-section))] text-white [--focus-ring:var(--color-white)] [--link-color:var(--color-blush)] [--link-decoration:var(--color-blush)] md:py-[calc(var(--dusk)+var(--spacing-section-lg))]",
+  paper: "bg-paper text-ink",
+  ink: "bg-ink text-white [--focus-ring:var(--color-white)] [--link-color:var(--color-white)]",
 };
 
-type SectionProps = ComponentProps<"section"> & { variant?: SectionVariant };
+type SectionProps = ComponentProps<"section"> & {
+  variant?: SectionVariant;
+  /**
+   * Sections de la vitrine : beaucoup plus d'air, et colonne large sur desktop (64 rem au lieu
+   * de 48) pour la galerie et les grands titres. L'admin et les formulaires restent serrés.
+   */
+  roomy?: boolean;
+};
 
 /** Bande pleine largeur ; le contenu est centré et borné en largeur. */
-export function Section({ variant = "plain", className, children, ...props }: SectionProps) {
+export function Section({
+  variant = "paper",
+  roomy = false,
+  className,
+  children,
+  ...props
+}: SectionProps) {
   return (
-    <section className={cx(VARIANT_CLASS[variant], className)} {...props}>
-      <div className="mx-auto flex w-full max-w-content flex-col gap-6 px-safe">{children}</div>
+    <section
+      className={cx(
+        roomy ? "py-section-roomy md:py-section-roomy-lg" : "py-section md:py-section-lg",
+        VARIANT_CLASS[variant],
+        className,
+      )}
+      {...props}
+    >
+      <div
+        className={cx(
+          "mx-auto flex w-full flex-col gap-6 px-safe",
+          roomy ? "max-w-content-wide" : "max-w-content",
+        )}
+      >
+        {children}
+      </div>
     </section>
   );
 }

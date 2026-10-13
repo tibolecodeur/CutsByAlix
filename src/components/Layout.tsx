@@ -65,7 +65,7 @@ export function Layout() {
           "fixed inset-x-0 top-0 z-40 pt-[env(safe-area-inset-top)]",
           isOverHero
             ? "bg-transparent text-white [--focus-ring:var(--color-white)]"
-            : "border-b border-ink/10 bg-surface text-ink",
+            : "border-b border-ink/10 bg-paper text-ink",
         )}
       >
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between px-safe">
@@ -115,20 +115,17 @@ export function Layout() {
         id="contenu"
         tabIndex={-1}
         className={cx(
-          // Fond continu de la page (dégradé + halos orange, voir index.css) : un seul calque
-          // sous toutes les sections, qui sont transparentes.
-          "w-full flex-1 bg-flow",
+          "w-full flex-1",
           !isHome && "pt-[calc(var(--spacing-header)+env(safe-area-inset-top))]",
         )}
       >
         <Outlet />
       </main>
 
-      {/* Bloc noir qui entre par un fondu orange (bg-dusk-top), depuis le blanc par lequel finit
-          le fond continu. Texte blanc, liens rose pâle soulignés, focus blanc ; le contenu
-          commence après le fondu. */}
-      <footer className="bg-dusk-top text-white [--focus-ring:var(--color-white)] [--link-color:var(--color-blush)] [--link-decoration:var(--color-blush)]">
-        <div className="mx-auto flex max-w-content flex-col gap-4 px-safe pt-[calc(var(--dusk)+2.5rem)] pb-[max(2.5rem,env(safe-area-inset-bottom))]">
+      {/* Pied de page en blanc cassé, séparé par un filet net : il suit la dernière section
+          noire de l'accueil, et se distingue des sections claires des autres pages. */}
+      <footer className="border-t border-ink/15 bg-paper text-ink">
+        <div className="mx-auto flex max-w-content flex-col gap-4 px-safe pt-12 pb-[max(3rem,env(safe-area-inset-bottom))]">
           <p className="title-display text-3xl uppercase">CutsByAlix</p>
           <nav aria-label="Informations légales">
             <ul className="flex flex-col sm:flex-row sm:gap-x-6">

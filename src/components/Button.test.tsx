@@ -9,14 +9,14 @@ describe("Button", () => {
     expect(screen.getByRole("button", { name: "Envoyer" })).toHaveAttribute("type", "button");
   });
 
-  it("accepte type « submit » et la variante principale rose pâle à texte et contour noirs", () => {
+  it("accepte type « submit » et la variante principale orange à texte noir", () => {
     render(<Button type="submit">Confirmer</Button>);
     const bouton = screen.getByRole("button", { name: "Confirmer" });
     expect(bouton).toHaveAttribute("type", "submit");
     expect(bouton).toHaveClass(
-      "bg-blush",
+      "bg-orange",
       "text-ink",
-      "border-ink",
+      "border-orange",
       "rounded-pill",
       "min-h-button",
     );
@@ -26,7 +26,7 @@ describe("Button", () => {
     render(<Button variant="secondary">Annuler</Button>);
     const bouton = screen.getByRole("button", { name: "Annuler" });
     expect(bouton).toHaveClass("border-2");
-    expect(bouton).not.toHaveClass("bg-blush");
+    expect(bouton).not.toHaveClass("bg-orange");
   });
 });
 
@@ -41,6 +41,6 @@ describe("ButtonLink", () => {
     );
     const lien = screen.getByRole("link", { name: "Réserver" });
     expect(lien).toHaveAttribute("href", "/reserver");
-    expect(lien).toHaveClass("bg-blush", "w-full");
+    expect(lien).toHaveClass("bg-orange", "w-full");
   });
 });

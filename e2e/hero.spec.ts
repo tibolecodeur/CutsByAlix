@@ -68,10 +68,16 @@ test.describe("médias du hero", () => {
 
   test("aucune requête vers un autre domaine", async ({ page, baseURL }) => {
     const origin = new URL(baseURL!).origin;
+    // Notre back-end Supabase n'est pas un tiers : l'accueil y lit prestations et galerie
+    // (appels simulés par fixtures.ts, domaine factice de playwright.config.ts). Tout autre
+    // domaine en est un.
+    const backend = "https://supabase-e2e.invalid";
     const external: string[] = [];
     page.on("request", (request) => {
       const url = request.url();
-      if (!url.startsWith(origin) && !/^(data|blob):/.test(url)) external.push(url);
+      if (!url.startsWith(origin) && !url.startsWith(backend) && !/^(data|blob):/.test(url)) {
+        external.push(url);
+      }
     });
 
     await page.goto("/");

@@ -95,6 +95,13 @@ réserver, annuler, admin), sur iPhone **et** Android.
 - [ ] La saisie automatique (prénom, nom, téléphone, email) propose les bonnes valeurs.
 - [ ] Fermer le clavier ne laisse pas un espace vide ni une page décalée.
 
+### 2.3 bis Police des titres (Archivo variable)
+
+- [ ] Logo « CUTS BY ALIX » et grands titres (« PRESTATIONS », « GALERIE ») : condensés,
+      extra-gras, **lettres qui ne se chevauchent pas**. Le WebKit de Playwright sous Windows
+      n'applique pas les axes des polices variables (lettres larges qui se chevauchent) : seul
+      un vrai iPhone fait foi (consigne 27).
+
 ### 2.4 Zoom involontaire
 
 - [ ] Toucher chaque champ de formulaire : **Safari ne zoome pas** (police des champs ≥ 16 px).

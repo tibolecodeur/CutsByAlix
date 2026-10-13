@@ -16,13 +16,15 @@
  */
 @theme {
   --color-*: initial;
-  --color-surface: #ffffff; /* fond principal */
-  --color-blush: #ffd9e6; /* fond continu (dégradé), boutons principaux, accent sur bloc noir */
-  --color-ink: #111111; /* texte, blocs sombres, texte et contour des boutons */
+  --color-paper: #f7f7f5; /* fond des sections claires (blanc cassé froid) */
+  --color-surface: #ffffff; /* champs, cartes et encadrés posés sur le blanc cassé */
+  --color-ink: #111111; /* texte, sections noires, contours */
   --color-muted: #5c5c5c; /* texte secondaire, sur fond clair UNIQUEMENT */
-  --color-orange: #ff6a1a; /* duotone, halos du fond, fondus, pastilles ; JAMAIS en texte */
-  --color-accent: #c2185b; /* soulignés des liens, filets ; en texte : sur blanc pur seulement */
-  --color-white: #ffffff; /* texte sur bloc noir */
+  --color-orange: #ff6a1a; /* ACCENT : boutons principaux (texte noir), grands chiffres sur
+                              noir, filets fins. JAMAIS en texte sur fond clair (2,7). */
+  --color-blush: #ffd9e6; /* très rare : jamais en aplat de section */
+  --color-accent: #c2185b; /* barre des messages d'erreur, texte des encadrés d'erreur */
+  --color-white: #ffffff; /* texte sur section noire */
 
   --font-*: initial;
   --font-sans: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
@@ -36,8 +38,11 @@
   --spacing-gutter: 1rem; /* marge latérale minimale */
   --spacing-section: 3.5rem; /* espacement vertical des sections, mobile */
   --spacing-section-lg: 5rem; /* idem, à partir de md */
+  --spacing-section-roomy: 6rem; /* sections aérées de la vitrine (accueil), mobile */
+  --spacing-section-roomy-lg: 9rem; /* idem, à partir de md */
 
   --container-content: 48rem; /* largeur maximale du contenu */
+  --container-content-wide: 64rem; /* colonne large des sections de la vitrine (desktop) */
 }
 
 /* Titres et logo : très condensé, extra-gras, italique. */
@@ -56,88 +61,29 @@
 }
 
 /*
- * Lien dans le texte : texte noir en semi-gras, souligné épais rose foncé. Le texte reste noir
- * parce que le fond est un dégradé (rose pâle, halos orange) : le rose foncé n'y tient pas
- * l'AA partout (4,56 sur rose pâle pur, moins dès qu'un halo s'y ajoute), le noir oui (6,59
- * au pire, sur orange pur). Le souligné, décoratif, porte la couleur. Sur bloc noir, les
- * variables posées par Section et le pied de page passent le tout en rose pâle.
+ * Lien dans le texte : couleur du texte courant (noir sur clair, blanc sur noir), semi-gras,
+ * souligné fin orange. L'orange y est un filet décoratif, jamais la couleur du texte (2,7 sur
+ * le blanc cassé, sous l'AA). Les sections et le pied de page règlent --link-color.
  */
 @utility link {
   color: var(--link-color, var(--color-ink));
   font-weight: var(--link-weight, 600);
   text-decoration-line: underline;
-  text-decoration-color: var(--link-decoration, var(--color-accent));
+  text-decoration-color: var(--color-orange);
   text-decoration-thickness: 2px;
-  text-underline-offset: 0.25em;
+  text-underline-offset: 0.3em;
 }
 
 /*
- * Fond continu de toutes les pages (posé sur <main>) : un SEUL calque sous toutes les
- * sections, qui sont transparentes. Plus de coupure nette d'une section à l'autre.
- * - Base : dégradé vertical rose pâle / blanc, en fondu, réparti sur toute la hauteur.
- * - Halos orange alternés à droite et à gauche, à 10 % d'opacité au plus : l'orange reste
- *   présent tout le long de la page sans jamais passer sous le texte à pleine force.
- *   Contrastes au pire (cœur d'un halo sur rose pâle) : voir docs/DESIGN.md.
- * Fixe : ni animation, ni `background-attachment: fixed` (coûteux et ignoré par iOS).
+ * Grand titre de section : condensé italique extra-gras, en capitales, très grand. Une seule
+ * échelle forte pour toute la page (le corps reste sobre). `text-wrap: balance` évite un mot
+ * orphelin sur la dernière ligne.
  */
-@utility bg-flow {
-  background-color: var(--color-surface);
-  background-image:
-    radial-gradient(32rem 26rem at 100% 8%, rgb(255 106 26 / 0.1), transparent 70%),
-    radial-gradient(30rem 26rem at 0% 36%, rgb(255 106 26 / 0.1), transparent 70%),
-    radial-gradient(32rem 26rem at 100% 64%, rgb(255 106 26 / 0.1), transparent 70%),
-    radial-gradient(30rem 26rem at 0% 92%, rgb(255 106 26 / 0.1), transparent 70%),
-    linear-gradient(
-      to bottom,
-      var(--color-blush) 0%,
-      var(--color-surface) 16%,
-      var(--color-blush) 40%,
-      var(--color-surface) 62%,
-      var(--color-blush) 84%,
-      var(--color-surface) 100%
-    );
-}
-
-/*
- * « Crépuscule » : un bloc noir entre et sort du fond clair par un fondu qui reprend la rampe
- * du duotone du hero (clair, orange, noir). Le fondu occupe la marge haute et basse du bloc,
- * où il n'y a jamais de texte : le contenu commence sur le noir plein.
- */
-@utility bg-dusk {
-  --dusk: 6rem;
-  background-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    rgb(255 106 26 / 0.85) calc(var(--dusk) * 0.5),
-    var(--color-ink) var(--dusk),
-    var(--color-ink) calc(100% - var(--dusk)),
-    rgb(255 106 26 / 0.85) calc(100% - var(--dusk) * 0.5),
-    transparent 100%
-  );
-}
-
-/* Même fondu, en haut seulement (pied de page : le bloc noir finit la page). */
-@utility bg-dusk-top {
-  --dusk: 6rem;
-  background-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    rgb(255 106 26 / 0.85) calc(var(--dusk) * 0.5),
-    var(--color-ink) var(--dusk)
-  );
-}
-
-/*
- * Rampe inverse, au pied du hero : du voile sombre vers l'orange puis le rose pâle par
- * lequel commence le fond continu. Le hero se fond dans la page au lieu de s'y arrêter.
- */
-@utility bg-dawn {
-  background-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    rgb(255 106 26 / 0.85) 55%,
-    var(--color-blush) 100%
-  );
+@utility title-section {
+  font-size: clamp(3.25rem, 15vw, 7rem);
+  line-height: 0.9;
+  text-transform: uppercase;
+  text-wrap: balance;
 }
 
 /*
@@ -153,9 +99,8 @@
 }
 
 /*
- * Message d'erreur d'un champ, posé sur le fond continu : texte noir en gras (13,49 au pire),
- * barre rose foncé à gauche. Le rose foncé en texte tomberait à 4,19 sous un halo orange ;
- * la barre garde le code couleur, le texte reste lisible.
+ * Message d'erreur d'un champ : texte noir en gras (17,6 sur le blanc cassé), barre rose foncé
+ * à gauche. L'erreur ne repose pas sur la couleur seule, et le rose reste un filet (rare).
  */
 @utility field-error {
   color: var(--color-ink);
@@ -190,10 +135,10 @@
   }
 
   body {
-    background-color: var(--color-surface);
+    background-color: var(--color-paper);
     color: var(--color-ink);
     font-family: var(--font-sans);
-    line-height: 1.5;
+    line-height: 1.6;
   }
 
   h1,
@@ -209,11 +154,14 @@
     -webkit-hyphens: auto;
     hyphens: auto;
   }
+  /* Échelle forte et simple : grand titre de page en capitales, sous-titres nets. */
   h1 {
-    font-size: 3rem;
+    font-size: clamp(3.25rem, 14vw, 6.5rem);
+    line-height: 0.9;
+    text-transform: uppercase;
   }
   h2 {
-    font-size: 2.5rem;
+    font-size: clamp(2.25rem, 9vw, 3.5rem);
   }
   h3 {
     font-size: 1.75rem;
