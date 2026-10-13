@@ -64,13 +64,11 @@ beforeEach(() => {
   vi.mocked(gallery.getAdminGallery).mockReset().mockResolvedValue(ITEMS);
   vi.mocked(gallery.addGalleryItem).mockReset().mockResolvedValue(ITEMS[0]!);
   vi.mocked(gallery.setGalleryItemPublished).mockReset().mockResolvedValue();
-  vi.mocked(gallery.hideGalleryItem)
-    .mockReset()
-    .mockResolvedValue({
-      imagePath: "neuf.webp",
-      imageUrl: "https://example.test/neuf",
-      linksRevoked: true,
-    });
+  vi.mocked(gallery.hideGalleryItem).mockReset().mockResolvedValue({
+    imagePath: "neuf.webp",
+    imageUrl: "https://example.test/neuf",
+    linksRevoked: true,
+  });
   vi.mocked(gallery.updateGalleryItemAltText).mockReset().mockResolvedValue();
   vi.mocked(gallery.moveGalleryItem).mockReset().mockResolvedValue(true);
   vi.mocked(gallery.deleteGalleryItem).mockReset().mockResolvedValue();
@@ -378,8 +376,15 @@ describe("AdminGalleryPage : import des photos de la vitrine", () => {
   beforeEach(() => {
     vi.mocked(gallery.getAdminGallery).mockResolvedValueOnce([]);
     // Fichiers de /media/galerie/ : quelques octets suffisent, le traitement est simulé.
+    // Réponse minimale plutôt que `new Response(blob)` : sous Node 22 (CI), la Response native
+    // refuse le Blob de jsdom (pas de `.stream()`) ; Node 24 l'accepte. Seuls `ok` et `blob()`
+    // sont lus par showcaseImport.ts.
     vi.spyOn(globalThis, "fetch").mockImplementation(
-      async () => new Response(new Blob([new Uint8Array(8)], { type: "image/webp" })),
+      async () =>
+        ({
+          ok: true,
+          blob: async () => new Blob([new Uint8Array(8)], { type: "image/webp" }),
+        }) as Response,
     );
   });
 
