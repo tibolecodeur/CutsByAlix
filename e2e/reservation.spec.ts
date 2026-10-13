@@ -148,7 +148,8 @@ async function allerAuRecap(page: Page) {
   await continuer(page);
   await remplirCoordonnees(page);
   await expect(page.getByRole("heading", { level: 2, name: "Vérifie et confirme" })).toBeVisible();
-  await expect(page.getByText(/Paiement en liquide ou par virement./)).toBeVisible();
+  // Aucune mention de paiement sur /reserver (consigne 27) : elle reste sur l'accueil.
+  await expect(page.getByText(/[Pp]aiement/)).toHaveCount(0);
 }
 
 async function reserverJusquALaConfirmation(page: Page) {
@@ -159,7 +160,7 @@ async function reserverJusquALaConfirmation(page: Page) {
   await allerAuRecap(page);
   await page.getByRole("button", { name: "Confirmer la réservation" }).click();
   await expect(page.getByRole("heading", { level: 2, name: "C'est réservé !" })).toBeVisible();
-  await expect(page.getByText("En liquide ou par virement")).toBeVisible();
+  await expect(page.getByText(/[Pp]aiement|virement/)).toHaveCount(0);
 }
 
 test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation sans adresse", async ({
@@ -226,9 +227,9 @@ test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation 
   // Étape 4 : récapitulatif, puis envoi.
   await expect(page.getByRole("heading", { level: 2, name: "Vérifie et confirme" })).toBeFocused();
   await expect(valeurDuRecap(page, "Lieu")).toHaveText("Saint-Christophe-du-Bois");
-  // Adresse : annoncée sur Instagram, sans lien qui ferait quitter le parcours avant d'envoyer.
+  // Lieu exact : annoncé sur Instagram, sans lien qui ferait quitter le parcours avant d'envoyer.
   await expect(
-    page.getByText(/L'adresse exacte n'est pas affichée sur le site : une fois réservé/),
+    page.getByText("Lieu exact communiqué par DM sur Instagram, sur demande."),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: /Instagram/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Confirmer la réservation" }).click();
@@ -243,7 +244,7 @@ test("parcours complet : créneau réel, lieu du créneau envoyé, confirmation 
   await expect(page.getByText(/pas d'e-mail de confirmation/)).toBeVisible();
   await expect(page.locator("#cancel-link-url")).toHaveText(new RegExp(`/annuler#${TOKEN}$`));
   await expect(
-    page.getByText(/écris à Alix en message privé sur Instagram pour la recevoir/),
+    page.getByText("Lieu exact communiqué par DM sur Instagram, sur demande."),
   ).toBeVisible();
   const instagram = page.getByRole("link", { name: /@CutsByAlix sur Instagram/ });
   await expect(instagram).toHaveAttribute("href", "https://www.instagram.com/cutsbyalix/");

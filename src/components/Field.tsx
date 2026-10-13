@@ -63,7 +63,7 @@ export function Field({ id, label, hint, error, describedBy, suffix, ...inputPro
       )}
       {error && (
         // Rose foncé en gras : 5,87 sur blanc, 4,56 sur rose pâle (le gras est alors requis).
-        <p id={errorId} className="text-sm font-bold text-accent">
+        <p id={errorId} className="field-error text-sm">
           {error}
         </p>
       )}

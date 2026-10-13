@@ -38,7 +38,7 @@ export function AdminBookingsPage() {
   return (
     <>
       <PageMeta title="Rendez-vous" description="Rendez-vous des clients." />
-      <Section variant="blush">
+      <Section>
         <h1>Rendez-vous</h1>
         {/* Deux boutons à bascule (aria-pressed) : lus « bouton, enfoncé » pour l'onglet actif. */}
         <div className="flex gap-3" role="group" aria-label="Période">

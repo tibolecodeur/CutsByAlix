@@ -29,13 +29,13 @@ export function AdminGalleryPage() {
   return (
     <>
       <PageMeta title="Galerie" description="Gestion des photos de la galerie." />
-      <Section variant="blush">
+      <Section>
         <h1>Galerie</h1>
       </Section>
       <Section aria-labelledby="add-photo">
         <AdminGalleryUpload onAdded={items.reload} />
       </Section>
-      <Section variant="blush" aria-labelledby="photos-title">
+      <Section aria-labelledby="photos-title">
         <h2 id="photos-title">Photos</h2>
         <p className="text-sm text-muted">Sur le site, les photos s'affichent en noir et blanc.</p>
         {items.status === "loading" && <LoadingMessage>Chargement des photos…</LoadingMessage>}

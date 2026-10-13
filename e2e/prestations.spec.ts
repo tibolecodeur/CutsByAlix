@@ -26,7 +26,11 @@ test("/reserver affiche les prestations lues dans Supabase, avec leur prix", asy
 
   await expect(page.getByRole("radio", { name: /^Coupe\s*60 min · 10 €/ })).toBeVisible();
   await expect(page.getByRole("radio", { name: /^Coupe \+ barbe\s*70 min · 12 €/ })).toBeVisible();
-  await expect(page.getByText("Paiement en liquide ou par virement.")).toBeVisible();
+  // Seule mention pratique de /reserver : le lieu, plus aucune mention de paiement (consigne 27).
+  await expect(
+    page.getByText("Lieu exact communiqué par DM sur Instagram, sur demande."),
+  ).toBeVisible();
+  await expect(page.getByText(/[Pp]aiement/)).toHaveCount(0);
 
   // Lecture minimale : prestations actives, colonnes utiles seulement, triées.
   const url = new URL((await requete).url());

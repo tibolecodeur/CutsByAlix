@@ -7,7 +7,12 @@ import { INSTAGRAM } from "@/lib/contact";
  * dans le fragment (#), que les navigateurs n'envoient jamais, mais on ne transmet rien du tout.
  * Lien seul sur sa ligne, en `min-h-tap` : zone tactile de 44 px.
  */
-export function InstagramLink() {
+export function InstagramLink({
+  label = `Écrire à @${INSTAGRAM.handle} sur Instagram`,
+}: {
+  /** Texte visible du lien (ex. « Voir les coupes sur Instagram » dans la galerie vide). */
+  label?: string;
+}) {
   return (
     <a
       href={INSTAGRAM.url}
@@ -18,8 +23,7 @@ export function InstagramLink() {
       {/* Un seul enfant : dans un inline-flex, chaque enfant devient un élément flex et l'espace
           au bord de l'un d'eux disparaît (le lecteur d'écran lirait « Instagram(s'ouvre »). */}
       <span>
-        Écrire à @{INSTAGRAM.handle} sur Instagram{" "}
-        <span className="sr-only">(s'ouvre dans un nouvel onglet)</span>
+        {label} <span className="sr-only">(s'ouvre dans un nouvel onglet)</span>
       </span>
     </a>
   );

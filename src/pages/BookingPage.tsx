@@ -252,9 +252,9 @@ export function BookingPage() {
     <>
       <PageMeta
         title="Réserver"
-        description="Réserve ton créneau chez CutsByAlix en une minute : prestation, jour, créneau libre. Paiement sur place."
+        description="Réserve ton créneau chez CutsByAlix en une minute : prestation, jour, créneau libre."
       />
-      <Section variant="blush">
+      <Section>
         <h1>Réserver</h1>
         <p className="text-lg">Réserve ta coupe en une minute.</p>
       </Section>

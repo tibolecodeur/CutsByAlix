@@ -296,7 +296,7 @@ export function AdminGalleryCard({ item, position, total, focusMove, onChange }:
             La personne photographiée est d'accord pour la publication.
           </Choice>
           {consentError && (
-            <p id={`consent-error-${item.id}`} className="text-sm font-bold text-accent">
+            <p id={`consent-error-${item.id}`} className="field-error text-sm">
               {consentError}
             </p>
           )}

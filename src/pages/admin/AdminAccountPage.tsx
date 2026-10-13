@@ -25,14 +25,14 @@ export function AdminAccountPage() {
   return (
     <>
       <PageMeta title="Mon compte" description="Mot de passe et déconnexion." />
-      <Section variant="blush">
+      <Section>
         <h1>Mon compte</h1>
         <p className="break-all">Connecté avec {session.email}</p>
       </Section>
       <Section>
         <PasswordForm email={session.email} />
       </Section>
-      <Section variant="blush">
+      <Section>
         <h2>Se déconnecter</h2>
         <p>
           Tu restes connectée sur ce téléphone, même après avoir fermé le navigateur. Déconnecte-toi

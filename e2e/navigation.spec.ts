@@ -107,15 +107,18 @@ test("les ancres du menu fonctionnent depuis une autre page", async ({ page }) =
 
 test("le pied de page mène aux pages légales", async ({ page }) => {
   await page.goto("/");
+  // Les mentions légales renvoient aussi vers la politique de confidentialité : on vise le
+  // lien du pied de page.
+  const footer = page.getByRole("navigation", { name: "Informations légales" });
 
-  await page.getByRole("link", { name: "Mentions légales" }).click();
+  await footer.getByRole("link", { name: "Mentions légales" }).click();
   await expect(page).toHaveURL("/mentions-legales");
-  await expect(page.getByRole("link", { name: "Mentions légales" })).toHaveAttribute(
+  await expect(footer.getByRole("link", { name: "Mentions légales" })).toHaveAttribute(
     "aria-current",
     "page",
   );
 
-  await page.getByRole("link", { name: "Politique de confidentialité" }).click();
+  await footer.getByRole("link", { name: "Politique de confidentialité" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Politique de confidentialité");
 });
 

@@ -74,7 +74,7 @@ export function AdminLoginPage() {
     <main id="contenu" tabIndex={-1} className="min-h-dvh pt-[env(safe-area-inset-top)]">
       <AdminHead />
       <PageMeta title="Espace admin" description="Connexion à l'espace d'administration." />
-      <Section variant="blush">
+      <Section>
         <h1>Espace admin</h1>
       </Section>
       <Section>

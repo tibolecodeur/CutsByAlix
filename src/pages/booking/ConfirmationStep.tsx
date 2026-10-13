@@ -5,6 +5,7 @@ import { InstagramLink } from "@/components/InstagramLink";
 import type { BookingReceipt } from "@/features/booking/data";
 import { isWithinCancelNotice } from "@/features/booking/notice";
 import { BOOKING_RULES } from "@/lib/bookingRules";
+import { LOCATION_NOTICE } from "@/lib/contact";
 import { formatLongDay, formatTime } from "@/lib/dates";
 import { BookingSummary } from "@/pages/booking/BookingSummary";
 import { StepFrame } from "@/pages/booking/StepFrame";
@@ -16,7 +17,8 @@ type ConfirmationStepProps = {
 
 /**
  * Réservation confirmée : récap (date, heure de Paris, prestation, localité), contact Instagram
- * pour recevoir l'adresse (jamais stockée, ADR 0008) et lien personnel d'annulation. Le jeton
+ * pour obtenir le lieu exact (adresse jamais stockée, ADR 0008) et lien personnel
+ * d'annulation. Aucune mention de paiement sur /reserver (consigne 27). Le jeton
  * n'est affiché qu'ici, jamais écrit dans la console ni ajouté à un lien sortant.
  */
 export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProps) {
@@ -35,7 +37,6 @@ export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProp
           ["Date", formatLongDay(receipt.startsAt)],
           ["Heure", `${formatTime(receipt.startsAt)} – ${formatTime(receipt.endsAt)}`],
           ["Lieu", receipt.locationLabel],
-          ["Paiement", "En liquide ou par virement"],
         ]}
       />
 
@@ -75,11 +76,10 @@ export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProp
       {/* Après le lien d'annulation : le client l'a sauvegardé avant de partir sur Instagram
           (sur iOS, l'app peut décharger cet onglet et le récapitulatif n'existe qu'ici). */}
       <section aria-labelledby="address-title" className="flex flex-col gap-3">
-        <h3 id="address-title">L'adresse</h3>
+        <h3 id="address-title">Le lieu exact</h3>
+        <p>{LOCATION_NOTICE}</p>
         <p>
-          L'adresse exacte n'est pas affichée sur le site : écris à Alix en message privé sur
-          Instagram pour la recevoir. Donne-lui ton prénom et l'heure du rendez-vous, n'envoie pas
-          ton lien d'annulation.
+          Donne à Alix ton prénom et l'heure du rendez-vous, n'envoie pas ton lien d'annulation.
         </p>
         <p>
           <InstagramLink />

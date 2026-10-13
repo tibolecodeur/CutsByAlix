@@ -11,7 +11,7 @@ export function NotFoundPage() {
   return (
     <>
       <PageMeta title="Page introuvable" description="Cette page n'existe pas." noindex />
-      <Section variant="blush">
+      <Section>
         <h1>Page introuvable</h1>
       </Section>
       <Section>

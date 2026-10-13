@@ -98,7 +98,7 @@ export function StepActions({
 export function GroupError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
-    <p id={id} className="text-sm font-bold text-accent">
+    <p id={id} className="field-error text-sm">
       {message}
     </p>
   );

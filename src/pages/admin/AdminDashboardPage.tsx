@@ -25,7 +25,7 @@ export function AdminDashboardPage() {
   return (
     <>
       <PageMeta title="Tableau de bord" description="Rendez-vous du jour et à venir." />
-      <Section variant="blush">
+      <Section>
         <h1>Tableau de bord</h1>
         <p className="first-letter:uppercase">{formatDayKey(today)}</p>
         <p>

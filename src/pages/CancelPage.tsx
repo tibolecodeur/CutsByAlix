@@ -44,7 +44,7 @@ export function CancelPage() {
         noindex
         noReferrer
       />
-      <Section variant="blush">
+      <Section>
         <h1>Annuler ma réservation</h1>
       </Section>
       <Section>

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as bookingData from "@/features/booking/data";
 import { calendarDays } from "@/features/booking/availability";
 import { firstBookableDay } from "@/features/booking/notice";
+import { LOCATION_NOTICE } from "@/lib/contact";
 import { formatDayKey } from "@/lib/dates";
 import { BookingPage } from "@/pages/BookingPage";
 
@@ -335,18 +336,16 @@ describe("BookingPage : envoi de la réservation", () => {
     renderPage();
     await goToSummary(user);
 
-    // Récapitulatif : l'adresse sera donnée sur Instagram, sans lien qui ferait quitter le parcours.
-    expect(
-      screen.getByText(/L'adresse exacte n'est pas affichée sur le site : une fois réservé/),
-    ).toBeVisible();
+    // Récapitulatif : le lieu exact sera donné sur Instagram, sans lien qui ferait quitter le
+    // parcours. Aucune mention de paiement sur /reserver (consigne 27).
+    expect(screen.getByText(LOCATION_NOTICE)).toBeVisible();
     expect(screen.queryByRole("link", { name: /Instagram/ })).not.toBeInTheDocument();
-    // Mode de paiement annoncé avant de confirmer, sans coordonnées bancaires.
-    expect(screen.getByText(/Paiement en liquide ou par virement\./)).toBeVisible();
+    expect(screen.queryByText(/paiement|virement/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Confirmer la réservation" }));
 
     expect(await screen.findByRole("heading", { name: "C'est réservé !" })).toBeVisible();
-    expect(screen.getByText("En liquide ou par virement")).toBeVisible();
+    expect(screen.queryByText(/paiement|virement/i)).not.toBeInTheDocument();
     expect(screen.getByText("mardi 15 janvier")).toBeVisible();
     expect(screen.getByText("14:00 – 15:00")).toBeVisible();
     expect(screen.getByText("Saint-Christophe-du-Bois")).toBeVisible();
@@ -354,14 +353,12 @@ describe("BookingPage : envoi de la réservation", () => {
     expect(screen.getByText(new RegExp(`/annuler#${TOKEN}`))).toBeVisible();
     expect(screen.queryByText("Adresse")).not.toBeInTheDocument();
 
-    // Adresse : message et lien Instagram (nouvel onglet, sans opener ni referrer).
-    expect(
-      screen.getByText(/écris à Alix en message privé sur Instagram pour la recevoir/),
-    ).toBeVisible();
-    // Le lien d'annulation vient avant l'adresse, et ne doit pas être envoyé à Alix.
+    // Lieu exact : message et lien Instagram (nouvel onglet, sans opener ni referrer).
+    expect(screen.getByText(LOCATION_NOTICE)).toBeVisible();
+    // Le lien d'annulation vient avant le lieu, et ne doit pas être envoyé à Alix.
     expect(screen.getByText(/n'envoie pas ton lien d'annulation/)).toBeVisible();
     const titles = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
-    expect(titles.indexOf("Ton lien d'annulation")).toBeLessThan(titles.indexOf("L'adresse"));
+    expect(titles.indexOf("Ton lien d'annulation")).toBeLessThan(titles.indexOf("Le lieu exact"));
     const instagram = screen.getByRole("link", { name: /@CutsByAlix sur Instagram/ });
     expect(instagram).toHaveAttribute("href", "https://www.instagram.com/cutsbyalix/");
     expect(instagram).toHaveAttribute("target", "_blank");
