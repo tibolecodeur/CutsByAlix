@@ -110,21 +110,16 @@ test("les ancres du menu fonctionnent depuis une autre page", async ({ page }) =
   await expect(page.getByRole("heading", { level: 1, name: "Réserver" })).toBeInViewport();
 });
 
-test("le pied de page mène aux pages légales", async ({ page }) => {
+test("le pied de page n'affiche pas encore les pages légales (ajout reporté)", async ({ page }) => {
   await page.goto("/");
-  // Les mentions légales renvoient aussi vers la politique de confidentialité : on vise le
-  // lien du pied de page.
-  const footer = page.getByRole("navigation", { name: "Informations légales" });
+  // Les liens sont retirés volontairement : les pages restent accessibles par leur adresse.
+  await expect(page.getByRole("navigation", { name: "Informations légales" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Mentions légales" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Politique de confidentialité" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Conditions de réservation" })).toHaveCount(0);
 
-  await footer.getByRole("link", { name: "Mentions légales" }).click();
-  await expect(page).toHaveURL("/mentions-legales");
-  await expect(footer.getByRole("link", { name: "Mentions légales" })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
-
-  await footer.getByRole("link", { name: "Politique de confidentialité" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Politique de confidentialité");
+  await page.goto("/mentions-legales");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mentions légales");
 });
 
 test("le lien d'évitement mène au contenu", async ({ page, browserName }) => {
