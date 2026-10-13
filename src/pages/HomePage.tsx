@@ -211,7 +211,7 @@ function PriceBoard({ services }: { services: Service[] }) {
               {/* Interligne 1,1 : les jambages de l'italique ne sont pas rognés. */}
               <h3 className="text-[1.75rem] leading-[1.1] uppercase">{service.name}</h3>
               <span aria-hidden="true" className="leader-dots mb-2 min-w-6 flex-1 text-ink/30" />
-              <p className="title-display shrink-0 text-5xl leading-none text-accent">
+              <p className="title-display shrink-0 text-3xl leading-none text-accent md:text-5xl">
                 <span className="sr-only">Prix : </span>
                 {service.priceLabel ?? "À confirmer"}
               </p>
