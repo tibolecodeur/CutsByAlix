@@ -1,6 +1,6 @@
 import { ButtonLink } from "@/components/Button";
 import { PageMeta } from "@/components/PageMeta";
-import { Section } from "@/components/Section";
+import { PageHeader, Section } from "@/components/Section";
 
 /**
  * URL inconnue. Cloudflare Pages sert `index.html` avec un statut 200 (repli SPA, pas de
@@ -11,10 +11,8 @@ export function NotFoundPage() {
   return (
     <>
       <PageMeta title="Page introuvable" description="Cette page n'existe pas." noindex />
-      <Section variant="blush">
-        <h1>Page introuvable</h1>
-      </Section>
-      <Section>
+      <PageHeader title="Page introuvable" lead="Cette page n'existe pas ou n'existe plus." />
+      <Section className="pt-0 md:pt-0">
         <p>
           <ButtonLink to="/" variant="secondary">
             Retour à l'accueil

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { PageMeta } from "@/components/PageMeta";
-import { Section } from "@/components/Section";
+import { PageHeader, Section } from "@/components/Section";
 import type { AvailableSlot, BookingReceipt } from "@/features/booking/data";
 import { clearReceipt, loadReceipt, saveReceipt } from "@/features/booking/receiptStorage";
 import { contactFingerprint, type ContactForm } from "@/features/booking/validation";
@@ -252,13 +252,11 @@ export function BookingPage() {
     <>
       <PageMeta
         title="Réserver"
-        description="Réserve ton créneau chez CutsByAlix en une minute : prestation, jour, créneau libre. Paiement sur place."
+        description="Réserve ton créneau chez CutsByAlix en une minute : prestation, jour, créneau libre."
       />
-      <Section variant="blush">
-        <h1>Réserver</h1>
-        <p className="text-lg">Réserve ta coupe en une minute.</p>
-      </Section>
-      <Section>
+      <PageHeader title="Réserver" lead="Réserve ta coupe en une minute." />
+      {/* Même fond que l'en-tête de page : pas de double marge entre le titre et l'étape. */}
+      <Section className="pt-0 md:pt-0">
         {/* `key` : un cadre neuf à chaque étape (voir StepFrame, gestion du focus). */}
         <div key={view} className="w-full">
           {renderStep()}

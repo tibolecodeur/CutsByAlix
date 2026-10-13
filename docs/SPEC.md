@@ -45,7 +45,7 @@ disponibilité ; le client ne choisit pas, il voit la localité à côté de cha
 
 - Accueil : présentation, photo, CTA « Réserver », adresse / zone, contact (Instagram, téléphone).
 - Prestations et tarifs (affichage). Paiement **en liquide ou par virement**
-  (mention « Paiement en liquide ou par virement » au récapitulatif et à la confirmation ; aucune
+  (mention « Paiement en liquide ou par virement » sur l'accueil uniquement : depuis la consigne 27, plus aucune mention de paiement sur /reserver, récapitulatif et confirmation compris ; aucune
   coordonnée bancaire sur le site, Alix les donne en message privé sur Instagram ; aucun paiement
   en ligne).
 - Galerie des créations (photos + légende courte).
@@ -53,7 +53,7 @@ disponibilité ; le client ne choisit pas, il voit la localité à côté de cha
   → consentement RGPD → confirmation.
 - Page de confirmation : récap, lien d'annulation personnel, bouton « Ajouter à mon calendrier » (.ics).
 - Annulation via le lien personnel (`/annuler#<jeton>`, le jeton est dans le fragment : jamais envoyé au serveur), possible jusqu'à 24 h avant le RDV.
-- Pages : mentions légales, politique de confidentialité.
+- Pages : conditions de réservation, mentions légales, politique de confidentialité.
 
 ### Admin (`/admin`, connexion email + mot de passe)
 

@@ -56,7 +56,7 @@ export function AdminBookingDetailPage() {
   return (
     <>
       <PageMeta title="Détail du rendez-vous" description="Détail d'un rendez-vous client." />
-      <Section variant="blush">
+      <Section>
         <p>
           <Link to="/admin/rendez-vous" className="link inline-flex min-h-tap items-center">
             ← Tous les rendez-vous

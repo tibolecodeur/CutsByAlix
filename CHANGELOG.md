@@ -18,6 +18,19 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Modifié
 
+- Design v1 (consigne 27) : arrivée sur la vidéo plein écran (`100svh`) et son bouton orange,
+  puis un site blanc aux couleurs orange et rose, sur toutes les pages (admin compris).
+  Signature « poteau de barbier » (rayures orange / blanc / rose foncé en bandes fines), carte
+  des tarifs façon enseigne de salon (prix en grands chiffres rose foncé), galerie sur une bande
+  rose pâle, frise « Comment réserver » à pastilles orange, en-tête commun des pages (titre,
+  rayures, accroche), en-tête en verre dépoli avec repli opaque. Galerie en carrousel CSS
+  `scroll-snap` (composant isolé `GalleryCarousel` : grandes photos, pastilles ou compteur, flèches),
+  alimentée par 7 photos de la vitrine (`public/media/galerie/`, WebP sans métadonnées, accord des
+  personnes obtenu) tant qu'aucune photo n'est publiée par l'admin. Accroche
+  définitive. Lieu : « Lieu exact communiqué par DM sur Instagram, sur demande » sur l'accueil
+  et à chaque étape de /reserver ; plus aucune mention de paiement sur /reserver (elle reste
+  sur l'accueil). Mentions légales, politique de confidentialité et nouvelle page
+  **Conditions de réservation** (/conditions) rédigées, informations personnelles à compléter.
 - Tarifs et paiement (consigne 26, ADR 0011) : Coupe 60 min / 10 €, Coupe + barbe 70 min / 12 € ;
   paiement « en liquide ou par virement » (aucune coordonnée bancaire sur le site). Les créneaux
   et la fin des rendez-vous restent de 70 min pour toutes les prestations.
@@ -95,6 +108,10 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
   espace admin (connexion, tableau de bord, RDV, disponibilités, galerie, mot de passe,
   déconnexion) avec un faux état connecté réservé au développement, absent du build de
   production (test sur un vrai build).
+- Vidéo du hero : boucle de 14,6 s tirée du reel, 360×640, sans son (`public/media/`) : WebM
+  AV1 (0,71 Mo) puis MP4 H.264 (1,13 Mo), poster JPEG (20 Ko). Pause quand l'onglet est caché,
+  poster seul si aucune source ne se lit. Tests : attributs de la vidéo, absence de piste audio
+  et poids des fichiers, aucune requête vers un autre domaine.
 
 ### Modifié
 

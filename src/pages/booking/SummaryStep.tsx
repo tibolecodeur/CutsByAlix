@@ -10,6 +10,7 @@ import {
 import type { ContactForm } from "@/features/booking/validation";
 import { isWithinCancelNotice } from "@/features/booking/notice";
 import { BOOKING_RULES } from "@/lib/bookingRules";
+import { LOCATION_NOTICE } from "@/lib/contact";
 import { formatLongDay, formatTime } from "@/lib/dates";
 import { BookingSummary } from "@/pages/booking/BookingSummary";
 import { StepActions, StepFrame } from "@/pages/booking/StepFrame";
@@ -115,17 +116,14 @@ export function SummaryStep(props: SummaryStepProps) {
         ]}
       />
       <p>
-        Paiement en liquide ou par virement.{" "}
         {isWithinCancelNotice(slot.startsAt, new Date())
           ? `Ce rendez-vous est dans moins de ${BOOKING_RULES.cancelNoticeHours} h : tu ne pourras pas l'annuler en ligne.`
           : `Tu pourras annuler en ligne jusqu'à ${BOOKING_RULES.cancelNoticeHours} h avant le rendez-vous.`}
       </p>
       {/* Pas de lien ici : il ferait quitter le parcours avant la confirmation. Il est sur
-          l'écran suivant (ConfirmationStep). */}
-      <p>
-        L'adresse exacte n'est pas affichée sur le site : une fois réservé, écris à Alix en message
-        privé sur Instagram pour la recevoir.
-      </p>
+          l'écran suivant (ConfirmationStep). Aucune mention de paiement sur /reserver
+          (consigne 27). */}
+      <p>{LOCATION_NOTICE}</p>
       {error && <ErrorMessage>{error}</ErrorMessage>}
       <form onSubmit={handleSubmit}>
         <StepActions

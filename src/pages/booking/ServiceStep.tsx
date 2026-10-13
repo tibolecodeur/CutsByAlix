@@ -2,6 +2,7 @@ import { useState, type SubmitEvent } from "react";
 import { Choice } from "@/components/Choice";
 import { EmptyMessage, ErrorMessage, LoadingMessage } from "@/components/StatusMessage";
 import { getServices } from "@/features/booking/data";
+import { LOCATION_NOTICE } from "@/lib/contact";
 import { useAsync } from "@/lib/useAsync";
 import { GroupError, StepActions, StepFrame } from "@/pages/booking/StepFrame";
 
@@ -69,7 +70,9 @@ export function ServiceStep({ serviceId, focusOnMount, onChange, onNext }: Servi
             ))}
             <GroupError id="service-error" message={error} />
           </fieldset>
-          <p>Paiement en liquide ou par virement.</p>
+          {/* Seule mention pratique de /reserver : le lieu (aucune mention de paiement ici,
+              consigne 27 ; elle reste sur l'accueil). */}
+          <p>{LOCATION_NOTICE}</p>
           <StepActions submitLabel="Continuer" />
         </form>
       )}

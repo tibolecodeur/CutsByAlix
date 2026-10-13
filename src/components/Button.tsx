@@ -12,9 +12,10 @@ const BASE_CLASS =
   "inline-flex min-h-button items-center justify-center gap-2 rounded-pill px-7 text-center font-semibold motion-safe:transition-transform motion-safe:duration-150 motion-safe:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60";
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
-  // Rose pâle, texte noir (14,67). Le contour noir garde le bouton visible sur les sections
-  // rose pâle (où son fond se confond) et sur le blanc : 14,67 et 18,88.
-  primary: "border-2 border-ink bg-blush text-ink",
+  // Orange plein, texte noir (6,59 ; en blanc ce serait 2,87, sous l'AA). Bordure de la même
+  // couleur que le fond : même hauteur que le secondaire, aucun contour décoratif. Le libellé
+  // identifie le bouton ; sur noir comme sur blanc cassé, l'orange se détache nettement.
+  primary: "border-2 border-orange bg-orange text-ink",
   // Contour et texte de la couleur courante : lisible sur fond clair comme sur bloc noir.
   secondary: "border-2 border-current bg-transparent",
 };

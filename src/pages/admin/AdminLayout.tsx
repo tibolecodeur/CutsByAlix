@@ -102,7 +102,7 @@ export function AdminLayout() {
                   <NavLink
                     to={link.to}
                     end={link.end}
-                    className="flex min-h-[3.5rem] items-center justify-center border-t-4 border-transparent text-sm font-semibold aria-[current=page]:border-ink aria-[current=page]:font-bold md:min-h-tap md:border-t-0 md:border-b-4 md:text-base"
+                    className="flex min-h-[3.5rem] items-center justify-center border-t-4 border-transparent text-sm font-semibold aria-[current=page]:border-orange aria-[current=page]:font-bold md:min-h-tap md:border-t-0 md:border-b-4 md:text-base"
                   >
                     {link.label}
                   </NavLink>

@@ -37,15 +37,16 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
 - [x] `/direction-artistique` : 3 propositions, choix B + C, docs/DESIGN.md + ADR 0003
 - [x] Couleurs, typographies, composants de base
       _(tokens, Archivo, Button, Field, Section, Card, hero ; restent : style des champs à
-      valider, vidéo et poster du hero, logo HD)_
+      valider, logo HD ; vidéo et poster du hero faits, 360×640 en attendant une source HD)_
 
 ## Phase 4 — Vitrine
 
 - [x] Squelette des pages : structure HTML, textes provisoires, sans style ni base
       (accueil à sections, /reserver, /annuler, /admin, pages légales, 404), tests e2e et axe
 - [ ] Accueil · Prestations · Galerie · Contact · Pages légales
-      _(structure en place ; restent le style, les vraies données, les photos, la section
-      contact et la rédaction des pages légales)_
+      _(design v1 fait, consigne 27 : fond blanc partout, orange et rose, signature poteau de barbier, page Conditions, grille tarifaire, carrousel, pages légales
+      rédigées avec placeholders. Restent : informations personnelles des pages légales, vraies
+      photos, logo HD, avis d'Alix sur le design)_
 
 ## Phase 5 — Réservation client
 
@@ -212,7 +213,7 @@ frame-ancestors 'none'; base-uri 'self'; form-action 'self'`. Déjà fait : anti
       front). Base : plage future, fin > début, ≤ 24 h, ≥ 1 créneau, lieu actif, chevauchement
       traduit, verrou partagé avec `create_booking`. Suppression refusée dès qu'une réservation
       confirmée touche la plage (passée ou future). L'admin ne lit plus que `id, public_label,
-    active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : liste par
+  active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : liste par
       semaine, aperçu en direct, « Réservable par les clients du … au … », message « aucun lieu
       actif ». pgTAP 13 (date fixe), Vitest, Playwright (3 projets). Appliqué en local
       seulement. Ordre pour la production : migration (`db push`) PUIS front.

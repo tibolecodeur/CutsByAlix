@@ -11,6 +11,11 @@ const PAGES = [
     onglet: "Annuler ma réservation · CutsByAlix",
   },
   { chemin: "/admin", h1: "Espace admin", onglet: "Espace admin · CutsByAlix" },
+  {
+    chemin: "/conditions",
+    h1: "Conditions de réservation",
+    onglet: "Conditions de réservation · CutsByAlix",
+  },
   { chemin: "/mentions-legales", h1: "Mentions légales", onglet: "Mentions légales · CutsByAlix" },
   {
     chemin: "/politique-confidentialite",
@@ -107,15 +112,18 @@ test("les ancres du menu fonctionnent depuis une autre page", async ({ page }) =
 
 test("le pied de page mène aux pages légales", async ({ page }) => {
   await page.goto("/");
+  // Les mentions légales renvoient aussi vers la politique de confidentialité : on vise le
+  // lien du pied de page.
+  const footer = page.getByRole("navigation", { name: "Informations légales" });
 
-  await page.getByRole("link", { name: "Mentions légales" }).click();
+  await footer.getByRole("link", { name: "Mentions légales" }).click();
   await expect(page).toHaveURL("/mentions-legales");
-  await expect(page.getByRole("link", { name: "Mentions légales" })).toHaveAttribute(
+  await expect(footer.getByRole("link", { name: "Mentions légales" })).toHaveAttribute(
     "aria-current",
     "page",
   );
 
-  await page.getByRole("link", { name: "Politique de confidentialité" }).click();
+  await footer.getByRole("link", { name: "Politique de confidentialité" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Politique de confidentialité");
 });
 
@@ -140,6 +148,7 @@ test("le site public ne contient aucun lien vers l'espace admin", async ({ page 
     "/",
     "/reserver",
     "/annuler",
+    "/conditions",
     "/mentions-legales",
     "/une-url-qui-nexiste-pas",
   ]) {

@@ -16,19 +16,30 @@
  */
 @theme {
   --color-*: initial;
-  --color-surface: #ffffff; /* fond principal */
-  --color-blush: #ffd9e6; /* fond alterné, fond des boutons principaux, accent sur bloc noir */
-  --color-ink: #111111; /* texte, blocs sombres, texte et contour des boutons */
-  --color-muted: #5c5c5c; /* texte secondaire, sur fond clair UNIQUEMENT */
-  --color-orange: #ff6a1a; /* duotone du hero uniquement ; JAMAIS en texte sur fond clair */
-  --color-accent: #c2185b; /* liens et accents sur fond clair, JAMAIS sur bloc noir */
-  --color-white: #ffffff; /* texte sur bloc noir */
+  /* Fond : BLANC partout (vitrine, réservation, pages légales, admin). */
+  --color-paper: #ffffff; /* fond des pages */
+  --color-surface: #ffffff; /* champs, cartes, encadrés (bordure fine pour les détacher) */
+  --color-ink: #111111; /* texte, contours */
+  --color-muted: #5c5c5c; /* texte secondaire (6,69 sur blanc, 5,20 sur rose pâle) */
+  --color-white: #ffffff; /* texte sur la vidéo du hero */
+  /* Couleur principale n° 1, ORANGE = l'action : boutons (texte noir, 6,59), pastilles,
+     jour choisi, progression, rayures. JAMAIS en texte sur blanc (2,87). */
+  --color-orange: #ff6a1a;
+  /* Couleur principale n° 2, ROSE = la voix et la douceur. Rose foncé : prix, liens, accents
+     de titre (5,87 sur blanc ; en gras sur rose pâle, 4,56). Rose pâle : bande de la
+     galerie, choix cochés, étiquettes (jamais du texte sur blanc). */
+  --color-accent: #c2185b;
+  --color-blush: #ffd9e6;
 
   --font-*: initial;
   --font-sans: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
 
-  --radius-pill: 9999px; /* boutons « pilule » */
+  /* Formes : pilule pour ce qui se touche (boutons), angles doux pour le reste. */
+  --radius-pill: 9999px; /* boutons, étiquettes */
+  --radius-panel: 1.5rem; /* cartes, encadrés, carte des tarifs */
+  --radius-field: 0.75rem; /* champs, choix, jours du calendrier */
+  --radius-photo: 1rem; /* photos de la galerie */
 
   --spacing-tap: 2.75rem; /* 44 px : zone tactile minimale */
   --spacing-button: 3.25rem; /* 52 px : hauteur minimale des boutons */
@@ -36,8 +47,11 @@
   --spacing-gutter: 1rem; /* marge latérale minimale */
   --spacing-section: 3.5rem; /* espacement vertical des sections, mobile */
   --spacing-section-lg: 5rem; /* idem, à partir de md */
+  --spacing-section-roomy: 4.5rem; /* sections aérées de la vitrine (accueil), mobile */
+  --spacing-section-roomy-lg: 7rem; /* idem, à partir de md */
 
   --container-content: 48rem; /* largeur maximale du contenu */
+  --container-content-wide: 64rem; /* colonne large des sections de la vitrine (desktop) */
 }
 
 /* Titres et logo : très condensé, extra-gras, italique. */
@@ -56,14 +70,97 @@
 }
 
 /*
- * Lien dans le texte. Couleur et graisse viennent du contexte (variables posées par Section,
- * Card, le pied de page) : rose foncé sur clair, en gras sur le rose pâle, rose pâle sur noir.
+ * Lien dans le texte : rose foncé, semi-gras (5,87 sur blanc). Sur la bande rose pâle de la
+ * galerie, la section passe --link-weight à 700 (4,56, AA de justesse). Souligné de la couleur
+ * du lien, semi-transparent.
  */
 @utility link {
   color: var(--link-color, var(--color-accent));
-  font-weight: var(--link-weight, 400);
+  font-weight: var(--link-weight, 600);
   text-decoration-line: underline;
-  text-underline-offset: 0.2em;
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.3em;
+}
+
+/*
+ * Grand titre de section : condensé italique extra-gras, en capitales, très grand. Une seule
+ * échelle forte pour toute la page (le corps reste sobre). `text-wrap: balance` évite un mot
+ * orphelin sur la dernière ligne.
+ */
+@utility title-section {
+  font-size: clamp(3.25rem, 15vw, 7rem);
+  line-height: 0.9;
+  text-transform: uppercase;
+  text-wrap: balance;
+  /* Pas de césure automatique dans un grand titre (« PRESTA-TIONS ») : le mot passe entier. */
+  -webkit-hyphens: manual;
+  hyphens: manual;
+}
+
+/*
+ * Points de conduite de la grille tarifaire (« Coupe ········ 10 € »), comme sur le tableau
+ * des prix d'un salon. Décoratif : posé sur un élément vide, aria-hidden.
+ */
+@utility leader-dots {
+  background-image: radial-gradient(circle, currentColor 1.25px, transparent 1.5px);
+  background-size: 8px 4px;
+  background-repeat: repeat-x;
+  background-position: left bottom;
+  min-height: 4px;
+}
+
+/*
+ * Message d'erreur d'un champ : texte noir en gras (17,6 sur le blanc cassé), barre rose foncé
+ * à gauche. L'erreur ne repose pas sur la couleur seule, et le rose reste un filet (rare).
+ */
+@utility field-error {
+  color: var(--color-ink);
+  font-weight: 700;
+  border-left: 4px solid var(--color-accent);
+  padding-left: 0.5rem;
+}
+
+/*
+ * Verre dépoli (backdrop-filter), à UN seul endroit : l'en-tête une fois la vidéo passée.
+ * Statique (jamais animé). `-webkit-` d'abord : Safari iOS 16.4 ne connaît que lui.
+ * Repli : sans backdrop-filter, ou si la transparence est réduite, fond blanc presque opaque.
+ */
+@utility glass-light {
+  background-color: rgb(255 255 255 / 0.8);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    background-color: rgb(255 255 255 / 0.97);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: rgb(255 255 255 / 0.97);
+  }
+}
+
+/*
+ * Signature « poteau de barbier » : rayures diagonales orange / blanc / rose foncé, comme
+ * l'enseigne tournante des barbiers (rouge / blanc / bleu), aux couleurs du site. Toujours
+ * en bande FINE et décorative (aria-hidden), à quelques endroits choisis : sous la vidéo,
+ * en tête de la carte des tarifs, sous les titres de page, en haut du pied de page.
+ * Statique : jamais animée.
+ */
+@utility bg-barber {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--color-orange) 0 10px,
+    var(--color-white) 10px 15px,
+    var(--color-accent) 15px 25px,
+    var(--color-white) 25px 30px
+  );
+}
+
+/* Défilement horizontal sans barre visible : les boutons du carrousel la remplacent. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /*
@@ -84,10 +181,10 @@
   }
 
   body {
-    background-color: var(--color-surface);
+    background-color: var(--color-paper);
     color: var(--color-ink);
     font-family: var(--font-sans);
-    line-height: 1.5;
+    line-height: 1.6;
   }
 
   h1,
@@ -103,11 +200,14 @@
     -webkit-hyphens: auto;
     hyphens: auto;
   }
+  /* Échelle forte et simple : grand titre de page en capitales, sous-titres nets. */
   h1 {
-    font-size: 3rem;
+    font-size: clamp(3.25rem, 14vw, 6.5rem);
+    line-height: 0.9;
+    text-transform: uppercase;
   }
   h2 {
-    font-size: 2.5rem;
+    font-size: clamp(2.25rem, 9vw, 3.5rem);
   }
   h3 {
     font-size: 1.75rem;

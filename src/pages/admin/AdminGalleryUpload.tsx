@@ -226,7 +226,7 @@ export function AdminGalleryUpload({ onAdded }: { onAdded: () => void }) {
               Obligatoire pour publier. Sans accord, tu peux enregistrer la photo masquée.
             </p>
             {consentError && (
-              <p id={consentErrorId} className="text-sm font-bold text-accent">
+              <p id={consentErrorId} className="field-error text-sm">
                 {consentError}
               </p>
             )}

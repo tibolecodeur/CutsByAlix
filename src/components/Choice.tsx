@@ -16,7 +16,7 @@ export function Choice({ children, className, ...inputProps }: ChoiceProps) {
   return (
     <label
       className={cx(
-        "flex min-h-tap cursor-pointer items-center gap-3 border border-ink/20 bg-surface px-4 py-3 text-ink has-checked:border-ink has-checked:bg-blush",
+        "flex min-h-tap cursor-pointer items-center gap-3 rounded-field border border-ink/20 bg-surface px-4 py-3 text-ink has-checked:border-ink has-checked:bg-blush/50 has-checked:shadow-[inset_4px_0_0_var(--color-orange)]",
         className,
       )}
     >

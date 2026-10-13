@@ -14,4 +14,13 @@ describe("InstagramLink", () => {
     // Zone tactile de 44 px (lien seul sur sa ligne).
     expect(link).toHaveClass("min-h-tap");
   });
+
+  it("accepte un autre libellé, même destination", () => {
+    render(<InstagramLink label="Voir les coupes sur Instagram" />);
+    expect(
+      screen.getByRole("link", {
+        name: "Voir les coupes sur Instagram (s'ouvre dans un nouvel onglet)",
+      }),
+    ).toHaveAttribute("href", "https://www.instagram.com/cutsbyalix/");
+  });
 });

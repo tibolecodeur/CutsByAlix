@@ -31,7 +31,7 @@ const WEEKDAY_HEADERS = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."]
  * clavier.
  *
  * Trois apparences, couleurs du site uniquement :
- * - jour disponible : contour noir plein ;
+ * - jour disponible : contour noir plein ; jour choisi : fond orange, texte noir (6,59) ;
  * - jour SANS créneau : grisé (texte secondaire, fond `ink` à 5 %), barré, et le bouton radio est
  *   `disabled` : le gris n'est pas le seul signal, le jour sort aussi du clavier. Exception : le
  *   jour DÉJÀ CHOISI n'est jamais désactivé (sa dernière place a pu partir pendant que le client
@@ -40,10 +40,10 @@ const WEEKDAY_HEADERS = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."]
  * - disponibilité inconnue (chargement des jours impossible) : l'apparence d'avant.
  */
 const DAY_BASE =
-  "focus-ring-within flex min-h-tap flex-col items-center justify-center border py-1 leading-tight";
-const DAY_UNKNOWN = `${DAY_BASE} cursor-pointer border-ink/20 bg-surface text-ink has-checked:border-ink has-checked:bg-ink has-checked:text-white`;
-const DAY_AVAILABLE = `${DAY_BASE} cursor-pointer border-ink bg-surface text-ink has-checked:bg-ink has-checked:text-white`;
-const DAY_UNAVAILABLE = `${DAY_BASE} cursor-not-allowed border-ink/10 bg-ink/5 text-muted line-through has-checked:border-ink has-checked:bg-ink has-checked:text-white`;
+  "focus-ring-within flex min-h-tap flex-col items-center justify-center rounded-field border py-1 leading-tight";
+const DAY_UNKNOWN = `${DAY_BASE} cursor-pointer border-ink/20 bg-surface text-ink has-checked:border-orange has-checked:bg-orange has-checked:text-ink`;
+const DAY_AVAILABLE = `${DAY_BASE} cursor-pointer border-ink bg-surface text-ink has-checked:border-orange has-checked:bg-orange has-checked:text-ink`;
+const DAY_UNAVAILABLE = `${DAY_BASE} cursor-not-allowed border-ink/10 bg-ink/5 text-muted line-through has-checked:border-orange has-checked:bg-orange has-checked:text-ink`;
 
 type SlotStepProps = {
   serviceId: string;

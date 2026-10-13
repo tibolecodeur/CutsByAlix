@@ -84,7 +84,7 @@ export function AdminAvailabilitiesPage() {
   return (
     <>
       <PageMeta title="Disponibilités" description="Gestion des disponibilités publiées." />
-      <Section variant="blush">
+      <Section>
         <h1>Disponibilités</h1>
         <p>
           Les clients ne réservent que dans ces plages, découpées en créneaux depuis le début de
@@ -109,7 +109,7 @@ export function AdminAvailabilitiesPage() {
             />
           ))}
       </Section>
-      <Section variant="blush">
+      <Section>
         <h2>À venir</h2>
         {availabilities.status === "loading" && (
           <LoadingMessage>Chargement des disponibilités…</LoadingMessage>
@@ -345,7 +345,7 @@ function PreviewContent({ range, rules, now }: PreviewProps) {
     <>
       <p className="font-semibold">{describeSlots(starts)}</p>
       {bookable.status === "never" ? (
-        <p className="font-bold text-accent">
+        <p className="field-error">
           Ne sera jamais proposée aux clients : ils réservent au plus tard {notice} avant un
           créneau.
         </p>
@@ -357,7 +357,7 @@ function PreviewContent({ range, rules, now }: PreviewProps) {
             {formatMoment(bookable.until)}.
           </p>
           {bookable.tooSoonCount > 0 && (
-            <p className="font-bold text-accent">
+            <p className="field-error">
               {plural(bookable.tooSoonCount, "créneau", "créneaux")} à moins de {notice} : non
               proposé{bookable.tooSoonCount > 1 ? "s" : ""} aux clients.
             </p>
