@@ -49,7 +49,7 @@ export function HomePage() {
       <section
         id="accueil"
         aria-labelledby="accueil-titre"
-        className="relative isolate flex h-svh min-h-[30rem] flex-col items-center justify-center overflow-hidden bg-ink px-safe text-center text-white [--focus-ring:var(--color-white)]"
+        className="relative isolate flex h-svh min-h-[30rem] flex-col items-center justify-center overflow-hidden bg-ink px-safe pt-[calc(var(--spacing-header)+env(safe-area-inset-top))] text-center text-white [--focus-ring:var(--color-white)]"
       >
         <HeroVideo {...HERO_MEDIA} />
 
@@ -57,7 +57,7 @@ export function HomePage() {
             Le nom accessible reste « CutsByAlix » ; les trois lignes sont décoratives. */}
         <h1
           id="accueil-titre"
-          className="title-display text-[clamp(5rem,26vw,11rem)] leading-[0.8] uppercase"
+          className="title-display text-[clamp(5rem,min(26vw,24svh),11rem)] leading-[0.8] uppercase"
         >
           <span className="sr-only">CutsByAlix</span>
           <span aria-hidden="true" className="block">
