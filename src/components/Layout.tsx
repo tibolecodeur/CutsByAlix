@@ -127,6 +127,7 @@ export function Layout() {
         <div className="mx-auto flex max-w-content-wide flex-col gap-5 px-safe pt-12 pb-[max(3rem,env(safe-area-inset-bottom))]">
           <p className="title-display text-3xl uppercase">CutsByAlix</p>
           <p className="text-muted">Coupes et barbes sur rendez-vous.</p>
+          <p className="text-muted text-sm">Site conçu et développé par Thibault Brebion</p>
         </div>
       </footer>
     </div>

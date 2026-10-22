@@ -65,3 +65,10 @@ describe("Layout : menu mobile", () => {
     expect(bouton).toHaveAttribute("aria-expanded", "false");
   });
 });
+
+describe("Layout : pied de page", () => {
+  it("affiche le crédit du site", () => {
+    renderAt("/reserver");
+    expect(screen.getByText("Site conçu et développé par Thibault Brebion")).toBeInTheDocument();
+  });
+});
