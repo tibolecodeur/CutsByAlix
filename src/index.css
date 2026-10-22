@@ -130,6 +130,10 @@
   background-color: rgb(255 255 255 / 0.8);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
   backdrop-filter: blur(16px) saturate(160%);
+  /* Desktop : les grands titres passent sous le menu, on les masque presque entièrement. */
+  @media (min-width: 48rem) {
+    background-color: rgb(255 255 255 / 0.94);
+  }
   @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
     background-color: rgb(255 255 255 / 0.97);
   }
