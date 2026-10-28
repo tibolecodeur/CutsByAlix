@@ -103,7 +103,8 @@ décoratif).
 - **Pages hors accueil** : en-tête commun (`PageHeader` : titre, bande de barbier, accroche).
   Même gabarit pour réserver, annuler, conditions, pages légales, 404.
 - **En-tête** : transparent sur la vidéo, puis verre dépoli blanc (repli opaque si
-  `backdrop-filter` n'est pas supporté). Seul effet de flou du site.
+  `backdrop-filter` n'est pas supporté). Avec la vue agrandie de la galerie, l'un des deux
+  seuls flous du site.
 - **Prestations** : carte des tarifs façon enseigne de salon (contour noir, bande de barbier en
   tête), « COUPE ······ 10 € », prix en grands chiffres rose foncé, durée en étiquette rose
   pâle.
@@ -118,7 +119,16 @@ décoratif).
   dépasse au bord. Pagination : pastilles (la photo en cours en pilule orange) à partir de md,
   compteur « 2 / 7 » sur mobile ; flèches de 52 px. Photos : uniquement celles publiées par
   l'admin (aucun repli) ; les 7 photos de la vitrine (`public/media/galerie/`) s'importent en
-  un geste depuis /admin/galerie. Vue détail en couleur : non faite.
+  un geste depuis /admin/galerie.
+- **Vue agrandie de la galerie** _(validé le 2026-10-28)_ : toucher une photo l'ouvre en grand,
+  **en couleur**, dans ses proportions. Effet « on rentre dans la photo » : elle grandit depuis
+  sa vignette (zoom en `transform`, 420 ms, départ rapide et arrivée douce) en passant du noir
+  et blanc à la couleur (fondu d'une copie N&B). Fond : la page floutée sous un voile blanc,
+  flou fixe qui apparaît en fondu (`lightbox-veil`). Photo précédente / suivante au doigt
+  (`scroll-snap`), aux flèches et au clavier, compteur « 2 / 7 ». Commandes en bas, à portée
+  de pouce : flèches et ✕ en boutons ronds de 52 px. Fermeture par ✕, toucher du fond, Échap
+  ou « retour » du téléphone : la photo revient se poser dans le carrousel. Mouvements
+  réduits : fondu seul.
 - **Admin galerie** : aperçu « Sur le site » (photos publiées, dans l'ordre du carrousel,
   pastille orange numérotée) ; carte : Publier / Masquer et Modifier en premier, ordre dans un
   tiroir « Changer l'ordre » (Monter / Descendre, En premier / En dernier au-delà de 2 photos),
@@ -165,7 +175,9 @@ décoratif).
 - Loader avec une animation de ciseaux ou de tondeuse, à voir plus tard : court, à la première
   visite seulement, désactivé si `prefers-reduced-motion`. _(intention, non appliquée)_
 
-- **Flou** : uniquement l'en-tête en verre dépoli, statique. _(validé le 2026-10-13, consigne 27)_
+- **Flou** : l'en-tête en verre dépoli et le fond de la vue agrandie de la galerie, toujours
+  fixes (seule l'opacité du calque s'anime). _(validé le 2026-10-13, consigne 27 ; vue agrandie
+  ajoutée le 2026-10-28)_
 
 _Aucune librairie d'animation installée pour l'instant._
 
@@ -178,3 +190,4 @@ _Aucune librairie d'animation installée pour l'instant._
 | 2026-10-08 | Boutons principaux en rose pâle `#FFD9E6`, texte et contour noirs (au lieu de l'orange). L'orange ne sert plus qu'au duotone du hero.                                                                                                                                                                                  |
 | 2026-10-08 | Vidéo du hero (consigne 11 bis) : boucle de 14,6 s tirée du reel, 360×640 (résolution de la source), WebM AV1 0,71 Mo + MP4 H.264 1,13 Mo + poster 20 Ko. Remplace « 6 s max, ~1,5 Mo ».                                                                                                                               |
 | 2026-10-13 | Design v1 (consigne 27), version blanche : fond blanc sur tout le site (admin compris), orange et rose en couleurs principales, signature « poteau de barbier », carte des tarifs façon enseigne, en-tête commun des pages. Remplace les versions précédentes de la consigne 27 (dégradé, fonds unis, vitrine sombre). |
+| 2026-10-28 | Galerie : vue agrandie en couleur, zoom depuis la vignette, fond flouté fixe en fondu, photo suivante sans refermer. Le flou est autorisé à un deuxième endroit (vue agrandie).                                                                                                                                        |

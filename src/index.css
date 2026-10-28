@@ -143,6 +143,47 @@
 }
 
 /*
+ * Vue agrandie de la galerie (GalleryLightbox). Hauteur disponible pour la photo : l'écran
+ * moins une marge en haut (encoche comprise) et la barre de commandes en bas (barre d'accueil
+ * comprise). `100dvh` : la hauteur réellement visible, barre d'adresse mobile déduite.
+ */
+@utility lightbox {
+  --lightbox-top: calc(1rem + env(safe-area-inset-top));
+  --lightbox-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  --lightbox-photo-h: calc(100dvh - var(--lightbox-top) - var(--lightbox-bottom));
+}
+
+@utility lightbox-slide {
+  padding-top: var(--lightbox-top);
+  padding-bottom: var(--lightbox-bottom);
+  padding-left: max(var(--spacing-gutter), env(safe-area-inset-left));
+  padding-right: max(var(--spacing-gutter), env(safe-area-inset-right));
+}
+
+@utility lightbox-bar {
+  padding: 1rem max(var(--spacing-gutter), env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(var(--spacing-gutter), env(safe-area-inset-left));
+}
+
+/*
+ * Fond de la vue agrandie : la page derrière, floutée sous un voile blanc (même verre que
+ * l'en-tête, en plus dense). Deuxième et dernier endroit du flou (docs/DESIGN.md). Le flou
+ * est FIXE : seule l'opacité du calque s'anime à l'ouverture et à la fermeture.
+ * Repli : sans backdrop-filter, ou si la transparence est réduite, blanc presque opaque.
+ */
+@utility lightbox-veil {
+  background-color: rgb(255 255 255 / 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    background-color: rgb(255 255 255 / 0.97);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: rgb(255 255 255 / 0.97);
+  }
+}
+
+/*
  * Signature « poteau de barbier » : rayures diagonales orange / blanc / rose foncé, comme
  * l'enseigne tournante des barbiers (rouge / blanc / bleu), aux couleurs du site. Toujours
  * en bande FINE et décorative (aria-hidden), à quelques endroits choisis : sous la vidéo,

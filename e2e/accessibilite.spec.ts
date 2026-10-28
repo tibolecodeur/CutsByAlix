@@ -125,6 +125,20 @@ test("axe : chaque étape de /reserver jusqu'à la confirmation", async ({ page 
   await expectNoViolation(page);
 });
 
+test("axe : galerie, puis photo ouverte en grand", async ({ page }) => {
+  await mockTable(page, "gallery_items", [
+    { id: "1", image_path: "a.webp", alt_text: "Dégradé court", width: 1200, height: 900 },
+    { id: "2", image_path: "b.webp", alt_text: "Barbe taillée", width: 900, height: 1200 },
+  ]);
+  await mockStorage(page);
+  await page.goto("/");
+  const galerie = page.getByRole("region", { name: "Galerie" });
+  await galerie.getByRole("button", { name: "Agrandir la photo 1 sur 2" }).click();
+  const vue = page.getByRole("dialog", { name: "Galerie, photo agrandie" });
+  await expect(vue.getByRole("img", { name: "Dégradé court" })).toBeVisible();
+  await expectNoViolation(page);
+});
+
 test("axe : écran d'erreur (prestations indisponibles)", async ({ page }) => {
   await mockServices(page, "network-error");
   await page.goto("/reserver");

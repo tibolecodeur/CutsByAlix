@@ -256,12 +256,15 @@ active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : 
 - [ ] **Après l'import en production** : retirer `public/media/galerie/`, `featuredPhotos.ts`
       et l'import (`showcaseImport.ts`, `AdminShowcaseImport.tsx`, tests) : les originaux
       restent publics tant qu'ils sont servis (docs/DEPLOIEMENT.md, § 6 bis).
+- [x] **Galerie : vue agrandie** (2026-10-28) : photo en grand et en couleur, zoom depuis la
+      vignette (FLIP, Web Animations, sans librairie), fond flouté fixe, photo suivante au doigt
+      / aux flèches, fermeture par ✕, fond, Échap ou « retour ». Aucun changement SQL.
 - [ ] Données admin : Prestations sur Supabase · duplication d'une semaine · modification
       d'une plage.
 - [ ] Galerie, suites mineures (revue de la consigne 20) : refuser avant décodage une image
       aux dimensions démesurées (PNG de 30 000 px qui ferait planter le navigateur d'Alix) ;
-      contrôle serveur du contenu des fichiers (Edge Function, V2) ; vue détail en couleur
-      prévue par DESIGN.md (non faite).
+      contrôle serveur du contenu des fichiers (Edge Function, V2) ; ~~vue détail en couleur~~
+      (faite le 2026-10-28, voir ci-dessous).
 - [x] Disponibilités : afficher au barber quand les clients pourront réserver (consigne 18 :
       période réservable calculée depuis les règles lues en base : 48 h / 4 semaines à l'époque, 5 h depuis la consigne 21).
 
