@@ -87,18 +87,23 @@ jobs:
 
       # Les navigateurs ne sont pas dans node_modules : il faut les télécharger. Chromium sert aux
       # projets Android et desktop, WebKit au projet iPhone. Les binaires sont mis en cache
-      # (clé = version de Playwright, chaque version attend ses propres navigateurs) ; les
-      # bibliothèques système (apt) ne se cachent pas et sont réinstallées à chaque run.
-      - name: Version de Playwright
+      # (clé = version de Playwright, chaque version attend ses propres navigateurs, ET version
+      # d'Ubuntu : WebKit est compilé pour une version précise ; sans elle, au passage de
+      # `ubuntu-latest` à une nouvelle version, le WebKit en cache ne démarrait plus, faute de
+      # `libicudata.so.74`). Les bibliothèques système (apt) ne se cachent pas et sont
+      # réinstallées à chaque run.
+      - name: Version de Playwright et d'Ubuntu
         id: playwright
-        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+          echo "os=$(. /etc/os-release && echo "$ID-$VERSION_ID")" >> "$GITHUB_OUTPUT"
 
       - name: Cache des navigateurs Playwright
         id: cache-navigateurs
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium-webkit
+          key: playwright-${{ steps.playwright.outputs.os }}-${{ steps.playwright.outputs.version }}-chromium-webkit
 
       - name: Installer Chromium et WebKit
         if: steps.cache-navigateurs.outputs.cache-hit != 'true'
