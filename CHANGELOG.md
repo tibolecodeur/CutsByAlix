@@ -7,6 +7,11 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Ajouté
 
+- Galerie : toucher une photo l'ouvre en grand et en couleur. Elle grandit depuis sa vignette
+  (« on rentre dedans ») pendant que la page derrière se floute ; on passe à la photo
+  suivante au doigt ou aux flèches, on ferme par ✕, en touchant le fond, par Échap ou par le
+  bouton « retour » du téléphone, et la photo revient se poser dans le carrousel. Fondu seul
+  si les animations sont réduites. Aucune librairie ajoutée.
 - Galerie réelle (consigne 20, ADR 0006) : Alix ajoute ses photos depuis l'appareil photo ou
   la galerie du téléphone. Chaque photo est préparée sur le téléphone avant l'envoi : réduite
   à 1200 px, redressée, ré-encodée en WebP (JPEG sur Safari), **sans aucune métadonnée** (ni

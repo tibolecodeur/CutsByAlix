@@ -57,3 +57,42 @@ test("aucune photo publiée : message d'attente, aucune signature, aucune photo 
   await expect(galerie.getByRole("img")).toHaveCount(0);
   expect(storage.signings).toEqual([]);
 });
+
+test("vue agrandie : ouverture en couleur, photo suivante, fermeture par « retour » et Échap", async ({
+  page,
+}) => {
+  await mockTable(page, "gallery_items", [
+    { id: "1", image_path: PUBLIEE, alt_text: "Dégradé court", width: 1200, height: 900 },
+    { id: "2", image_path: DEPUBLIEE, alt_text: "Barbe taillée", width: 900, height: 1200 },
+  ]);
+  await mockStorage(page);
+
+  await page.goto("/");
+  const galerie = page.getByRole("region", { name: "Galerie" });
+  await galerie.getByRole("button", { name: "Agrandir la photo 1 sur 2" }).click();
+
+  const vue = page.getByRole("dialog", { name: "Galerie, photo agrandie" });
+  await expect(vue).toBeVisible();
+  const photo = vue.getByRole("img", { name: "Dégradé court" });
+  await expect(photo).toBeVisible();
+  await expect(photo).not.toHaveClass(/grayscale/);
+  await expect(vue.getByRole("button", { name: "Fermer la photo" })).toBeFocused();
+  await expect(vue.getByText("1 / 2")).toBeVisible();
+
+  await vue.getByRole("button", { name: "Photo suivante" }).click();
+  await expect(vue.getByText("2 / 2")).toBeVisible();
+  await expect(vue.getByRole("button", { name: "Photo suivante" })).toBeDisabled();
+
+  // Bouton « retour » du téléphone : la vue se ferme, on reste sur l'accueil.
+  await page.goBack();
+  await expect(vue).toBeHidden();
+  await expect(page).toHaveURL(/\/$/);
+  // Le carrousel s'est calé sur la dernière photo vue, qui reprend le focus.
+  await expect(galerie.getByRole("button", { name: "Agrandir la photo 2 sur 2" })).toBeFocused();
+
+  await galerie.getByRole("button", { name: "Agrandir la photo 2 sur 2" }).click();
+  await expect(vue).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(vue).toBeHidden();
+  await expect(page).toHaveURL(/\/$/);
+});

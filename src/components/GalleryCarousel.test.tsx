@@ -104,16 +104,23 @@ describe("GalleryCarousel", () => {
     );
     render(<GalleryCarousel photos={PHOTOS} />);
 
-    expect(screen.getByRole("button", { name: "Photo précédente" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Photo suivante" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Photo précédente" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Photo suivante" })).not.toHaveAttribute(
+      "aria-disabled",
+    );
     // Chaque photo est observée : la pagination suit la plus visible.
     expect(observe).toHaveBeenCalledTimes(3);
   });
 
-  it("une seule photo : ni boutons ni pastilles", () => {
+  it("une seule photo : ni flèches ni pastilles, seulement le bouton pour l'agrandir", () => {
     render(<GalleryCarousel photos={PHOTOS.slice(0, 1)} />);
     expect(screen.getByRole("img", { name: "Dégradé court" })).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button").map((button) => button.getAttribute("aria-label")),
+    ).toEqual(["Agrandir la photo 1 sur 1"]);
   });
 
   it("aucune photo : état vide avec le lien Instagram, aucune image", () => {
