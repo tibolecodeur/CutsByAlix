@@ -104,8 +104,13 @@ describe("GalleryCarousel", () => {
     );
     render(<GalleryCarousel photos={PHOTOS} />);
 
-    expect(screen.getByRole("button", { name: "Photo précédente" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Photo suivante" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Photo précédente" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Photo suivante" })).not.toHaveAttribute(
+      "aria-disabled",
+    );
     // Chaque photo est observée : la pagination suit la plus visible.
     expect(observe).toHaveBeenCalledTimes(3);
   });

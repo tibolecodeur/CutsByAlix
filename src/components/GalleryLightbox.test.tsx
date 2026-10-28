@@ -92,13 +92,13 @@ describe("GalleryLightbox", () => {
     const { user, dialog } = await openPhoto(0);
     const previous = within(dialog).getByRole("button", { name: "Photo précédente" });
     const next = within(dialog).getByRole("button", { name: "Photo suivante" });
-    expect(previous).toBeDisabled();
+    expect(previous).toHaveAttribute("aria-disabled", "true");
 
     await user.click(next);
     expect(within(dialog).getByText("2 / 3")).toBeInTheDocument();
     await user.keyboard("{ArrowRight}");
     expect(within(dialog).getByText("3 / 3")).toBeInTheDocument();
-    expect(next).toBeDisabled();
+    expect(next).toHaveAttribute("aria-disabled", "true");
     await user.keyboard("{ArrowLeft}");
     expect(within(dialog).getByText("2 / 3")).toBeInTheDocument();
   });
@@ -109,7 +109,10 @@ describe("GalleryLightbox", () => {
     await user.click(within(dialog).getByRole("button", { name: "Fermer la photo" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Agrandir la photo 2 sur 3" })).toHaveFocus();
+    // Rendu dans un effet après le retrait de la fenêtre : on l'attend.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Agrandir la photo 2 sur 3" })).toHaveFocus(),
+    );
     expect(document.documentElement.style.overflow).toBe("");
   });
 
@@ -117,7 +120,10 @@ describe("GalleryLightbox", () => {
     const { user } = await openPhoto(2);
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Agrandir la photo 3 sur 3" })).toHaveFocus();
+    // Rendu dans un effet après le retrait de la fenêtre : on l'attend.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Agrandir la photo 3 sur 3" })).toHaveFocus(),
+    );
   });
 
   it("bouton « retour » du téléphone : ferme la vue sans quitter la page", async () => {

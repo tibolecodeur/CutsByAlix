@@ -256,7 +256,9 @@ export function GalleryLightbox({
         // Focalisable comme la bande du carrousel : au clavier, Tab peut y arriver (axe).
         tabIndex={0}
         onScroll={handleScroll}
-        className="scrollbar-none absolute inset-0 flex snap-x snap-mandatory list-none overflow-x-auto overflow-y-hidden overscroll-contain"
+        // Anneau de focus à l'intérieur : la bande fait tout l'écran, un anneau extérieur
+        // serait hors de la vue.
+        className="scrollbar-none focus-visible:outline-offset-[-3px] absolute inset-0 flex snap-x snap-mandatory list-none overflow-x-auto overflow-y-hidden overscroll-contain"
       >
         {photos.map((photo, index) => (
           <li
@@ -300,53 +302,50 @@ export function GalleryLightbox({
                 />
               </div>
             </div>
-            <span className="sr-only">
-              Photo {index + 1} sur {count}
-            </span>
           </li>
         ))}
       </ul>
 
-      {/* Commandes en bas de l'écran, à portée de pouce, au-dessus de la barre d'accueil. */}
-      <div
-        ref={barRef}
-        className="lightbox-bar absolute inset-x-0 bottom-0 flex items-center justify-between gap-3"
-      >
-        <p aria-live="polite" className="text-sm font-semibold tabular-nums">
-          {count > 1 && (
-            <>
-              <span aria-hidden="true">
-                {active + 1} / {count}
-              </span>
-              <span className="sr-only">
-                Photo {active + 1} sur {count}
-              </span>
-            </>
-          )}
-        </p>
-        <div className="flex gap-3">
-          {count > 1 && (
-            <>
-              <RoundIconButton
-                label="Photo précédente"
-                glyph="←"
-                disabled={active === 0}
-                onClick={() => goTo(active - 1)}
-              />
-              <RoundIconButton
-                label="Photo suivante"
-                glyph="→"
-                disabled={active === count - 1}
-                onClick={() => goTo(active + 1)}
-              />
-            </>
-          )}
-          <RoundIconButton
-            ref={closeButtonRef}
-            label="Fermer la photo"
-            glyph="✕"
-            onClick={requestClose}
-          />
+      {/* Commandes en bas de l'écran, à portée de pouce, au-dessus de la barre d'accueil.
+          Sur grand écran, ramenées dans la colonne de la photo (pas aux deux bords). */}
+      <div ref={barRef} className="lightbox-bar absolute inset-x-0 bottom-0">
+        <div className="mx-auto flex max-w-content-wide items-center justify-between gap-3">
+          <p aria-live="polite" className="text-sm font-semibold tabular-nums">
+            {count > 1 && (
+              <>
+                <span aria-hidden="true">
+                  {active + 1} / {count}
+                </span>
+                <span className="sr-only">
+                  Photo {active + 1} sur {count}
+                </span>
+              </>
+            )}
+          </p>
+          <div className="flex gap-3">
+            {count > 1 && (
+              <>
+                <RoundIconButton
+                  label="Photo précédente"
+                  glyph="←"
+                  disabled={active === 0}
+                  onClick={() => goTo(active - 1)}
+                />
+                <RoundIconButton
+                  label="Photo suivante"
+                  glyph="→"
+                  disabled={active === count - 1}
+                  onClick={() => goTo(active + 1)}
+                />
+              </>
+            )}
+            <RoundIconButton
+              ref={closeButtonRef}
+              label="Fermer la photo"
+              glyph={"\u2715\uFE0E"}
+              onClick={requestClose}
+            />
+          </div>
         </div>
       </div>
     </dialog>

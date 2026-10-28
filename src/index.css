@@ -122,7 +122,8 @@
 }
 
 /*
- * Verre dépoli (backdrop-filter), à UN seul endroit : l'en-tête une fois la vidéo passée.
+ * Verre dépoli (backdrop-filter), à DEUX endroits : ici l'en-tête une fois la vidéo passée,
+ * et le fond de la vue agrandie de la galerie (`lightbox-veil`, plus bas).
  * Statique (jamais animé). `-webkit-` d'abord : Safari iOS 16.4 ne connaît que lui.
  * Repli : sans backdrop-filter, ou si la transparence est réduite, fond blanc presque opaque.
  */
