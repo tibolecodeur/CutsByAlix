@@ -354,4 +354,11 @@ active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : 
 
 ## V2
 
-- [ ] Emails (Resend, nécessite un domaine) · Admin installable (PWA) · Captcha si spam
+- [x] **Notification à chaque nouvelle réservation et annulation client** (2026-10-30,
+      ADR 0012) : web push vers la PWA admin (iOS 16.4+, écran d'accueil), trigger + pg_net +
+      Edge Function `notify-booking`, chiffrement WebCrypto testé sur le vecteur de la RFC 8291,
+      carte « Notifications » dans « Mon compte » (activer, tester, désactiver). pgTAP 28.
+- [ ] **Mise en route des notifications en production** : `docs/DEPLOIEMENT.md` § 8 (clés
+      VAPID, secrets, `db push`, déploiement de la fonction, Vault, variable Cloudflare), puis
+      `docs/TESTS-APPAREILS.md` § 2.13 sur l'iPhone d'Alix.
+- [ ] Emails (Resend, nécessite un domaine) · Captcha si spam

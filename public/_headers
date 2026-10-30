@@ -65,6 +65,11 @@ https://:version.:project.pages.dev/*
 /admin.webmanifest
   Content-Type: application/manifest+json
 
+# Service worker de l'admin (notifications push, ADR 0012) : toujours relu, pour qu'une
+# correction soit prise par les téléphones dès leur prochaine visite (nom de fichier fixe).
+/admin-sw.js
+  Cache-Control: no-cache
+
 # --- Fichiers du build à nom haché (dist/assets) -----------------------------------------------
 # Leur nom change à chaque modification : on peut les garder en cache un an. Jamais index.html,
 # qui est à la racine et doit toujours être relu (il pointe vers les nouveaux noms).

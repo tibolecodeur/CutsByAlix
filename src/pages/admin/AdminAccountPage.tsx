@@ -10,9 +10,11 @@ import {
   MIN_PASSWORD_LENGTH,
   type AdminAuthErrorCode,
 } from "@/features/admin/auth";
+import { forgetOtherPushDevices } from "@/features/admin/push";
+import { AdminNotificationsCard } from "@/pages/admin/AdminNotificationsCard";
 import { useAdmin } from "@/pages/admin/useAdmin";
 
-/** Mon compte : changer de mot de passe, se déconnecter. */
+/** Mon compte : notifications, changer de mot de passe, se déconnecter. */
 export function AdminAccountPage() {
   const { session, onSignOut } = useAdmin();
   const [signingOut, setSigningOut] = useState(false);
@@ -24,10 +26,13 @@ export function AdminAccountPage() {
 
   return (
     <>
-      <PageMeta title="Mon compte" description="Mot de passe et déconnexion." />
+      <PageMeta title="Mon compte" description="Notifications, mot de passe et déconnexion." />
       <Section>
         <h1>Mon compte</h1>
         <p className="break-all">Connecté avec {session.email}</p>
+      </Section>
+      <Section>
+        <AdminNotificationsCard />
       </Section>
       <Section>
         <PasswordForm email={session.email} />
@@ -96,6 +101,8 @@ function PasswordForm({ email }: { email: string }) {
     setSubmitting(true);
     try {
       const { otherDevicesSignedOut } = await changePassword(current, password);
+      // Les appareils déconnectés ne doivent plus recevoir les notifications non plus.
+      await forgetOtherPushDevices();
       setSuccess(
         otherDevicesSignedOut
           ? "Mot de passe modifié. Tes autres appareils ont été déconnectés."

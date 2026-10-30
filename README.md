@@ -16,6 +16,7 @@ par virement** : aucun paiement en ligne.
 | Parcourir la galerie des créations        | Consulter et annuler les rendez-vous  |
 | Réserver un créneau en moins d'une minute | Gérer la galerie depuis son téléphone |
 | Annuler via un lien personnel             | Activer / désactiver des prestations  |
+|                                           | Notification à chaque réservation     |
 
 ## Stack
 
@@ -95,14 +96,15 @@ Base de données (CLI Supabase installée en devDependency, version figée) :
 
 Schéma complet et justification : [`docs/adr/0002-modele-de-donnees-et-securite.md`](docs/adr/0002-modele-de-donnees-et-securite.md).
 
-| Table            | Contenu                                        | Accès public (anon)               |
-| ---------------- | ---------------------------------------------- | --------------------------------- |
-| `services`       | prestations : nom, durée, prix affiché, actif  | lecture des prestations actives   |
-| `locations`      | lieux : localité seulement, **aucune adresse** | aucun                             |
-| `availabilities` | plages de disponibilité, chacune dans un lieu  | aucun (via `get_available_slots`) |
-| `bookings`       | réservations clients                           | aucun (via les RPC ci-dessous)    |
-| `gallery_items`  | photos de la galerie (bucket Storage privé)    | photos publiées, par URL signée   |
-| `admins`         | utilisateurs Supabase Auth administrateurs     | aucun                             |
+| Table                | Contenu                                        | Accès public (anon)               |
+| -------------------- | ---------------------------------------------- | --------------------------------- |
+| `services`           | prestations : nom, durée, prix affiché, actif  | lecture des prestations actives   |
+| `locations`          | lieux : localité seulement, **aucune adresse** | aucun                             |
+| `availabilities`     | plages de disponibilité, chacune dans un lieu  | aucun (via `get_available_slots`) |
+| `bookings`           | réservations clients                           | aucun (via les RPC ci-dessous)    |
+| `gallery_items`      | photos de la galerie (bucket Storage privé)    | photos publiées, par URL signée   |
+| `admins`             | utilisateurs Supabase Auth administrateurs     | aucun                             |
+| `push_subscriptions` | appareils de l'admin abonnés aux notifications | aucun (ADR 0012)                  |
 
 Fonctions RPC publiques (`security definer`, validation complète en SQL) :
 
@@ -121,7 +123,8 @@ est validée par Zod (`src/lib/schemas.ts`) et aucun message brut de Supabase n'
 Règles centralisées dans `private.settings()` (une migration suffit pour les changer) : grille
 de créneaux de 70 min (durée de fin de tous les RDV : la durée affichée d'une prestation ne sert qu'à l'affichage), réservation au plus tard 2 h avant et au plus 4 semaines à l'avance,
 annulation jusqu'à 24 h avant, 2 RDV futurs max par téléphone ou email, conservation des données
-clients 6 mois, rejeu d'une réservation (même clé) accepté 30 min. Le front en garde une copie pour ses textes (`src/lib/bookingRules.ts`).
+clients 6 mois, rejeu d'une réservation (même clé) accepté 30 min, 5 appareils abonnés aux
+notifications par admin. Le front en garde une copie pour ses textes (`src/lib/bookingRules.ts`).
 
 Durcissements : le public (anon) ne lit sur `services` que `id`, `name`, `duration_min`,
 `price_label` et `sort_order`. Aucune adresse n'est stockée (ADR 0008) : le client voit la
@@ -210,6 +213,12 @@ Deux principes :
 - Un créneau ne peut pas être réservé deux fois, tous lieux confondus : contrainte d'exclusion
   PostgreSQL, et non une vérification côté navigateur.
 - Anti-spam : champ honeypot et 2 RDV futurs maximum par téléphone ou email.
+- Notifications push à Alix (ADR 0012) : déclenchées par un trigger sur `bookings` (pg_net), envoyées
+  par l'Edge Function `supabase/functions/notify-booking`, qui n'accepte que des appels signés (HMAC)
+  avec un secret partagé gardé dans Vault.
+  Le message (date, prénom, prestation) est chiffré de bout en bout pour l'appareil ; la clé
+  `service_role` ne sert que dans la fonction, jamais dans le front. Mise en route :
+  `docs/DEPLOIEMENT.md` § 8.
 
 ## Tests end-to-end (Playwright)
 

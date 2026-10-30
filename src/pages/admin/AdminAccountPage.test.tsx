@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as auth from "@/features/admin/auth";
+import * as push from "@/features/admin/push";
 import { AdminAccountPage } from "@/pages/admin/AdminAccountPage";
 import type { AdminContext } from "@/pages/admin/useAdmin";
 
@@ -10,6 +11,13 @@ import type { AdminContext } from "@/pages/admin/useAdmin";
 vi.mock("@/features/admin/auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/admin/auth")>()),
   changePassword: vi.fn(),
+}));
+
+// Notifications : testées dans AdminNotificationsCard.test.tsx et push.test.ts.
+vi.mock("@/features/admin/push", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/admin/push")>()),
+  getPushStatus: vi.fn(async () => "unsupported"),
+  forgetOtherPushDevices: vi.fn(async () => {}),
 }));
 
 const onSignOut = vi.fn(async () => {});
@@ -41,6 +49,7 @@ async function fill(current: string, password: string, confirmation = password) 
 
 beforeEach(() => {
   vi.mocked(auth.changePassword).mockReset();
+  vi.mocked(push.forgetOtherPushDevices).mockClear();
   onSignOut.mockClear();
 });
 
@@ -84,6 +93,8 @@ describe("AdminAccountPage : changement de mot de passe", () => {
     );
     expect(auth.changePassword).toHaveBeenCalledWith("ancien mot de passe", NEW_PASSWORD);
     expect(screen.getByLabelText("Nouveau mot de passe")).toHaveValue("");
+    // Les appareils déconnectés ne reçoivent plus les notifications non plus.
+    expect(push.forgetOtherPushDevices).toHaveBeenCalledOnce();
   });
 
   it("succès, mais autres appareils non déconnectés : le dit", async () => {

@@ -136,6 +136,11 @@ test("axe : galerie, puis photo ouverte en grand", async ({ page }) => {
   await galerie.getByRole("button", { name: "Agrandir la photo 1 sur 2" }).click();
   const vue = page.getByRole("dialog", { name: "Galerie, photo agrandie" });
   await expect(vue.getByRole("img", { name: "Dégradé court" })).toBeVisible();
+  // Fin du zoom et du fondu d'ouverture : pendant l'animation, la transparence fausse la mesure
+  // des contrastes (axe lit des couleurs à moitié transparentes).
+  await page.waitForFunction(() =>
+    document.getAnimations().every((animation) => animation.playState !== "running"),
+  );
   await expectNoViolation(page);
 });
 
