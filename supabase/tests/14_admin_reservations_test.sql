@@ -169,7 +169,10 @@ select set_eq(
         'public.admin_set_gallery_item_published', 'public.admin_update_gallery_item_alt',
         'public.admin_move_gallery_item', 'public.admin_delete_gallery_item',
         'public.admin_hide_gallery_item',
-        'public.admin_gallery_orphans'],
+        'public.admin_gallery_orphans',
+        -- Notifications push (ADR 0012).
+        'public.admin_save_push_subscription', 'public.admin_delete_push_subscription',
+        'public.admin_send_test_push'],
   'authenticated n''exécute que les fonctions admin et les 4 aides des policies');
 select is(
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace

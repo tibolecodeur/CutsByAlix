@@ -42,6 +42,11 @@ export default tseslint.config(
     files: ["*.config.{js,ts}", "e2e/**/*.ts", ".claude/hooks/**/*.mjs"],
     languageOptions: { globals: globals.node },
   },
+  // Service worker de l'admin (notifications push) : script classique, globales du worker.
+  {
+    files: ["public/admin-sw.js"],
+    languageOptions: { globals: globals.serviceworker, sourceType: "script" },
+  },
   // Toujours en dernier : désactive les règles de style qui entreraient en conflit avec Prettier.
   eslintConfigPrettier,
 );

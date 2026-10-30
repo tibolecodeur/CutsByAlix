@@ -77,6 +77,7 @@ const URLS = [
   `${SITE}/admin/galerie`,
   `${SITE}/admin.webmanifest`,
   `${SITE}/admin-icon-192.png`,
+  `${SITE}/admin-sw.js`,
   `${SITE}/assets/index-AbC123.js`,
   `${SITE}/robots.txt`,
   "https://site-barber.pages.dev/",
@@ -147,6 +148,9 @@ describe("public/_headers : en-têtes effectifs", () => {
   it("/admin : frame-ancestors en blocage ; manifeste servi avec son type", () => {
     expect(header(`${SITE}/admin`, "Content-Security-Policy")).toBe("frame-ancestors 'none'");
     expect(header(`${SITE}/admin.webmanifest`, "Content-Type")).toBe("application/manifest+json");
+    // Service worker des notifications : jamais servi depuis un cache périmé, jamais indexé.
+    expect(header(`${SITE}/admin-sw.js`, "Cache-Control")).toBe("no-cache");
+    expect(header(`${SITE}/admin-sw.js`, "X-Robots-Tag")).toBe("noindex, nofollow");
     // Hors admin, aucune CSP en blocage : seulement la version Report-Only.
     expect(effectiveHeaders(`${SITE}/`).has("content-security-policy")).toBe(false);
   });

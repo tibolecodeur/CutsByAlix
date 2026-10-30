@@ -23,13 +23,14 @@ dans le tableau de bord.
 
 ## 2. Variables d'environnement lues par le build
 
-Le front ne lit que **deux** variables (`src/lib/supabase.ts`, `src/vite-env.d.ts`). Toute
+Le front ne lit que **trois** variables (`src/lib/supabase.ts`, `src/vite-env.d.ts`). Toute
 variable `VITE_*` est **recopiée dans le JavaScript livré** : elle est publique par nature.
 
 | Nom                      | Exemple (fictif)            | Où la trouver                                  |
 | ------------------------ | --------------------------- | ---------------------------------------------- |
 | `VITE_SUPABASE_URL`      | `https://<ref>.supabase.co` | Supabase → Project Settings → API → URL        |
 | `VITE_SUPABASE_ANON_KEY` | `eyJ…factice`               | Supabase → Project Settings → API → clé `anon` |
+| `VITE_VAPID_PUBLIC_KEY`  | `BEl6…factice`              | clé publique VAPID générée au § 8 (ADR 0012)   |
 | `NODE_VERSION`           | `22`                        | (réglage de build, pas lu par le site)         |
 
 - À saisir dans **Settings → Variables and Secrets**, pour **Production** ET **Preview**
@@ -175,3 +176,52 @@ Le plan gratuit met le projet en pause après 7 jours sans activité. Le workflo
   (un e-mail prévient) : il suffit de le réactiver dans l'onglet Actions.
 - Un échec (projet en pause, clé changée) arrive par e-mail de GitHub : redémarrer le projet
   dans Supabase (Restore), puis relancer le workflow à la main.
+
+## 8. Notifications push à l'admin (ADR 0012)
+
+Alix reçoit une notification sur son iPhone à chaque nouvelle réservation et à chaque
+annulation par un client. Tant que ces étapes ne sont pas faites, rien n'est envoyé (le trigger
+ne fait rien sans les secrets Vault) et « Envoyer une notification de test » répond que le
+serveur n'est pas encore branché. À faire **une fois**, sur ton ordinateur, projet lié
+(`npx supabase link`).
+
+1. **Clés VAPID** (identifient le site auprès d'Apple ; la clé privée ne se partage jamais) :
+
+   ```bash
+   node -e "crypto.subtle.generateKey({name:'ECDSA',namedCurve:'P-256'},true,['sign']).then(async k=>{const j=await crypto.subtle.exportKey('jwk',k.privateKey);const r=Buffer.from(await crypto.subtle.exportKey('raw',k.publicKey));console.log('VAPID_PUBLIC_KEY='+r.toString('base64url'));console.log('VAPID_PRIVATE_KEY='+j.d)})"
+   ```
+
+2. **Secret partagé** entre la base et la fonction : `openssl rand -hex 32`.
+3. **Secrets de la fonction** (jamais dans le dépôt). `VAPID_SUBJECT` : une adresse de contact,
+   exigée par Apple (`mailto:…`).
+
+   ```bash
+   npx supabase secrets set NOTIFY_BOOKING_SECRET=<secret> VAPID_PUBLIC_KEY=<publique> VAPID_PRIVATE_KEY=<privée> VAPID_SUBJECT=mailto:<adresse>
+   ```
+
+4. **Migration** : `npx supabase db push` (crée la table, les fonctions et le trigger ; sans
+   secrets Vault, le trigger ne fait encore rien).
+5. **Fonction** : `npx supabase functions deploy notify-booking --no-verify-jwt` (la fonction
+   vérifie elle-même le secret partagé ; `verify_jwt = false` est aussi dans `config.toml`).
+6. **Secrets Vault** (Supabase → SQL Editor ; `<ref>` = identifiant du projet) :
+
+   ```sql
+   select vault.create_secret('https://<ref>.supabase.co/functions/v1/notify-booking', 'notify_booking_url');
+   select vault.create_secret('<le même secret qu''à l''étape 2>', 'notify_booking_secret');
+   ```
+
+7. **Cloudflare Pages** : `VITE_VAPID_PUBLIC_KEY` = la clé **publique** (Production et Preview,
+   § 2), puis redéployer. Fusionner la PR du front **après** l'étape 4.
+8. **Sur l'iPhone d'Alix** (iOS 16.4 ou plus) : ajouter `/admin` à l'écran d'accueil (Safari →
+   Partager → « Sur l'écran d'accueil »), l'ouvrir depuis l'icône, se connecter, « Compte » →
+   « Activer les notifications » → autoriser → « Envoyer une notification de test ».
+
+À savoir :
+
+- **Changer le secret partagé** : mettre à jour les deux côtés (`supabase secrets set` et
+  `vault.update_secret`), sinon la fonction refuse les appels (401) et plus rien n'arrive.
+- **Changer les clés VAPID** invalide tous les abonnements : Alix doit réactiver les
+  notifications sur chaque appareil.
+- **Diagnostic** : Supabase → Edge Functions → notify-booking → Logs (réponses `sent`,
+  `removed`, `failed`) ; côté base, `select * from net._http_response order by created desc
+limit 5;` (statut HTTP des derniers appels, sans données client).

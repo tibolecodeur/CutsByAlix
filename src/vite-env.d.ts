@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   /** Clé publique « anon » uniquement, jamais la clé `service_role`. */
   readonly VITE_SUPABASE_ANON_KEY?: string;
+  /** Clé PUBLIQUE VAPID des notifications push (la clé privée reste dans l'Edge Function). */
+  readonly VITE_VAPID_PUBLIC_KEY?: string;
 }
 
 interface ImportMeta {

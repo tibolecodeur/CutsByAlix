@@ -207,6 +207,21 @@ dans le journal (section 3).
       chaque en-tête présent **une seule fois**, `x-robots-tag: noindex, nofollow` partout.
 - [ ] Nettoyage : annuler toutes les réservations de test, supprimer les photos de test.
 
+### 2.13 Notifications push (vrai iPhone, après la mise en route de DEPLOIEMENT.md § 8)
+
+- [ ] Dans Safari (pas installé) : la carte « Notifications » explique l'ajout à l'écran
+      d'accueil, sans bouton d'activation.
+- [ ] Depuis l'icône de l'écran d'accueil : « Activer » affiche la demande d'autorisation
+      d'iOS ; après accord, « Activées sur ce téléphone ».
+- [ ] « Envoyer une notification de test » : notification reçue en quelques secondes, écran
+      verrouillé compris.
+- [ ] Réservation de test depuis un autre appareil : « Nouvelle réservation », date et heure,
+      prénom et prestation ; le toucher ouvre la fiche du RDV.
+- [ ] Annulation de ce RDV par le lien client : « Réservation annulée ». Annulation par Alix
+      dans l'admin : aucune notification.
+- [ ] Refuser l'autorisation, puis la réactiver dans Réglages → Notifications → Alix admin.
+- [ ] « Désactiver » : plus aucune notification sur ce téléphone.
+
 ## 3. Journal des passages
 
 | Date | Version / PR | Appareil et système | Navigateur | Résultat et remarques |

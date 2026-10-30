@@ -308,6 +308,19 @@ type AdminDeleteGalleryItemFunction = {
   Args: { p_id: string };
   Returns: string;
 };
+/** Notifications push (migration …_notifications_push.sql). */
+type AdminSavePushSubscriptionFunction = {
+  Args: { p_endpoint: string; p_p256dh: string; p_auth: string };
+  Returns: undefined;
+};
+type AdminDeletePushSubscriptionFunction = {
+  Args: { p_endpoint: string };
+  Returns: boolean;
+};
+type AdminSendTestPushFunction = {
+  Args: Record<string, never>;
+  Returns: "queued" | "no_device" | "not_configured";
+};
 /** Noms des fichiers sans ligne, de plus d'1 h. */
 type AdminGalleryOrphansFunction = {
   Args: Record<string, never>;
@@ -344,6 +357,9 @@ export type Database = {
       admin_hide_gallery_item: AdminHideGalleryItemFunction;
       admin_delete_gallery_item: AdminDeleteGalleryItemFunction;
       admin_gallery_orphans: AdminGalleryOrphansFunction;
+      admin_save_push_subscription: AdminSavePushSubscriptionFunction;
+      admin_delete_push_subscription: AdminDeletePushSubscriptionFunction;
+      admin_send_test_push: AdminSendTestPushFunction;
     };
     Enums: Record<never, never>;
     CompositeTypes: Record<never, never>;
