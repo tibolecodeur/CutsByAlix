@@ -172,6 +172,7 @@ select set_eq(
         'public.admin_gallery_orphans',
         -- Notifications push (ADR 0012).
         'public.admin_save_push_subscription', 'public.admin_delete_push_subscription',
+        'public.admin_delete_push_subscriptions',
         'public.admin_send_test_push'],
   'authenticated n''exécute que les fonctions admin et les 4 aides des policies');
 select is(

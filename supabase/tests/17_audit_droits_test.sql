@@ -123,6 +123,7 @@ select results_eq(
     ('public.admin_delete_availability', false, true),
     ('public.admin_delete_gallery_item', false, true),
     ('public.admin_delete_push_subscription', false, true),
+    ('public.admin_delete_push_subscriptions', false, true),
     ('public.admin_gallery_orphans', false, true),
     ('public.admin_get_booking', false, true),
     ('public.admin_hide_gallery_item', false, true),

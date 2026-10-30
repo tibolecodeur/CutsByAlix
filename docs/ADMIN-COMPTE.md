@@ -100,7 +100,9 @@ de passe dans « Mon compte », qui déconnecte tous les autres appareils, ou su
 Dans l'application de l'écran d'accueil (pas dans Safari) : « Compte » → « Activer les
 notifications » → autoriser. « Envoyer une notification de test » vérifie que tout marche.
 iOS 16.4 ou plus. Chaque appareil s'active séparément. Pour les couper : « Désactiver », ou
-Réglages → Notifications → Alix admin. Mise en route côté serveur : `docs/DEPLOIEMENT.md` § 8.
+Réglages → Notifications → Alix admin. Se déconnecter coupe les notifications de ce téléphone ; changer
+le mot de passe coupe celles des autres appareils ; « Couper les notifications sur tous mes
+appareils » sert si un téléphone est perdu. Mise en route côté serveur : `docs/DEPLOIEMENT.md` § 8.
 
 ## 5. Mot de passe oublié
 

@@ -92,6 +92,7 @@ export function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> {
 }
 
 async function currentSubscription(): Promise<PushSubscription | null> {
+  if (!("serviceWorker" in navigator)) return null;
   const registration = await navigator.serviceWorker.getRegistration(SERVICE_WORKER_SCOPE);
   return (await registration?.pushManager.getSubscription()) ?? null;
 }
@@ -171,4 +172,53 @@ export async function sendTestPush(): Promise<TestPushResult> {
   const { data, error } = await adminClient().rpc("admin_send_test_push");
   if (error) throw toAdminError(error);
   return data;
+}
+
+/**
+ * Coupe les notifications sur TOUS les appareils de l'admin (téléphone perdu, doute), puis se
+ * désabonne aussi dans ce navigateur. Renvoie le nombre d'appareils oubliés en base.
+ */
+export async function disablePushEverywhere(): Promise<number> {
+  const { data, error } = await adminClient().rpc("admin_delete_push_subscriptions", {
+    p_keep_endpoint: null,
+  });
+  if (error) throw toAdminError(error);
+  const subscription = await currentSubscription().catch(() => null);
+  await subscription?.unsubscribe().catch(() => false);
+  return data;
+}
+
+/** Au-delà, on n'attend plus : une déconnexion ne doit jamais rester bloquée par le réseau. */
+const BEST_EFFORT_TIMEOUT_MS = 3000;
+
+function bestEffort(task: () => Promise<unknown>): Promise<void> {
+  return Promise.race([
+    task().then(
+      () => undefined,
+      () => undefined,
+    ),
+    new Promise<void>((resolve) => setTimeout(resolve, BEST_EFFORT_TIMEOUT_MS)),
+  ]);
+}
+
+/**
+ * Avant la déconnexion : ce téléphone ne doit plus recevoir les prénoms des clients. Sans
+ * erreur ni attente de plus de 3 s (hors ligne, la déconnexion se fait quand même).
+ */
+export function forgetThisPushDevice(): Promise<void> {
+  return bestEffort(disablePush);
+}
+
+/**
+ * Après un changement de mot de passe (« les autres appareils sont déconnectés ») : les autres
+ * appareils ne reçoivent plus de notifications ; celui-ci les garde s'il est abonné.
+ */
+export function forgetOtherPushDevices(): Promise<void> {
+  return bestEffort(async () => {
+    const subscription = await currentSubscription().catch(() => null);
+    const { error } = await adminClient().rpc("admin_delete_push_subscriptions", {
+      p_keep_endpoint: subscription?.endpoint ?? null,
+    });
+    if (error) throw toAdminError(error);
+  });
 }

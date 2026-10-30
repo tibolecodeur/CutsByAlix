@@ -20,7 +20,8 @@ self.addEventListener("activate", (event) => {
 function adminUrl(value) {
   try {
     const url = new URL(value, self.location.origin);
-    if (url.origin === self.location.origin && url.pathname.startsWith("/admin")) return url.href;
+    const inAdmin = url.pathname === "/admin" || url.pathname.startsWith("/admin/");
+    if (url.origin === self.location.origin && inAdmin) return url.href;
   } catch {
     // Adresse illisible : on retombe sur l'accueil de l'admin.
   }
@@ -53,9 +54,12 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      // L'admin est déjà ouvert : on le ramène au premier plan sur la bonne page.
+      // L'admin est déjà ouvert : on le ramène au premier plan sur la bonne page. (Un onglet de
+      // la vitrine n'est pas sous le contrôle du service worker : on ouvre alors l'admin.)
       for (const client of windows) {
-        if (new URL(client.url).origin === self.location.origin && "focus" in client) {
+        const url = new URL(client.url);
+        const inAdmin = url.pathname === "/admin" || url.pathname.startsWith("/admin/");
+        if (url.origin === self.location.origin && inAdmin && "focus" in client) {
           await client.focus();
           if ("navigate" in client) await client.navigate(target).catch(() => undefined);
           return;

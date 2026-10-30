@@ -17,7 +17,7 @@ begin
   end loop;
 end $$;
 
-select plan(44);
+select plan(55);
 
 truncate public.bookings, public.availabilities, public.locations, public.services,
          public.gallery_items, public.admins, public.push_subscriptions;
@@ -84,7 +84,7 @@ select is((select push_max_devices from private.settings()), 5, 'private.setting
 -- 3. anon et connecté non admin : refusés.
 -- ---------------------------------------------------------------------------
 set local role anon;
-select throws_ok($$select public.admin_save_push_subscription('https://push.example.test/a', 'x', 'y')$$,
+select throws_ok($$select public.admin_save_push_subscription('https://web.push.apple.com/a', 'x', 'y')$$,
   '42501', null, 'anon : enregistrement refusé');
 select throws_ok('select count(*) from public.push_subscriptions', '42501', null,
   'anon : lecture de la table refusée');
@@ -92,10 +92,10 @@ reset role;
 
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000002", "role": "authenticated"}';
-select throws_ok($$select public.admin_save_push_subscription('https://push.example.test/a',
+select throws_ok($$select public.admin_save_push_subscription('https://web.push.apple.com/a',
                    (select p256dh from k), (select auth from k))$$,
   '42501', 'forbidden', 'non admin : enregistrement refusé');
-select throws_ok($$select public.admin_delete_push_subscription('https://push.example.test/a')$$,
+select throws_ok($$select public.admin_delete_push_subscription('https://web.push.apple.com/a')$$,
   '42501', 'forbidden', 'non admin : suppression refusée');
 select throws_ok($$select public.admin_send_test_push()$$,
   '42501', 'forbidden', 'non admin : notification de test refusée');
@@ -110,21 +110,24 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", "role": "authenticated"}';
 
 select is(public.admin_send_test_push(), 'no_device', 'test sans appareil abonné : no_device');
-select lives_ok($$select public.admin_save_push_subscription('https://push.example.test/a',
+select lives_ok($$select public.admin_save_push_subscription('https://web.push.apple.com/a',
                   (select p256dh from k), (select auth from k))$$,
   'admin : abonnement enregistré');
-select lives_ok($$select public.admin_save_push_subscription('https://push.example.test/a',
+select lives_ok($$select public.admin_save_push_subscription('https://web.push.apple.com/a',
                   (select p256dh from k), (select auth from k))$$,
   'admin : même appareil réenregistré sans erreur (idempotent)');
 select throws_ok($$select public.admin_save_push_subscription('http://push.example.test/a',
                    (select p256dh from k), (select auth from k))$$,
   'P0001', 'invalid_input', 'endpoint non https refusé');
-select throws_ok($$select public.admin_save_push_subscription('https://push.example.test/b',
+select throws_ok($$select public.admin_save_push_subscription('https://web.push.apple.com/b',
                    'pas une clé !', (select auth from k))$$,
   'P0001', 'invalid_input', 'clé d''appareil invalide refusée');
-select throws_ok($$select public.admin_save_push_subscription('https://push.example.test/b',
+select throws_ok($$select public.admin_save_push_subscription('https://web.push.apple.com/b',
                    (select p256dh from k), null)$$,
   'P0001', 'invalid_input', 'secret manquant refusé');
+select throws_ok($$select public.admin_save_push_subscription('https://pirate.example.test/push',
+                   (select p256dh from k), (select auth from k))$$,
+  'P0001', 'invalid_input', 'adresse hors des services de push connus refusée (pas de requête vers un hôte choisi)');
 select is(public.admin_send_test_push(), 'not_configured',
   'test sans secrets Vault : not_configured (rien n''est envoyé)');
 reset role;
@@ -135,28 +138,28 @@ select is((select count(*) from public.push_subscriptions), 1::bigint,
 -- 6 appareils de plus (dates croissantes) : seuls les 5 plus récents restent.
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", "role": "authenticated"}';
-select public.admin_save_push_subscription('https://push.example.test/' || n,
+select public.admin_save_push_subscription('https://web.push.apple.com/' || n,
          (select p256dh from k), (select auth from k))
   from generate_series(1, 6) n;
 reset role;
 -- Toutes les lignes ont le même now() (même transaction) : on date à la main pour l'ordre.
 update public.push_subscriptions set created_at = now() - interval '1 hour'
- where endpoint = 'https://push.example.test/a';
+ where endpoint = 'https://web.push.apple.com/a';
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", "role": "authenticated"}';
-select public.admin_save_push_subscription('https://push.example.test/7',
+select public.admin_save_push_subscription('https://web.push.apple.com/7',
          (select p256dh from k), (select auth from k));
 reset role;
 select is((select count(*) from public.push_subscriptions), 5::bigint,
   'au plus 5 appareils par admin');
-select ok(not exists (select 1 from public.push_subscriptions where endpoint = 'https://push.example.test/a'),
+select ok(not exists (select 1 from public.push_subscriptions where endpoint = 'https://web.push.apple.com/a'),
   'l''appareil le plus ancien est oublié en premier');
 
 set local role authenticated;
 set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", "role": "authenticated"}';
-select is(public.admin_delete_push_subscription('https://push.example.test/7'), true,
+select is(public.admin_delete_push_subscription('https://web.push.apple.com/7'), true,
   'admin : désactivation de l''appareil courant');
-select is(public.admin_delete_push_subscription('https://push.example.test/7'), false,
+select is(public.admin_delete_push_subscription('https://web.push.apple.com/7'), false,
   'désactivation répétée : rien à supprimer');
 reset role;
 
@@ -229,13 +232,49 @@ select vault.update_secret((select id from vault.secrets where name = 'notify_bo
                            'http://fonctions.example.test/notify-booking');
 select is(private.notify_booking_event('new_booking', '60000000-0000-4000-8000-000000000002'), false,
   'URL non https : aucune requête');
+select vault.update_secret((select id from vault.secrets where name = 'notify_booking_url'),
+                           'https://fonctions.example.test/notify-booking');
+
+-- Anti-abus : au plus push_max_per_hour (10) notifications par heure, tous types confondus.
+insert into private.notify_log (kind)
+select 'new_booking' from generate_series(1, 10 - (select count(*) from private.notify_log
+                                                   where sent_at > now() - interval '1 hour'));
+create temporary table q2 as select coalesce(max(id), 0) as last_id from net.http_request_queue;
+insert into public.bookings (id, service_id, location_id, starts_at, ends_at, first_name, last_name, phone)
+values ('60000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001',
+        '20000000-0000-4000-8000-000000000001', '2030-03-06 12:20 Europe/Paris', now(),
+        'Ana', 'Blanc', '0700000003');
+select is((select count(*) from net.http_request_queue where id > (select last_id from q2)), 0::bigint,
+  'au-delà de 10 notifications dans l''heure : réservation enregistrée, plus rien n''est envoyé');
+select ok(exists (select 1 from public.bookings where id = '60000000-0000-4000-8000-000000000003'),
+  'la limite des notifications ne bloque jamais la réservation');
+select ok(not has_table_privilege('authenticated', 'private.notify_log', 'SELECT,INSERT,DELETE')
+      and not has_table_privilege('anon', 'private.notify_log', 'SELECT,INSERT,DELETE'),
+  'journal des notifications : aucun droit pour anon ni authenticated');
+
+-- pg_net : aucun droit pour les rôles de l'API (la plateforme en donne à la création).
+select ok(not has_schema_privilege('anon', 'net', 'USAGE')
+      and not has_schema_privilege('authenticated', 'net', 'USAGE'),
+  'schéma net fermé à anon et authenticated');
+select ok(not has_table_privilege('anon', 'net.http_request_queue', 'SELECT')
+      and not has_table_privilege('authenticated', 'net.http_request_queue', 'SELECT'),
+  'file des requêtes HTTP (qui contient le secret) illisible pour anon et authenticated');
+-- Droit EXPLICITE retiré (celui que donne la plateforme). Sans USAGE sur le schéma, un
+-- éventuel EXECUTE hérité de PUBLIC reste inutilisable par ces rôles.
+select is(
+  (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     cross join lateral aclexplode(coalesce(p.proacl, '{}'::aclitem[])) a
+    where n.nspname = 'net'
+      and a.grantee in ('anon'::regrole, 'authenticated'::regrole)),
+  0::bigint,
+  'aucun EXECUTE explicite sur les fonctions de pg_net pour anon ou authenticated');
 
 -- Appareil d'un utilisateur qui n'est (plus) admin : jamais destinataire.
 insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
-values ('30000000-0000-4000-8000-000000000002', 'https://push.example.test/ancien',
+values ('30000000-0000-4000-8000-000000000002', 'https://web.push.apple.com/ancien',
         (select p256dh from k), (select auth from k));
 select ok(not exists (select 1 from public.notify_push_subscriptions()
-                       where endpoint = 'https://push.example.test/ancien'),
+                       where endpoint = 'https://web.push.apple.com/ancien'),
   'un appareil qui n''appartient pas à un admin ne reçoit rien');
 select is((select count(*) from public.notify_push_subscriptions()), 4::bigint,
   'les 4 appareils de l''admin reçoivent');
@@ -253,6 +292,24 @@ select is(
      from unnest((select proargnames from pg_proc where proname = 'notify_booking_payload')) n),
   'cancelled_by,first_name,p_booking_id,service_name,starts_at,status',
   'notify_booking_payload : aucune colonne de contact (ni nom, téléphone, e-mail, jeton)');
+
+-- ---------------------------------------------------------------------------
+-- 8. Couper les autres appareils (mot de passe changé) ou tous (téléphone perdu).
+-- ---------------------------------------------------------------------------
+create temporary table garde as
+  select endpoint from public.push_subscriptions
+   where user_id = '30000000-0000-4000-8000-000000000001' order by endpoint limit 1;
+grant select on garde to authenticated;
+set local role authenticated;
+set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", "role": "authenticated"}';
+select is(public.admin_delete_push_subscriptions((select endpoint from garde)), 3,
+  'déconnexion des autres appareils : les 3 autres sont oubliés');
+select is(public.admin_delete_push_subscriptions(), 1, 'téléphone perdu : le dernier aussi');
+reset role;
+select is((select count(*) from public.notify_push_subscriptions()), 0::bigint,
+  'plus aucun appareil de l''admin ne reçoit de notification');
+select ok(exists (select 1 from public.push_subscriptions where endpoint = 'https://web.push.apple.com/ancien'),
+  'les appareils des autres utilisateurs ne sont pas touchés');
 
 select * from finish();
 rollback;

@@ -4,6 +4,7 @@ import { ErrorMessage, LoadingMessage, SuccessMessage } from "@/components/Statu
 import { AdminError } from "@/features/admin/data";
 import {
   disablePush,
+  disablePushEverywhere,
   enablePush,
   getPushStatus,
   PushError,
@@ -118,6 +119,26 @@ export function AdminNotificationsCard() {
         </div>
       )}
 
+      {status !== undefined && (
+        // Téléphone perdu, doute : coupe aussi depuis un autre appareil (ordinateur compris).
+        <p>
+          <button
+            type="button"
+            onClick={() =>
+              run(async () => {
+                await disablePushEverywhere();
+                if (status === "on") setStatus("off");
+                return "Notifications coupées sur tous tes appareils.";
+              })
+            }
+            disabled={busy}
+            className="link min-h-tap text-left disabled:opacity-60"
+          >
+            Couper les notifications sur tous mes appareils
+          </button>
+        </p>
+      )}
+
       {error && <ErrorMessage>{error}</ErrorMessage>}
       {success && <SuccessMessage>{success}</SuccessMessage>}
     </div>
@@ -179,6 +200,11 @@ function StatusText({ status }: { status: PushStatus | undefined }) {
         </p>
       );
     case "on":
-      return <p className="font-semibold">Activées sur ce téléphone.</p>;
+      return (
+        <p>
+          <span className="font-semibold">Activées sur ce téléphone.</span> Elles s'arrêtent si tu
+          te déconnectes de ce téléphone.
+        </p>
+      );
   }
 }

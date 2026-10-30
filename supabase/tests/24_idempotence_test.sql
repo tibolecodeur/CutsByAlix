@@ -177,12 +177,13 @@ create or replace function private.settings()
 returns table (
   slot_step interval, min_notice interval, max_advance interval, cancel_notice interval,
   max_future_bookings integer, data_retention interval, gallery_max_items integer,
-  request_replay_window interval, push_max_devices integer
+  request_replay_window interval, push_max_devices integer,
+  push_max_per_hour integer
 )
 language sql stable set search_path = ''
 as $$
   select interval '70 minutes', interval '0 minutes', interval '28 days', interval '24 hours',
-         2, interval '6 months', 60, interval '30 minutes', 5;
+         2, interval '6 months', 60, interval '30 minutes', 5, 10;
 $$;
 select isnt(
   (select cancel_token from private.create_booking_at(

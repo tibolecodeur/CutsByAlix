@@ -2,16 +2,21 @@
 -- Notifications push à l'admin (nouvelle réservation, annulation par le client).
 -- Voir docs/adr/0012-notifications-push-admin.md.
 --
---   1. private.settings() : + push_max_devices (5 appareils par admin).
+--   1. private.settings() : + push_max_devices (5 appareils par admin),
+--      + push_max_per_hour (10 notifications par heure au plus, anti-abus).
 --   2. Table push_subscriptions : un abonnement web push par appareil de l'admin. RLS activé,
 --      AUCUN droit de table pour anon ni authenticated : tout passe par des fonctions.
 --   3. Fonctions admin (authenticated, puis require_admin()) :
---      admin_save_push_subscription, admin_delete_push_subscription, admin_send_test_push.
+--      admin_save_push_subscription, admin_delete_push_subscription,
+--      admin_delete_push_subscriptions (tous les appareils, sauf éventuellement le courant :
+--      déconnexion, changement de mot de passe, téléphone perdu), admin_send_test_push.
 --   4. Fonctions de l'Edge Function notify-booking (service_role SEULEMENT) :
 --      notify_booking_payload, notify_push_subscriptions, notify_forget_push_subscription.
 --   5. private.notify_booking_event : appel HTTP (pg_net) de l'Edge Function, avec l'URL et le
 --      secret partagé lus dans Vault. Sans ces secrets (base locale, CI) : ne fait rien.
 --      Ne lève JAMAIS d'erreur : une notification en panne ne doit pas empêcher une réservation.
+--      Au plus push_max_per_hour appels par heure (private.notify_log) : une boucle « réserver
+--      puis annuler » ne peut pas inonder le téléphone d'Alix.
 --   6. Trigger sur bookings : nouvelle réservation confirmée, annulation PAR LE CLIENT.
 --      (Une annulation faite par Alix depuis l'admin ne le notifie pas : il le sait déjà.)
 --
@@ -24,6 +29,13 @@
 -- Vault : secrets chiffrés (URL de la fonction, secret partagé), jamais dans une migration.
 create extension if not exists pg_net with schema extensions;
 create extension if not exists supabase_vault with schema vault;
+
+-- Sur Supabase, créer pg_net donne USAGE sur le schéma net et EXECUTE sur net.http_* à anon et
+-- authenticated (trigger d'évènement de la plateforme). Aucun droit implicite : on les retire.
+-- Seules nos fonctions security definer (propriétaire postgres) appellent net.http_post.
+revoke usage on schema net from anon, authenticated;
+revoke execute on all functions in schema net from anon, authenticated;
+revoke all on all tables in schema net from anon, authenticated;
 
 -- -----------------------------------------------------------------------------
 -- 1. Règles métier : mêmes valeurs qu'avant + push_max_devices. Aucune fonction n'en dépend
@@ -40,7 +52,8 @@ returns table (
   data_retention interval,        -- conservation des données clients après le RDV (purge à coder)
   gallery_max_items integer,      -- photos max dans la galerie (publiées ou non)
   request_replay_window interval, -- rejeu d'une réservation (même clé) accepté pendant X
-  push_max_devices integer        -- appareils abonnés aux notifications, par admin
+  push_max_devices integer,       -- appareils abonnés aux notifications, par admin
+  push_max_per_hour integer       -- notifications envoyées au plus par heure (anti-abus)
 )
 language sql
 stable
@@ -55,9 +68,35 @@ as $$
     interval '6 months',
     60,
     interval '30 minutes',
-    5;
+    5,
+    10;
 $$;
 revoke all on function private.settings() from public, anon, authenticated;
+
+-- -----------------------------------------------------------------------------
+-- Adresse d'un service de push CONNU (Apple, Google, Mozilla, Microsoft) : l'Edge Function
+-- n'envoie jamais de requête vers une autre adresse (pas de requête vers un hôte choisi par
+-- celui qui enregistre l'abonnement). Même liste dans supabase/functions/_shared/webpush.ts.
+-- -----------------------------------------------------------------------------
+create function private.is_push_endpoint(p_endpoint text)
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select coalesce(p_endpoint ~ ('^https://(web\.push\.apple\.com|fcm\.googleapis\.com'
+    || '|updates\.push\.services\.mozilla\.com|[a-z0-9-]+\.notify\.windows\.com)/[^[:space:]]+$'), false);
+$$;
+revoke all on function private.is_push_endpoint(text) from public, anon, authenticated;
+
+-- Journal des notifications parties (date et type, rien d'autre) : sert à la limite par heure.
+create table private.notify_log (
+  id bigint generated always as identity primary key,
+  kind text not null,
+  sent_at timestamptz not null default now()
+);
+alter table private.notify_log enable row level security;
+revoke all on table private.notify_log from public, anon, authenticated;
 
 -- -----------------------------------------------------------------------------
 -- 2. Abonnements push. endpoint : l'adresse du service de push de l'appareil (https, unique).
@@ -69,7 +108,7 @@ create table public.push_subscriptions (
   -- propriétaire n'est plus admin est ignoré à l'envoi (notify_push_subscriptions).
   user_id uuid not null references auth.users (id) on delete cascade,
   endpoint text not null unique
-    check (char_length(endpoint) between 12 and 1000 and endpoint ~ '^https://[^[:space:]]+$'),
+    check (char_length(endpoint) between 12 and 1000 and private.is_push_endpoint(endpoint)),
   p256dh text not null check (p256dh ~ '^[A-Za-z0-9_-]{80,100}$'),
   auth text not null check (auth ~ '^[A-Za-z0-9_-]{16,32}$'),
   created_at timestamptz not null default now()
@@ -114,6 +153,14 @@ begin
     return false;
   end if;
 
+  -- Anti-abus : au plus push_max_per_hour notifications par heure, tous types confondus.
+  delete from private.notify_log l where l.sent_at < now() - interval '1 day';
+  if (select count(*) from private.notify_log l where l.sent_at > now() - interval '1 hour')
+     >= (select s.push_max_per_hour from private.settings() s) then
+    return false;
+  end if;
+  insert into private.notify_log (kind) values (p_kind);
+
   perform net.http_post(
     url := v_url,
     body := jsonb_build_object('kind', p_kind, 'booking_id', p_booking_id),
@@ -156,7 +203,7 @@ begin
   perform private.require_admin();
   if p_endpoint is null or p_p256dh is null or p_auth is null
      or char_length(p_endpoint) not between 12 and 1000
-     or p_endpoint !~ '^https://[^[:space:]]+$'
+     or not private.is_push_endpoint(p_endpoint)
      or p_p256dh !~ '^[A-Za-z0-9_-]{80,100}$'
      or p_auth !~ '^[A-Za-z0-9_-]{16,32}$' then
     raise exception 'invalid_input' using errcode = 'P0001';
@@ -203,7 +250,31 @@ $$;
 revoke all on function public.admin_delete_push_subscription(text) from public, anon, authenticated;
 grant execute on function public.admin_delete_push_subscription(text) to authenticated;
 
--- Notification de test vers tous les appareils de l'admin.
+-- Oublie TOUS les appareils de l'admin, sauf p_keep_endpoint s'il est donné : « Couper sur
+-- tous mes appareils » (téléphone perdu), déconnexion des autres appareils après un changement
+-- de mot de passe. Renvoie le nombre d'appareils oubliés.
+create function public.admin_delete_push_subscriptions(p_keep_endpoint text default null)
+returns integer
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  v_count integer;
+begin
+  perform private.require_admin();
+  delete from public.push_subscriptions p
+   where p.user_id = (select auth.uid())
+     and p.endpoint is distinct from p_keep_endpoint;
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+revoke all on function public.admin_delete_push_subscriptions(text) from public, anon, authenticated;
+grant execute on function public.admin_delete_push_subscriptions(text) to authenticated;
+
+-- Notification de test vers tous les appareils de l'admin (soumise à la même limite par heure).
 -- 'queued' : envoyée · 'no_device' : aucun appareil abonné · 'not_configured' : serveur de
 -- notifications pas encore branché (secrets Vault absents).
 create function public.admin_send_test_push()

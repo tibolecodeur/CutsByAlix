@@ -41,6 +41,17 @@ Sécurité :
   **chiffré de bout en bout** pour l'appareil : Apple le transporte sans pouvoir le lire.
 - Une panne de notification ne fait **jamais** échouer une réservation : toute erreur est avalée
   dans `notify_booking_event`, et l'appel HTTP part après le COMMIT.
+- **Anti-abus** : au plus 10 notifications par heure (`push_max_per_hour`, journal
+  `private.notify_log`). Une boucle « réserver puis annuler » ne peut pas inonder le téléphone.
+- **Appareils** : seuls les services de push connus (Apple, Google, Mozilla, Microsoft) sont
+  acceptés comme adresse d'abonnement, en base et dans la fonction ; aucune redirection suivie.
+  La déconnexion désabonne le téléphone ; un changement de mot de passe désabonne les autres
+  appareils ; « Couper les notifications sur tous mes appareils » sert en cas de perte.
+- **pg_net** : les droits que la plateforme donne à anon et authenticated sur le schéma `net`
+  sont retirés (test pgTAP). Le secret partagé transite en clair dans `net.http_request_queue`
+  le temps de l'envoi, lisible seulement par les rôles d'administration de la base.
+- La fonction est joignable sans JWT : n'importe qui peut l'appeler, mais sans le secret elle
+  répond 401 sans rien lire (seul effet possible : consommer le quota d'appels gratuits).
 - Le chiffrement et la signature sont écrits avec la seule API WebCrypto
   (`supabase/functions/_shared/webpush.ts`, sans dépendance), vérifiés par Vitest sur le vecteur
   de test officiel de la RFC 8291.

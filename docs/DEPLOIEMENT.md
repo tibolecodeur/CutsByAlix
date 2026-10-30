@@ -210,6 +210,9 @@ serveur n'est pas encore branché. À faire **une fois**, sur ton ordinateur, pr
    select vault.create_secret('<le même secret qu''à l''étape 2>', 'notify_booking_secret');
    ```
 
+   Le SQL Editor garde l'historique des requêtes : supprimer ensuite cet onglet (ou la requête
+   enregistrée), puisqu'il contient le secret en clair.
+
 7. **Cloudflare Pages** : `VITE_VAPID_PUBLIC_KEY` = la clé **publique** (Production et Preview,
    § 2), puis redéployer. Fusionner la PR du front **après** l'étape 4.
 8. **Sur l'iPhone d'Alix** (iOS 16.4 ou plus) : ajouter `/admin` à l'écran d'accueil (Safari →

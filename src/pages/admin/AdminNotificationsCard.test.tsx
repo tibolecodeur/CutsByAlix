@@ -11,6 +11,7 @@ vi.mock("@/features/admin/push", async (importOriginal) => ({
   getPushStatus: vi.fn(),
   enablePush: vi.fn(),
   disablePush: vi.fn(),
+  disablePushEverywhere: vi.fn(),
   sendTestPush: vi.fn(),
 }));
 
@@ -29,21 +30,25 @@ async function renderWith(status: push.PushStatus) {
 }
 
 describe("AdminNotificationsCard", () => {
-  it("iPhone dans Safari : marche à suivre pour l'écran d'accueil, aucun bouton", async () => {
+  it("iPhone dans Safari : marche à suivre pour l'écran d'accueil, aucun bouton d'activation", async () => {
     await renderWith("needs_install");
     expect(screen.getByText(/choisis « Sur l'écran d'accueil »/)).toBeInTheDocument();
     expect(screen.getByText(/iOS 16.4 ou plus récent/)).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Couper les notifications sur tous mes appareils",
+    ]);
   });
 
   it.each([
     ["unsupported", /ne permet pas les notifications/],
     ["not_configured", /pas encore configurées/],
     ["denied", /Réglages → Notifications → Alix admin/],
-  ] as const)("%s : explication, aucun bouton", async (status, text) => {
+  ] as const)("%s : explication, aucun bouton d'activation", async (status, text) => {
     await renderWith(status);
     expect(screen.getByText(text)).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Couper les notifications sur tous mes appareils",
+    ]);
   });
 
   it("à activer : un toucher sur « Activer » abonne le téléphone", async () => {
@@ -102,6 +107,19 @@ describe("AdminNotificationsCard", () => {
 
     expect(push.disablePush).toHaveBeenCalledOnce();
     expect(await screen.findByRole("status")).toHaveTextContent("Notifications désactivées");
+    expect(screen.getByRole("button", { name: "Activer les notifications" })).toBeInTheDocument();
+  });
+
+  it("« Couper sur tous mes appareils » : tous les abonnements oubliés, ce téléphone compris", async () => {
+    vi.mocked(push.disablePushEverywhere).mockResolvedValue(2);
+    await renderWith("on");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Couper les notifications sur tous mes appareils" }),
+    );
+    expect(push.disablePushEverywhere).toHaveBeenCalledOnce();
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Notifications coupées sur tous tes appareils.",
+    );
     expect(screen.getByRole("button", { name: "Activer les notifications" })).toBeInTheDocument();
   });
 

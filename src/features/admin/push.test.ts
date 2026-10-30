@@ -3,6 +3,9 @@ import { AdminError } from "@/features/admin/data";
 import {
   base64UrlToBytes,
   disablePush,
+  disablePushEverywhere,
+  forgetOtherPushDevices,
+  forgetThisPushDevice,
   enablePush,
   getPushStatus,
   isAppleMobile,
@@ -279,5 +282,75 @@ describe("sendTestPush", () => {
   it("erreur de la base : AdminError", async () => {
     mockSupabase({ data: null, error: { message: "forbidden", code: "42501" } });
     await expect(sendTestPush()).rejects.toEqual(new AdminError("forbidden"));
+  });
+});
+
+describe("disablePushEverywhere", () => {
+  it("oublie tous les appareils en base, puis se désabonne ici", async () => {
+    const calls = mockSupabase({ data: 3, error: null });
+    const { subscription } = fakeBrowser({ permission: "granted", subscribed: true });
+    expect(await disablePushEverywhere()).toBe(3);
+    expect(asCalls(calls)).toEqual([
+      ["rpc", "admin_delete_push_subscriptions", { p_keep_endpoint: null }],
+    ]);
+    expect(subscription.unsubscribe).toHaveBeenCalledOnce();
+  });
+
+  it("navigateur sans service worker (ordinateur, autre appareil) : la base suffit", async () => {
+    mockSupabase({ data: 1, error: null });
+    expect(await disablePushEverywhere()).toBe(1);
+  });
+
+  it("refus de la base : AdminError", async () => {
+    mockSupabase({ data: null, error: { message: "forbidden", code: "42501" } });
+    await expect(disablePushEverywhere()).rejects.toEqual(new AdminError("forbidden"));
+  });
+});
+
+describe("forgetOtherPushDevices (après un changement de mot de passe)", () => {
+  it("garde ce téléphone s'il est abonné, oublie les autres", async () => {
+    const calls = mockSupabase({ data: 2, error: null });
+    fakeBrowser({ permission: "granted", subscribed: true });
+    await forgetOtherPushDevices();
+    expect(asCalls(calls)).toEqual([
+      ["rpc", "admin_delete_push_subscriptions", { p_keep_endpoint: SUBSCRIPTION_JSON.endpoint }],
+    ]);
+  });
+
+  it("ce téléphone n'est pas abonné : tous les appareils sont oubliés", async () => {
+    const calls = mockSupabase({ data: 2, error: null });
+    await forgetOtherPushDevices();
+    expect(asCalls(calls)).toEqual([
+      ["rpc", "admin_delete_push_subscriptions", { p_keep_endpoint: null }],
+    ]);
+  });
+
+  it("panne : aucune erreur remontée (le mot de passe est déjà changé)", async () => {
+    mockSupabase({ data: null, error: { message: "boom" } });
+    await expect(forgetOtherPushDevices()).resolves.toBeUndefined();
+  });
+});
+
+describe("forgetThisPushDevice (avant la déconnexion)", () => {
+  it("désabonne ce téléphone en base et dans le navigateur", async () => {
+    const calls = mockSupabase({ data: true, error: null });
+    const { subscription } = fakeBrowser({ permission: "granted", subscribed: true });
+    await forgetThisPushDevice();
+    expect(asCalls(calls)).toEqual([
+      ["rpc", "admin_delete_push_subscription", { p_endpoint: SUBSCRIPTION_JSON.endpoint }],
+    ]);
+    expect(subscription.unsubscribe).toHaveBeenCalledOnce();
+  });
+
+  it("réseau bloqué : rend la main au bout de 3 s, sans erreur", async () => {
+    vi.useFakeTimers();
+    vi.mocked(getSupabaseAdmin).mockReturnValue({
+      rpc: () => new Promise(() => {}),
+    } as unknown as ReturnType<typeof getSupabaseAdmin>);
+    fakeBrowser({ permission: "granted", subscribed: true });
+    const done = forgetThisPushDevice();
+    await vi.advanceTimersByTimeAsync(3000);
+    await expect(done).resolves.toBeUndefined();
+    vi.useRealTimers();
   });
 });

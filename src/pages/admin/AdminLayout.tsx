@@ -3,6 +3,7 @@ import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from "react
 import { ErrorMessage, LoadingMessage } from "@/components/StatusMessage";
 import { useScrollToHash } from "@/components/useScrollToHash";
 import { getAdminSession, onAdminSignedOut, signOut } from "@/features/admin/auth";
+import { forgetThisPushDevice } from "@/features/admin/push";
 import { useAsync } from "@/lib/useAsync";
 import { AdminHead } from "@/pages/admin/AdminHead";
 import type { AdminContext } from "@/pages/admin/useAdmin";
@@ -41,6 +42,8 @@ export function AdminLayout() {
   useEffect(() => onAdminSignedOut(() => setSignedOut(true)), []);
 
   async function handleSignOut() {
+    // Ce téléphone ne reçoit plus les notifications (prénoms des clients) une fois déconnecté.
+    await forgetThisPushDevice();
     await signOut();
     navigate("/admin/connexion", { replace: true });
   }

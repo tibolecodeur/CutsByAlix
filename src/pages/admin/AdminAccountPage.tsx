@@ -10,6 +10,7 @@ import {
   MIN_PASSWORD_LENGTH,
   type AdminAuthErrorCode,
 } from "@/features/admin/auth";
+import { forgetOtherPushDevices } from "@/features/admin/push";
 import { AdminNotificationsCard } from "@/pages/admin/AdminNotificationsCard";
 import { useAdmin } from "@/pages/admin/useAdmin";
 
@@ -100,6 +101,8 @@ function PasswordForm({ email }: { email: string }) {
     setSubmitting(true);
     try {
       const { otherDevicesSignedOut } = await changePassword(current, password);
+      // Les appareils déconnectés ne doivent plus recevoir les notifications non plus.
+      await forgetOtherPushDevices();
       setSuccess(
         otherDevicesSignedOut
           ? "Mot de passe modifié. Tes autres appareils ont été déconnectés."

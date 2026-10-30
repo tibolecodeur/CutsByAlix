@@ -317,6 +317,10 @@ type AdminDeletePushSubscriptionFunction = {
   Args: { p_endpoint: string };
   Returns: boolean;
 };
+type AdminDeletePushSubscriptionsFunction = {
+  Args: { p_keep_endpoint: string | null };
+  Returns: number;
+};
 type AdminSendTestPushFunction = {
   Args: Record<string, never>;
   Returns: "queued" | "no_device" | "not_configured";
@@ -359,6 +363,7 @@ export type Database = {
       admin_gallery_orphans: AdminGalleryOrphansFunction;
       admin_save_push_subscription: AdminSavePushSubscriptionFunction;
       admin_delete_push_subscription: AdminDeletePushSubscriptionFunction;
+      admin_delete_push_subscriptions: AdminDeletePushSubscriptionsFunction;
       admin_send_test_push: AdminSendTestPushFunction;
     };
     Enums: Record<never, never>;

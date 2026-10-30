@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as auth from "@/features/admin/auth";
+import * as push from "@/features/admin/push";
 import { AdminLayout } from "@/pages/admin/AdminLayout";
 import { useAdmin } from "@/pages/admin/useAdmin";
 
@@ -15,6 +16,11 @@ vi.mock("@/features/admin/auth", async (importOriginal) => ({
   getAdminSession: vi.fn(),
   onAdminSignedOut: vi.fn(),
   signOut: vi.fn(),
+}));
+
+vi.mock("@/features/admin/push", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/admin/push")>()),
+  forgetThisPushDevice: vi.fn(async () => {}),
 }));
 
 // jsdom ne fait pas défiler la page : on neutralise les appels de useScrollToHash.
@@ -138,6 +144,8 @@ describe("AdminLayout : garde de l'espace admin", () => {
     renderAt("/admin");
 
     await user.click(await screen.findByRole("button", { name: "Sortir" }));
+    // Ce téléphone ne reçoit plus les notifications, PUIS la session est effacée.
+    expect(push.forgetThisPushDevice).toHaveBeenCalledTimes(1);
     expect(auth.signOut).toHaveBeenCalledTimes(1);
     expect(await screen.findByRole("heading", { name: /^Connexion/ })).toBeVisible();
   });

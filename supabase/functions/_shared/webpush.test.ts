@@ -27,7 +27,7 @@ const RFC = {
 };
 
 const SUBSCRIPTION = {
-  endpoint: "https://push.example.test/abonnement/123",
+  endpoint: "https://web.push.apple.com/abonnement/123",
   p256dh: RFC.clientPublicKey,
   auth: RFC.authSecret,
 };
@@ -141,7 +141,7 @@ describe("sendPush", () => {
     expect(result).toEqual({ status, gone: true });
   });
 
-  it("endpoint non https : aucun appel réseau, abonnement à oublier", async () => {
+  it("endpoint hors des services de push : aucun appel réseau, abonnement à oublier", async () => {
     const vapid = await newVapidKeys();
     const fetchImpl = vi.fn();
     const result = await sendPush(
@@ -158,9 +158,16 @@ describe("sendPush", () => {
 });
 
 describe("isValidEndpoint", () => {
-  it("https seulement", () => {
+  it("https et services de push connus seulement", () => {
     expect(isValidEndpoint("https://web.push.apple.com/x")).toBe(true);
+    expect(isValidEndpoint("https://fcm.googleapis.com/fcm/send/x")).toBe(true);
+    expect(isValidEndpoint("https://updates.push.services.mozilla.com/wpush/v2/x")).toBe(true);
+    expect(isValidEndpoint("https://wns2-par02p.notify.windows.com/w/?token=x")).toBe(true);
     expect(isValidEndpoint("http://web.push.apple.com/x")).toBe(false);
+    expect(isValidEndpoint("https://web.push.apple.com:8443/x")).toBe(false);
+    expect(isValidEndpoint("https://web.push.apple.com.pirate.test/x")).toBe(false);
+    expect(isValidEndpoint("https://10.0.0.1/x")).toBe(false);
+    expect(isValidEndpoint("https://localhost/x")).toBe(false);
     expect(isValidEndpoint("pas une url")).toBe(false);
   });
 });

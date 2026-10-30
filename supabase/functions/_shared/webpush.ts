@@ -214,10 +214,18 @@ export async function vapidAuthorization(
 
 // ----- envoi -----------------------------------------------------------------------------------
 
-/** Endpoint acceptable : https uniquement (garde-fou, l'endpoint vient du navigateur). */
+/**
+ * Services de push connus (Apple, Google, Mozilla, Microsoft) : on n'envoie jamais de requête
+ * vers un autre hôte, même si un abonnement en base le demandait. Même liste que
+ * private.is_push_endpoint() (migration …_notifications_push.sql).
+ */
+const PUSH_HOSTS =
+  /^(web\.push\.apple\.com|fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[a-z0-9-]+\.notify\.windows\.com)$/;
+
 export function isValidEndpoint(endpoint: string): boolean {
   try {
-    return new URL(endpoint).protocol === "https:";
+    const url = new URL(endpoint);
+    return url.protocol === "https:" && url.port === "" && PUSH_HOSTS.test(url.hostname);
   } catch {
     return false;
   }
@@ -248,6 +256,8 @@ export async function sendPush(
       Urgency: "high",
     },
     body,
+    // Jamais de redirection suivie : la requête reste sur le service de push vérifié.
+    redirect: "manual",
   });
   return { status: response.status, gone: response.status === 404 || response.status === 410 };
 }
