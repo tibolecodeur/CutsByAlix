@@ -13,7 +13,7 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
   désactivation dans « Mon compte » (iOS 16.4 ou plus, espace admin ajouté à l'écran
   d'accueil). Gratuit, sans service tiers : message chiffré de bout en bout, aucune librairie
   ajoutée. Une notification en panne n'empêche jamais une réservation. Au plus 10
-  notifications par heure ; la déconnexion coupe les notifications du téléphone, et un bouton
+  notifications par heure, puis une seule alerte « Beaucoup d'activité » ; la déconnexion coupe les notifications du téléphone, et un bouton
   les coupe sur tous les appareils (téléphone perdu).
 - Galerie : toucher une photo l'ouvre en grand et en couleur. Elle grandit depuis sa vignette
   (« on rentre dedans ») pendant que la page derrière se floute ; on passe à la photo

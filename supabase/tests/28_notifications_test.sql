@@ -17,7 +17,7 @@ begin
   end loop;
 end $$;
 
-select plan(55);
+select plan(56);
 
 truncate public.bookings, public.availabilities, public.locations, public.services,
          public.gallery_items, public.admins, public.push_subscriptions;
@@ -244,8 +244,14 @@ insert into public.bookings (id, service_id, location_id, starts_at, ends_at, fi
 values ('60000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001',
         '20000000-0000-4000-8000-000000000001', '2030-03-06 12:20 Europe/Paris', now(),
         'Ana', 'Blanc', '0700000003');
-select is((select count(*) from net.http_request_queue where id > (select last_id from q2)), 0::bigint,
-  'au-delà de 10 notifications dans l''heure : réservation enregistrée, plus rien n''est envoyé');
+select is(
+  (select convert_from(body, 'UTF8')::jsonb from net.http_request_queue where id > (select last_id from q2)),
+  '{"kind": "overflow", "booking_id": null}'::jsonb,
+  'au-delà de 10 dans l''heure : une alerte « beaucoup d''activité », sans id de réservation');
+update public.bookings set status = 'cancelled', cancelled_by = 'client'
+ where id = '60000000-0000-4000-8000-000000000003';
+select is((select count(*) from net.http_request_queue where id > (select last_id from q2)), 1::bigint,
+  'ensuite, plus rien dans l''heure : une seule alerte, pas d''inondation');
 select ok(exists (select 1 from public.bookings where id = '60000000-0000-4000-8000-000000000003'),
   'la limite des notifications ne bloque jamais la réservation');
 select ok(not has_table_privilege('authenticated', 'private.notify_log', 'SELECT,INSERT,DELETE')

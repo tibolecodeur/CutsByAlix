@@ -125,6 +125,14 @@ describe("handleNotify : envoi", () => {
     expect(payload.title).toBe("Notifications activées");
   });
 
+  it("alerte de dépassement : message « Beaucoup d'activité », sans lire de réservation", async () => {
+    const d = deps();
+    await handleNotify(request({ kind: "overflow", booking_id: null }), d);
+    expect(d.getBooking).not.toHaveBeenCalled();
+    const payload = JSON.parse((d.send as ReturnType<typeof vi.fn>).mock.calls[0]![1] as string);
+    expect(payload.title).toBe("Beaucoup d'activité");
+  });
+
   it("appareil désabonné (410) : oublié ; appareil en panne : les autres reçoivent quand même", async () => {
     const send = vi
       .fn()

@@ -8,7 +8,7 @@
  * Rien d'autre : ni nom de famille, ni téléphone, ni e-mail.
  */
 
-export type BookingEventKind = "new_booking" | "cancelled" | "test";
+export type BookingEventKind = "new_booking" | "cancelled" | "test" | "overflow";
 
 export type BookingSummary = {
   id: string;
@@ -26,7 +26,7 @@ export type PushMessage = {
   tag: string;
 };
 
-const TITLES: Record<Exclude<BookingEventKind, "test">, string> = {
+const TITLES: Record<"new_booking" | "cancelled", string> = {
   new_booking: "Nouvelle réservation",
   cancelled: "Réservation annulée",
 };
@@ -60,7 +60,7 @@ function shortFirstName(firstName: string): string {
 }
 
 export function buildBookingMessage(
-  kind: Exclude<BookingEventKind, "test">,
+  kind: "new_booking" | "cancelled",
   booking: BookingSummary,
 ): PushMessage {
   const who = [shortFirstName(booking.firstName), booking.serviceName.trim()]
@@ -80,5 +80,18 @@ export function buildTestMessage(): PushMessage {
     body: "Tu recevras une notification à chaque nouvelle réservation et à chaque annulation.",
     url: "/admin",
     tag: "test",
+  };
+}
+
+/**
+ * Limite de notifications atteinte (anti-abus) : une seule alerte par heure, qui renvoie vers
+ * la liste des rendez-vous. Aucune réservation n'est perdue, seulement son annonce.
+ */
+export function buildOverflowMessage(): PushMessage {
+  return {
+    title: "Beaucoup d'activité",
+    body: "Plusieurs réservations ou annulations en peu de temps : ouvre l'admin pour les voir.",
+    url: "/admin/rendez-vous",
+    tag: "overflow",
   };
 }

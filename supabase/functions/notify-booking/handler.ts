@@ -9,6 +9,7 @@
 import type { PushResult, PushSubscription } from "../_shared/webpush.ts";
 import {
   buildBookingMessage,
+  buildOverflowMessage,
   buildTestMessage,
   type BookingEventKind,
   type PushMessage,
@@ -56,7 +57,7 @@ type Event = { kind: BookingEventKind; bookingId: string | null };
 function parseEvent(value: unknown): Event | null {
   if (!value || typeof value !== "object") return null;
   const { kind, booking_id: bookingId } = value as Record<string, unknown>;
-  if (kind === "test") return { kind, bookingId: null };
+  if (kind === "test" || kind === "overflow") return { kind, bookingId: null };
   if (
     (kind === "new_booking" || kind === "cancelled") &&
     typeof bookingId === "string" &&
@@ -94,6 +95,8 @@ export async function handleNotify(request: Request, deps: NotifyDeps): Promise<
   let message: PushMessage;
   if (event.kind === "test") {
     message = buildTestMessage();
+  } else if (event.kind === "overflow") {
+    message = buildOverflowMessage();
   } else {
     const booking = await deps.getBooking(event.bookingId!);
     if (!booking || !stillRelevant(event.kind, booking))

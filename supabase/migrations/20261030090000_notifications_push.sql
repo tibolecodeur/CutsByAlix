@@ -128,6 +128,9 @@ create policy push_subscriptions_admin_own on public.push_subscriptions
 -- 5. Appel de l'Edge Function (défini avant les fonctions qui l'utilisent).
 --    kind : 'new_booking' | 'cancelled' (avec p_booking_id) | 'test' (sans).
 --    Renvoie vrai si la requête a été mise en file, faux sinon (non configuré, erreur).
+--    Limite atteinte : UNE alerte 'overflow' par heure (« beaucoup d'activité, ouvre
+--    l'admin »), jamais le silence. Sinon une boucle « réserver puis annuler » ferait taire
+--    les vraies réservations de l'heure ; là, Alix sait qu'il doit regarder la liste.
 -- -----------------------------------------------------------------------------
 create function private.notify_booking_event(p_kind text, p_booking_id uuid)
 returns boolean
@@ -154,10 +157,16 @@ begin
   end if;
 
   -- Anti-abus : au plus push_max_per_hour notifications par heure, tous types confondus.
+  -- Au-delà : une seule alerte « overflow » par heure, sans détail de réservation.
   delete from private.notify_log l where l.sent_at < now() - interval '1 day';
   if (select count(*) from private.notify_log l where l.sent_at > now() - interval '1 hour')
      >= (select s.push_max_per_hour from private.settings() s) then
-    return false;
+    if exists (select 1 from private.notify_log l
+                where l.kind = 'overflow' and l.sent_at > now() - interval '1 hour') then
+      return false;
+    end if;
+    p_kind := 'overflow';
+    p_booking_id := null;
   end if;
   insert into private.notify_log (kind) values (p_kind);
 

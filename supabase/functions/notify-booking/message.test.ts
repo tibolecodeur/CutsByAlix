@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildBookingMessage, buildTestMessage, formatWhen } from "./message";
+import { buildBookingMessage, buildOverflowMessage, buildTestMessage, formatWhen } from "./message";
 
 const BOOKING = {
   id: "60000000-0000-4000-8000-000000000001",
@@ -60,5 +60,16 @@ describe("buildBookingMessage", () => {
 describe("buildTestMessage", () => {
   it("message de test vers l'accueil de l'admin", () => {
     expect(buildTestMessage()).toMatchObject({ title: "Notifications activées", url: "/admin" });
+  });
+});
+
+describe("buildOverflowMessage", () => {
+  it("limite atteinte : une alerte sans détail, vers la liste des rendez-vous", () => {
+    expect(buildOverflowMessage()).toEqual({
+      title: "Beaucoup d'activité",
+      body: "Plusieurs réservations ou annulations en peu de temps : ouvre l'admin pour les voir.",
+      url: "/admin/rendez-vous",
+      tag: "overflow",
+    });
   });
 });

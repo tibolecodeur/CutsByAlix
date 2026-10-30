@@ -43,6 +43,9 @@ Sécurité :
   dans `notify_booking_event`, et l'appel HTTP part après le COMMIT.
 - **Anti-abus** : au plus 10 notifications par heure (`push_max_per_hour`, journal
   `private.notify_log`). Une boucle « réserver puis annuler » ne peut pas inonder le téléphone.
+  Au-delà, une seule alerte par heure, « Beaucoup d'activité », qui renvoie vers la liste des
+  rendez-vous : le dépassement n'est jamais silencieux, et rien n'est perdu (tout est dans
+  l'admin), seule l'annonce détaillée l'est.
 - **Appareils** : seuls les services de push connus (Apple, Google, Mozilla, Microsoft) sont
   acceptés comme adresse d'abonnement, en base et dans la fonction ; aucune redirection suivie.
   La déconnexion désabonne le téléphone ; un changement de mot de passe désabonne les autres
