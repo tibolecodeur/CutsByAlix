@@ -3,8 +3,10 @@
  * à la base et l'envoi sont injectés (`deps`), ce qui la rend testable par Vitest. `index.ts`
  * se contente de brancher les vraies implémentations.
  *
- * Appelée UNIQUEMENT par la base (trigger sur bookings, via pg_net), avec le secret partagé
- * dans l'en-tête `x-notify-secret`. Le corps ne contient que le type et l'id.
+ * Appelée UNIQUEMENT par la base (trigger sur bookings, via pg_net). Le corps ne contient que le
+ * type, l'id et l'horodatage ; l'en-tête `x-notify-signature` porte leur HMAC-SHA256 avec le
+ * secret partagé. Le secret lui-même ne voyage jamais (il resterait lisible dans la file de
+ * pg_net) : une requête interceptée ne permet que de rejouer CET évènement, 5 min au plus.
  */
 import type { PushResult, PushSubscription } from "../_shared/webpush.ts";
 import {
@@ -26,6 +28,8 @@ export type BookingRow = {
 export type NotifyDeps = {
   /** Secret partagé avec la base (Vault). Vide : la fonction refuse tout. */
   secret: string;
+  /** Heure courante en secondes (remplaçable en test). */
+  nowSeconds?: () => number;
   getBooking: (id: string) => Promise<BookingRow | null>;
   listSubscriptions: () => Promise<PushSubscription[]>;
   forgetSubscription: (endpoint: string) => Promise<void>;
@@ -52,20 +56,49 @@ function json(status: number, body: Record<string, unknown>): Response {
   });
 }
 
-type Event = { kind: BookingEventKind; bookingId: string | null };
+type Event = { kind: BookingEventKind; bookingId: string | null; ts: number };
+
+/** Signature acceptée de -60 s (horloges décalées) à +5 min (file de pg_net chargée). */
+const MAX_AGE_S = 300;
+const MAX_FUTURE_S = 60;
 
 function parseEvent(value: unknown): Event | null {
   if (!value || typeof value !== "object") return null;
-  const { kind, booking_id: bookingId } = value as Record<string, unknown>;
-  if (kind === "test" || kind === "overflow") return { kind, bookingId: null };
+  const { kind, booking_id: bookingId, ts } = value as Record<string, unknown>;
+  if (typeof ts !== "number" || !Number.isSafeInteger(ts)) return null;
+  if ((kind === "test" || kind === "overflow") && bookingId === null) {
+    return { kind, bookingId: null, ts };
+  }
   if (
     (kind === "new_booking" || kind === "cancelled") &&
     typeof bookingId === "string" &&
     UUID.test(bookingId)
   ) {
-    return { kind, bookingId };
+    return { kind, bookingId, ts };
   }
   return null;
+}
+
+/** HMAC-SHA256 en hexadécimal, comme `encode(hmac(…, 'sha256'), 'hex')` côté base. */
+export async function signEvent(
+  secret: string,
+  kind: string,
+  bookingId: string | null,
+  ts: number,
+) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const mac = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(`${kind}:${bookingId ?? ""}:${ts}`),
+  );
+  return Array.from(new Uint8Array(mac), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -79,10 +112,7 @@ function stillRelevant(kind: BookingEventKind, booking: BookingRow): boolean {
 
 export async function handleNotify(request: Request, deps: NotifyDeps): Promise<Response> {
   if (request.method !== "POST") return json(405, { error: "method_not_allowed" });
-  const given = request.headers.get("x-notify-secret") ?? "";
-  if (deps.secret.length < 16 || !safeEqual(given, deps.secret)) {
-    return json(401, { error: "unauthorized" });
-  }
+  if (deps.secret.length < 16) return json(401, { error: "unauthorized" });
 
   let event: Event | null;
   try {
@@ -91,6 +121,13 @@ export async function handleNotify(request: Request, deps: NotifyDeps): Promise<
     event = null;
   }
   if (!event) return json(400, { error: "invalid_input" });
+
+  // Authenticité : signature juste ET récente. Aucune lecture en base avant ce contrôle.
+  const now = (deps.nowSeconds ?? (() => Math.floor(Date.now() / 1000)))();
+  const given = request.headers.get("x-notify-signature") ?? "";
+  const expected = await signEvent(deps.secret, event.kind, event.bookingId, event.ts);
+  const fresh = event.ts <= now + MAX_FUTURE_S && event.ts >= now - MAX_AGE_S;
+  if (!safeEqual(given, expected) || !fresh) return json(401, { error: "unauthorized" });
 
   let message: PushMessage;
   if (event.kind === "test") {

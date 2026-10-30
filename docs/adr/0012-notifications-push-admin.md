@@ -34,9 +34,10 @@ puis la date et l'heure, puis le prénom ; annulations notifiées aussi.
 Sécurité :
 
 - L'URL de la fonction et un **secret partagé** sont dans **Supabase Vault**, jamais dans une
-  migration. L'Edge Function refuse tout appel sans ce secret (comparaison en temps constant ;
-  `verify_jwt = false`, car l'appelant est la base, pas un utilisateur). Sans secrets (base
-  locale, CI), le trigger ne fait rien.
+  migration. Chaque appel porte une **signature HMAC-SHA256** de « type:id:horodatage » faite
+  avec ce secret ; l'Edge Function la recalcule (comparaison en temps constant) et refuse toute
+  signature fausse ou de plus de 5 min (`verify_jwt = false`, car l'appelant est la base, pas un
+  utilisateur). Sans secrets (base locale, CI), le trigger ne fait rien.
 - pg_net ne transporte que le type d'évènement et l'id. Le contenu (date, prénom, prestation) est
   **chiffré de bout en bout** pour l'appareil : Apple le transporte sans pouvoir le lire.
 - Une panne de notification ne fait **jamais** échouer une réservation : toute erreur est avalée
@@ -50,9 +51,11 @@ Sécurité :
   acceptés comme adresse d'abonnement, en base et dans la fonction ; aucune redirection suivie.
   La déconnexion désabonne le téléphone ; un changement de mot de passe désabonne les autres
   appareils ; « Couper les notifications sur tous mes appareils » sert en cas de perte.
-- **pg_net** : les droits que la plateforme donne à anon et authenticated sur le schéma `net`
-  sont retirés (test pgTAP). Le secret partagé transite en clair dans `net.http_request_queue`
-  le temps de l'envoi, lisible seulement par les rôles d'administration de la base.
+- **pg_net** : sur Supabase, l'extension est installée par le rôle de la plateforme, qui donne
+  lui-même des droits sur le schéma `net` à anon et authenticated ; `postgres` ne peut pas les
+  retirer (un REVOKE ne retire que ses propres droits). Le schéma `net` n'est pas exposé par
+  l'API. Par prudence, **le secret n'entre jamais dans la file `net.http_request_queue`** : elle
+  ne contient que la signature, qui ne permet que de rejouer le même évènement pendant 5 min.
 - La fonction est joignable sans JWT : n'importe qui peut l'appeler, mais sans le secret elle
   répond 401 sans rien lire (seul effet possible : consommer le quota d'appels gratuits).
 - Le chiffrement et la signature sont écrits avec la seule API WebCrypto

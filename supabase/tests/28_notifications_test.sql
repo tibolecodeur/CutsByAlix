@@ -17,7 +17,7 @@ begin
   end loop;
 end $$;
 
-select plan(56);
+select plan(55);
 
 truncate public.bookings, public.availabilities, public.locations, public.services,
          public.gallery_items, public.admins, public.push_subscriptions;
@@ -188,23 +188,37 @@ values ('60000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-0000000
         '20000000-0000-4000-8000-000000000001', '2030-03-06 11:10 Europe/Paris', now(),
         'Tom', 'Durand', '0700000002');
 select is(
-  (select convert_from(body, 'UTF8')::jsonb from net.http_request_queue where id > (select last_id from q1) order by id limit 1),
+  (select (convert_from(body, 'UTF8')::jsonb - 'ts') from net.http_request_queue where id > (select last_id from q1) order by id limit 1),
   '{"kind": "new_booking", "booking_id": "60000000-0000-4000-8000-000000000002"}'::jsonb,
   'nouvelle réservation : type et id seulement, aucune donnée client');
 select is(
   (select url from net.http_request_queue where id > (select last_id from q1) order by id limit 1),
   'https://fonctions.example.test/notify-booking',
   'requête vers l''URL enregistrée dans Vault');
+-- Le secret n'entre JAMAIS dans la file de pg_net (lisible par des rôles de la plateforme) :
+-- seulement une signature HMAC de « type:id:horodatage », que l'Edge Function recalcule.
+select ok(
+  (select position('secret-de-test-tres-long-0123456789' in headers::text || convert_from(body, 'UTF8')) = 0
+     from net.http_request_queue where id > (select last_id from q1) order by id limit 1),
+  'le secret partagé n''apparaît ni dans les en-têtes ni dans le corps');
 select is(
-  (select headers->>'x-notify-secret' from net.http_request_queue
+  (select headers->>'x-notify-signature' from net.http_request_queue
     where id > (select last_id from q1) order by id limit 1),
-  'secret-de-test-tres-long-0123456789',
-  'secret partagé transmis en en-tête');
+  (select encode(extensions.hmac(
+            'new_booking:60000000-0000-4000-8000-000000000002:'
+              || (convert_from(body, 'UTF8')::jsonb ->> 'ts'),
+            'secret-de-test-tres-long-0123456789', 'sha256'), 'hex')
+     from net.http_request_queue where id > (select last_id from q1) order by id limit 1),
+  'signature HMAC-SHA256 de « type:id:horodatage » avec le secret');
+select ok(
+  (select abs((convert_from(body, 'UTF8')::jsonb ->> 'ts')::bigint - extract(epoch from clock_timestamp())) < 60
+     from net.http_request_queue where id > (select last_id from q1) order by id limit 1),
+  'horodatage de l''envoi (secondes) : la signature expire au bout de 5 min');
 
 update public.bookings set status = 'cancelled', cancelled_by = 'client'
  where id = '60000000-0000-4000-8000-000000000002';
 select is(
-  (select convert_from(body, 'UTF8')::jsonb from net.http_request_queue where id > (select last_id from q1) order by id desc limit 1),
+  (select (convert_from(body, 'UTF8')::jsonb - 'ts') from net.http_request_queue where id > (select last_id from q1) order by id desc limit 1),
   '{"kind": "cancelled", "booking_id": "60000000-0000-4000-8000-000000000002"}'::jsonb,
   'annulation par le client : notifiée');
 
@@ -223,7 +237,7 @@ set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", 
 select is(public.admin_send_test_push(), 'queued', 'test avec secrets et appareil : queued');
 reset role;
 select is(
-  (select convert_from(body, 'UTF8')::jsonb from net.http_request_queue where id > (select last_id from q1) order by id desc limit 1),
+  (select (convert_from(body, 'UTF8')::jsonb - 'ts') from net.http_request_queue where id > (select last_id from q1) order by id desc limit 1),
   '{"kind": "test", "booking_id": null}'::jsonb,
   'notification de test mise en file');
 
@@ -245,7 +259,7 @@ values ('60000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-0000000
         '20000000-0000-4000-8000-000000000001', '2030-03-06 12:20 Europe/Paris', now(),
         'Ana', 'Blanc', '0700000003');
 select is(
-  (select convert_from(body, 'UTF8')::jsonb from net.http_request_queue where id > (select last_id from q2)),
+  (select (convert_from(body, 'UTF8')::jsonb - 'ts') from net.http_request_queue where id > (select last_id from q2)),
   '{"kind": "overflow", "booking_id": null}'::jsonb,
   'au-delà de 10 dans l''heure : une alerte « beaucoup d''activité », sans id de réservation');
 update public.bookings set status = 'cancelled', cancelled_by = 'client'
@@ -257,23 +271,6 @@ select ok(exists (select 1 from public.bookings where id = '60000000-0000-4000-8
 select ok(not has_table_privilege('authenticated', 'private.notify_log', 'SELECT,INSERT,DELETE')
       and not has_table_privilege('anon', 'private.notify_log', 'SELECT,INSERT,DELETE'),
   'journal des notifications : aucun droit pour anon ni authenticated');
-
--- pg_net : aucun droit pour les rôles de l'API (la plateforme en donne à la création).
-select ok(not has_schema_privilege('anon', 'net', 'USAGE')
-      and not has_schema_privilege('authenticated', 'net', 'USAGE'),
-  'schéma net fermé à anon et authenticated');
-select ok(not has_table_privilege('anon', 'net.http_request_queue', 'SELECT')
-      and not has_table_privilege('authenticated', 'net.http_request_queue', 'SELECT'),
-  'file des requêtes HTTP (qui contient le secret) illisible pour anon et authenticated');
--- Droit EXPLICITE retiré (celui que donne la plateforme). Sans USAGE sur le schéma, un
--- éventuel EXECUTE hérité de PUBLIC reste inutilisable par ces rôles.
-select is(
-  (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-     cross join lateral aclexplode(coalesce(p.proacl, '{}'::aclitem[])) a
-    where n.nspname = 'net'
-      and a.grantee in ('anon'::regrole, 'authenticated'::regrole)),
-  0::bigint,
-  'aucun EXECUTE explicite sur les fonctions de pg_net pour anon ou authenticated');
 
 -- Appareil d'un utilisateur qui n'est (plus) admin : jamais destinataire.
 insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)

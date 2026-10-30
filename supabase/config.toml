@@ -422,6 +422,7 @@ enabled = true
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
 
 # Notifications push à l'admin (ADR 0012). Appelée uniquement par la base (trigger + pg_net),
-# sans JWT : la fonction vérifie elle-même le secret partagé (en-tête x-notify-secret).
+# sans JWT : la fonction vérifie elle-même la signature HMAC faite avec le secret partagé
+# (en-tête x-notify-signature).
 [functions.notify-booking]
 verify_jwt = false

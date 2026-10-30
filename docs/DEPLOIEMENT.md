@@ -202,7 +202,7 @@ serveur n'est pas encore branché. À faire **une fois**, sur ton ordinateur, pr
 4. **Migration** : `npx supabase db push` (crée la table, les fonctions et le trigger ; sans
    secrets Vault, le trigger ne fait encore rien).
 5. **Fonction** : `npx supabase functions deploy notify-booking --no-verify-jwt` (la fonction
-   vérifie elle-même le secret partagé ; `verify_jwt = false` est aussi dans `config.toml`).
+   vérifie elle-même la signature faite avec le secret partagé ; `verify_jwt = false` est aussi dans `config.toml`).
 6. **Secrets Vault** (Supabase → SQL Editor ; `<ref>` = identifiant du projet) :
 
    ```sql
@@ -222,7 +222,8 @@ serveur n'est pas encore branché. À faire **une fois**, sur ton ordinateur, pr
 À savoir :
 
 - **Changer le secret partagé** : mettre à jour les deux côtés (`supabase secrets set` et
-  `vault.update_secret`), sinon la fonction refuse les appels (401) et plus rien n'arrive.
+  `vault.update_secret`), sinon la fonction refuse les signatures (401) et plus rien
+  n'arrive.
 - **Changer les clés VAPID** invalide tous les abonnements : Alix doit réactiver les
   notifications sur chaque appareil.
 - **Diagnostic** : Supabase → Edge Functions → notify-booking → Logs (réponses `sent`,

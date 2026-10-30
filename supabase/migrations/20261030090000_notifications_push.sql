@@ -12,8 +12,8 @@
 --      déconnexion, changement de mot de passe, téléphone perdu), admin_send_test_push.
 --   4. Fonctions de l'Edge Function notify-booking (service_role SEULEMENT) :
 --      notify_booking_payload, notify_push_subscriptions, notify_forget_push_subscription.
---   5. private.notify_booking_event : appel HTTP (pg_net) de l'Edge Function, avec l'URL et le
---      secret partagé lus dans Vault. Sans ces secrets (base locale, CI) : ne fait rien.
+--   5. private.notify_booking_event : appel HTTP (pg_net) de l'Edge Function, signé (HMAC) avec
+--      le secret partagé ; URL et secret lus dans Vault. Sans ces secrets (base locale, CI) : ne fait rien.
 --      Ne lève JAMAIS d'erreur : une notification en panne ne doit pas empêcher une réservation.
 --      Au plus push_max_per_hour appels par heure (private.notify_log) : une boucle « réserver
 --      puis annuler » ne peut pas inonder le téléphone d'Alix.
@@ -29,13 +29,15 @@
 -- Vault : secrets chiffrés (URL de la fonction, secret partagé), jamais dans une migration.
 create extension if not exists pg_net with schema extensions;
 create extension if not exists supabase_vault with schema vault;
+-- pgcrypto : signature HMAC de chaque appel (déjà présente sur Supabase).
+create extension if not exists pgcrypto with schema extensions;
 
--- Sur Supabase, créer pg_net donne USAGE sur le schéma net et EXECUTE sur net.http_* à anon et
--- authenticated (trigger d'évènement de la plateforme). Aucun droit implicite : on les retire.
--- Seules nos fonctions security definer (propriétaire postgres) appellent net.http_post.
-revoke usage on schema net from anon, authenticated;
-revoke execute on all functions in schema net from anon, authenticated;
-revoke all on all tables in schema net from anon, authenticated;
+-- Sur Supabase, pg_net est installé par le rôle de la plateforme, qui donne lui-même des droits
+-- sur le schéma net à anon et authenticated : postgres ne peut pas les retirer (un REVOKE ne
+-- retire que les droits qu'on a soi-même donnés). Ce schéma n'est pas exposé par l'API
+-- (config.toml : seuls public et graphql_public le sont). Et c'est pourquoi le SECRET n'entre
+-- jamais dans la file de pg_net : chaque appel porte seulement une signature HMAC, valable
+-- 5 minutes et pour ce seul évènement.
 
 -- -----------------------------------------------------------------------------
 -- 1. Règles métier : mêmes valeurs qu'avant + push_max_devices. Aucune fonction n'en dépend
@@ -142,6 +144,8 @@ as $$
 declare
   v_url text;
   v_secret text;
+  v_ts bigint := floor(extract(epoch from clock_timestamp()))::bigint;
+  v_signature text;
 begin
   if p_kind not in ('new_booking', 'cancelled', 'test')
      or (p_kind <> 'test' and p_booking_id is null) then
@@ -170,12 +174,18 @@ begin
   end if;
   insert into private.notify_log (kind) values (p_kind);
 
+  -- Signature de « type:id:horodatage » avec le secret : l'Edge Function la recalcule. Une
+  -- requête lue dans la file ne sert à rien d'autre qu'à rejouer CET évènement, 5 min au plus.
+  v_signature := encode(
+    extensions.hmac(p_kind || ':' || coalesce(p_booking_id::text, '') || ':' || v_ts, v_secret, 'sha256'),
+    'hex');
+
   perform net.http_post(
     url := v_url,
-    body := jsonb_build_object('kind', p_kind, 'booking_id', p_booking_id),
+    body := jsonb_build_object('kind', p_kind, 'booking_id', p_booking_id, 'ts', v_ts),
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'x-notify-secret', v_secret
+      'x-notify-signature', v_signature
     ),
     timeout_milliseconds := 5000
   );

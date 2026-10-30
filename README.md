@@ -214,7 +214,8 @@ Deux principes :
   PostgreSQL, et non une vérification côté navigateur.
 - Anti-spam : champ honeypot et 2 RDV futurs maximum par téléphone ou email.
 - Notifications push à Alix (ADR 0012) : déclenchées par un trigger sur `bookings` (pg_net), envoyées
-  par l'Edge Function `supabase/functions/notify-booking` protégée par un secret partagé (Vault).
+  par l'Edge Function `supabase/functions/notify-booking`, qui n'accepte que des appels signés (HMAC)
+  avec un secret partagé gardé dans Vault.
   Le message (date, prénom, prestation) est chiffré de bout en bout pour l'appareil ; la clé
   `service_role` ne sert que dans la fonction, jamais dans le front. Mise en route :
   `docs/DEPLOIEMENT.md` § 8.
