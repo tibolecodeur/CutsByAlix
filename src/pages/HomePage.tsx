@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { ButtonLink } from "@/components/Button";
 import { GalleryCarousel } from "@/components/GalleryCarousel";
 import { HeroVideo } from "@/components/HeroVideo";
@@ -8,6 +9,7 @@ import { EmptyMessage, ErrorMessage, LoadingMessage } from "@/components/StatusM
 import { getServices, type Service } from "@/features/booking/data";
 import { getPublishedGallery } from "@/features/gallery/data";
 import { LOCATION_NOTICE } from "@/lib/contact";
+import { CURRENT_SEASON } from "@/lib/season";
 import { useAsync } from "@/lib/useAsync";
 
 /**
@@ -24,6 +26,12 @@ const HERO_MEDIA = {
   posterSrc: "/media/hero-poster.jpg",
 } as const;
 
+/**
+ * Version de Noël (ADR 0013) : chargée seulement en saison (import dynamique), la version de
+ * base ne télécharge pas une ligne de son code.
+ */
+const ScissorSnow = lazy(() => import("@/seasons/noel/ScissorSnow"));
+
 const BOOKING_STEPS = [
   "Choisis une prestation.",
   "Choisis un jour.",
@@ -35,6 +43,7 @@ const BOOKING_STEPS = [
  * Sous la vidéo, fond blanc : tarifs, galerie (bande rose pâle), comment réserver.
  */
 export function HomePage() {
+  const noel = CURRENT_SEASON === "noel";
   const services = useAsync("services", getServices);
   const gallery = useAsync("gallery", getPublishedGallery);
 
@@ -52,6 +61,13 @@ export function HomePage() {
         className="relative isolate flex h-svh min-h-[30rem] flex-col items-center justify-center overflow-hidden bg-ink px-safe pt-[calc(var(--spacing-header)+env(safe-area-inset-top))] text-center text-white [--focus-ring:var(--color-white)]"
       >
         <HeroVideo {...HERO_MEDIA} />
+        {/* Noël : de petits ciseaux tombent comme de la neige, devant la vidéo, derrière le
+            texte (-z-[5] : au-dessus du fond en -z-10, sous le logo). */}
+        {noel && (
+          <Suspense fallback={null}>
+            <ScissorSnow className="absolute inset-0 -z-[5]" density={0.55} />
+          </Suspense>
+        )}
 
         {/* TODO logo : logo texte provisoire, à remplacer par le fichier HD / SVG.
             Le nom accessible reste « CutsByAlix » ; les trois lignes sont décoratives. */}

@@ -43,7 +43,8 @@ export default defineConfig({
     // Vitest lit .env.local comme Vite : on écrase les variables Supabase pour qu'aucun test
     // ne parte jamais vers la vraie base. Un test qui en a besoin met des valeurs factices
     // (vi.stubEnv) ou simule le client.
-    env: { VITE_SUPABASE_URL: "", VITE_SUPABASE_ANON_KEY: "" },
+    // Saison figée : les tests ne changent pas de visage en décembre (ADR 0013).
+    env: { VITE_SUPABASE_URL: "", VITE_SUPABASE_ANON_KEY: "", VITE_SEASON: "base" },
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],

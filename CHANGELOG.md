@@ -7,6 +7,10 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Ajouté
 
+- Version de Noël du site (ADR 0013), qui s'affiche toute seule chaque année du 1er décembre
+  au 6 janvier puis disparaît : de petits ciseaux tombent comme de la neige sur la vidéo de
+  l'accueil (adapté de PixelSnow, React Bits). Aperçu à tout moment avec `?saison=noel` ;
+  coupure avec `VITE_SEASON=base`. Version de base inchangée. Animations LottieFiles à venir.
 - Notifications push pour Alix (ADR 0012) : une notification sur son iPhone à chaque nouvelle
   réservation (« Nouvelle réservation », date et heure, prénom et prestation) et à chaque
   annulation par un client ; le toucher ouvre la fiche du rendez-vous. Activation, test et

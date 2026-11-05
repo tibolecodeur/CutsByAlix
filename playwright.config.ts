@@ -45,6 +45,8 @@ export default defineConfig({
     env: {
       VITE_SUPABASE_URL: "https://supabase-e2e.invalid",
       VITE_SUPABASE_ANON_KEY: "cle-anon-factice-e2e",
+      // Version de base figée, même en décembre ; Noël se teste avec ?saison=noel (ADR 0013).
+      VITE_SEASON: "base",
       // Clé publique VAPID d'exemple (format valide) : la carte « Notifications » s'affiche.
       VITE_VAPID_PUBLIC_KEY:
         "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U",

@@ -361,4 +361,7 @@ active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : 
 - [ ] **Mise en route des notifications en production** : `docs/DEPLOIEMENT.md` § 8 (clés
       VAPID, secrets, `db push`, déploiement de la fonction, Vault, variable Cloudflare), puis
       `docs/TESTS-APPAREILS.md` § 2.13 sur l'iPhone d'Alix.
+- [ ] **Version de Noël** (ADR 0013) : bascule automatique (1er déc. → 6 janv.), aperçu
+      `?saison=noel`, neige de ciseaux faite. **Reste** : animations LottieFiles (domaine
+      bloqué par le réseau de l'environnement cloud), validation du rendu, docs/DESIGN.md.
 - [ ] Emails (Resend, nécessite un domaine) · Captcha si spam

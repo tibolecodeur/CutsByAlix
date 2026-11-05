@@ -46,6 +46,11 @@ function renderHome() {
 }
 
 describe("HomePage", () => {
+  it("version de base : pas de neige de Noël", () => {
+    renderHome();
+    expect(screen.queryByTestId("noel-scissor-snow")).not.toBeInTheDocument();
+  });
+
   it("accroche définitive : plus de texte provisoire", () => {
     renderHome();
     const hero = screen.getByRole("region", { name: "CutsByAlix" });

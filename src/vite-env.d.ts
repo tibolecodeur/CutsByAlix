@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY?: string;
   /** Clé PUBLIQUE VAPID des notifications push (la clé privée reste dans l'Edge Function). */
   readonly VITE_VAPID_PUBLIC_KEY?: string;
+  /** Version saisonnière (ADR 0013) : « auto » (par défaut, selon la date), « base », « noel ». */
+  readonly VITE_SEASON?: string;
 }
 
 interface ImportMeta {

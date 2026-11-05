@@ -201,6 +201,20 @@ Deux principes :
 - **Toute modification du schéma passe par une migration** dans `supabase/migrations/`. On ne
   modifie jamais une migration déjà appliquée : on en crée une nouvelle.
 
+## Versions saisonnières (Noël)
+
+Le site a une **version de Noël** posée par-dessus la version de base (ADR 0013), rangée dans
+`src/seasons/noel/`. Elle s'affiche **toute seule chaque année du 1er décembre au 6 janvier**,
+puis disparaît.
+
+| Je veux…                                | Comment                                                   |
+| --------------------------------------- | --------------------------------------------------------- |
+| voir Noël maintenant, sans rien changer | ajouter `?saison=noel` à l'adresse (ex. `/?saison=noel`)  |
+| voir la version de base en décembre     | `?saison=base`                                            |
+| couper Noël pour tout le monde          | Cloudflare : `VITE_SEASON=base`, puis redéployer          |
+| forcer Noël hors saison                 | Cloudflare : `VITE_SEASON=noel`, puis redéployer          |
+| revenir au calendrier automatique       | supprimer la variable (ou `VITE_SEASON=auto`), redéployer |
+
 ## Sécurité
 
 - RLS activée sur toutes les tables, sans exception, et chaque GRANT écrit explicitement.
