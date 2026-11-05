@@ -29,9 +29,10 @@ unité.
   Bits, licence MIT + Commons Clause)**. Même physique (5 plans de profondeur, vent,
   balancement, apparition par le haut, écart au passage du pointeur, pause hors écran) ; à la
   demande de Thibault, de **petits ciseaux normaux** (dessin vectoriel des ciseaux de Lucide,
-  ISC) qui tournent en tombant, au lieu de cristaux en pixels. Canvas 2D plutôt que WebGL :
-  une image par plan préparée une fois, puis seulement déplacée et tournée ; au plus 160
-  éléments (une trentaine sur un téléphone). Animations réduites : image fixe.
+  ISC) **mêlés de flocons à 6 branches** (40 %, réglable : `flakeShare`), qui tournent en
+  tombant, au lieu de cristaux en pixels. Canvas 2D plutôt que WebGL :
+  une image par plan préparée une fois, puis seulement déplacée et tournée ; au plus 220
+  éléments (une quarantaine sur un téléphone). Animations réduites : image fixe.
 - **Animations LottieFiles** : en attente. `lottiefiles.com` et `lottie.host` sont refusés par
   la politique réseau de l'environnement cloud ; à intégrer dès que les fichiers sont
   disponibles (domaine autorisé, ou fichiers `.lottie` / `.json` fournis). Lecteur prévu : le

@@ -15,13 +15,14 @@ import {
 } from "@/seasons/noel/scissorSnow";
 
 /**
- * Neige de petits ciseaux sur la vidéo du hero (version de Noël, ADR 0013).
+ * Neige de petits ciseaux et de flocons sur la vidéo du hero (version de Noël, ADR 0013).
  *
  * Adapté du composant PixelSnow de React Bits (https://reactbits.dev, licence MIT + Commons
  * Clause), à la demande de Thibault : mêmes réglages et même physique (scissorSnow.ts), mais
- * des ciseaux normaux, vectoriels, qui tournent en tombant, au lieu de cristaux en pixels.
- * Dessin en Canvas 2D (pas de WebGL) : une image de ciseaux par niveau de profondeur est
- * préparée une fois, puis seulement déplacée et tournée à chaque image.
+ * des ciseaux normaux, vectoriels, mêlés de quelques flocons (40 % par défaut), qui tournent
+ * en tombant, au lieu de cristaux en pixels. Dessin en Canvas 2D (pas de WebGL) : une image
+ * par sorte et par niveau de profondeur est préparée une fois, puis seulement déplacée et
+ * tournée à chaque image.
  *
  * - Aucune animation si l'utilisateur réduit les animations : une image fixe, discrète.
  * - Rien ne tourne quand le hero n'est plus à l'écran ou que l'onglet est caché (batterie).
@@ -31,6 +32,26 @@ import {
 /** Ciseaux de Lucide (licence ISC), dessin 24 × 24 : deux anneaux, deux lames. */
 const SCISSORS_PATH =
   "M9 6a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z M9 18a3 3 0 1 1-6 0a3 3 0 0 1 6 0Z M20 4 8.12 15.88 M14.47 14.48 20 20 M8.12 8.12 12 12";
+
+/**
+ * Flocon à 6 branches, même trait que les ciseaux (dessin 24 × 24, centre 12,12) : trois axes,
+ * et un petit chevron vers l'extérieur aux deux tiers de chaque branche.
+ */
+const FLAKE_PATH = (() => {
+  const point = (angle: number, radius: number) =>
+    `${(12 + Math.cos(angle) * radius).toFixed(2)} ${(12 + Math.sin(angle) * radius).toFixed(2)}`;
+  const parts: string[] = [];
+  for (let arm = 0; arm < 6; arm++) {
+    const angle = (arm * Math.PI) / 3 - Math.PI / 2;
+    parts.push(`M12 12 L${point(angle, 10)}`);
+    // Chevron : deux traits qui partent de la branche, inclinés de 40° vers l'extérieur.
+    const base = point(angle, 6);
+    parts.push(`M${point(angle - 0.55, 8.4)} L${base} L${point(angle + 0.55, 8.4)}`);
+  }
+  return parts.join(" ");
+})();
+
+const PATHS = { scissors: SCISSORS_PATH, flake: FLAKE_PATH } as const;
 
 type ScissorSnowProps = Partial<SnowSettings> & {
   color?: string;
@@ -49,8 +70,8 @@ type ScissorSnowProps = Partial<SnowSettings> & {
   className?: string;
 };
 
-/** Image d'une paire de ciseaux de `size` px, avec halo, prête à être posée (une par niveau). */
-function makeSprite(size: number, ratio: number, color: string, glow: number) {
+/** Image d'un élément de `size` px, avec halo, prête à être posée (une par niveau et par sorte). */
+function makeSprite(path: string, size: number, ratio: number, color: string, glow: number) {
   const pad = Math.ceil(size * 0.5);
   const canvas = document.createElement("canvas");
   canvas.width = Math.ceil((size + pad * 2) * ratio);
@@ -67,7 +88,7 @@ function makeSprite(size: number, ratio: number, color: string, glow: number) {
   // Halo cuit une fois pour toutes dans l'image (jamais recalculé pendant l'animation).
   context.shadowColor = color;
   context.shadowBlur = glow * 6 * (24 / size) * ratio;
-  context.stroke(new Path2D(SCISSORS_PATH));
+  context.stroke(new Path2D(path));
   return { canvas, half: (size + pad * 2) / 2 };
 }
 
@@ -80,6 +101,7 @@ export default function ScissorSnow({
   flakeSize = 1,
   depth = 0.6,
   spin = 0.25,
+  flakeShare = 0.4,
   glow = 0.6,
   twinkle = 0.35,
   opacity = 1,
@@ -93,7 +115,7 @@ export default function ScissorSnow({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   // Réglages lus à chaque image sans relancer l'animation (comme un champ lu par une boucle
   // Java). Mis à jour juste après chaque rendu : React interdit d'écrire une ref PENDANT.
-  const settings = { color, density, speed, wind, sway, flakeSize, depth, spin };
+  const settings = { color, density, speed, wind, sway, flakeSize, depth, spin, flakeShare };
   const options = { glow, twinkle, opacity, mouseInteraction, intro, paused, dpr };
   const settingsRef = useRef(settings);
   const optionsRef = useRef(options);
@@ -115,7 +137,8 @@ export default function ScissorSnow({
     const pointer: Pointer = { x: 0, y: 0, vx: 0, vy: 0, inside: false };
     let pointerTime = 0;
     let ratio = 1;
-    let sprites: ({ canvas: HTMLCanvasElement; half: number } | null)[] = [];
+    type Sprite = { canvas: HTMLCanvasElement; half: number } | null;
+    let sprites: Record<keyof typeof PATHS, Sprite[]> = { scissors: [], flake: [] };
     let spriteKey = "";
     const state = { time: 0, intro: optionsRef.current.intro && !reduce ? 0 : 1, push: 0 };
     let raf = 0;
@@ -129,9 +152,11 @@ export default function ScissorSnow({
       const key = `${s.color}|${o.glow}|${ratio}|${scale}`;
       if (key === spriteKey) return;
       spriteKey = key;
-      sprites = Array.from({ length: LEVELS }, (_, level) =>
-        makeSprite(LEVEL_SIZE[level]! * scale, ratio, s.color, o.glow),
-      );
+      const build = (kind: keyof typeof PATHS) =>
+        Array.from({ length: LEVELS }, (_, level) =>
+          makeSprite(PATHS[kind], LEVEL_SIZE[level]! * scale, ratio, s.color, o.glow),
+        );
+      sprites = { scissors: build("scissors"), flake: build("flake") };
     };
 
     const render = () => {
@@ -141,7 +166,7 @@ export default function ScissorSnow({
       context.setTransform(1, 0, 0, 1, 0, 0);
       context.clearRect(0, 0, canvas.width, canvas.height);
       for (const flake of flakes) {
-        const sprite = sprites[flake.level];
+        const sprite = sprites[flake.kind][flake.level];
         if (!sprite) continue;
         const alpha = flakeAlpha(flake, view, s.depth, o.twinkle, state.time, state.intro);
         if (alpha <= 0.01) continue;

@@ -61,11 +61,11 @@ export function HomePage() {
         className="relative isolate flex h-svh min-h-[30rem] flex-col items-center justify-center overflow-hidden bg-ink px-safe pt-[calc(var(--spacing-header)+env(safe-area-inset-top))] text-center text-white [--focus-ring:var(--color-white)]"
       >
         <HeroVideo {...HERO_MEDIA} />
-        {/* Noël : de petits ciseaux tombent comme de la neige, devant la vidéo, derrière le
+        {/* Noël : de petits ciseaux et des flocons tombent, devant la vidéo, derrière le
             texte (-z-[5] : au-dessus du fond en -z-10, sous le logo). */}
         {noel && (
           <Suspense fallback={null}>
-            <ScissorSnow className="absolute inset-0 -z-[5]" density={0.55} />
+            <ScissorSnow className="absolute inset-0 -z-[5]" density={0.8} />
           </Suspense>
         )}
 

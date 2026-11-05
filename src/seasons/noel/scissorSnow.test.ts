@@ -20,12 +20,14 @@ const SETTINGS: SnowSettings = {
   flakeSize: 1,
   depth: 0.6,
   spin: 0.25,
+  flakeShare: 0.4,
 };
 const VIEW = { width: 375, height: 800 };
 const NO_POINTER = { x: 0, y: 0, vx: 0, vy: 0, inside: false };
 
 function flake(overrides: Partial<Flake> = {}): Flake {
   return {
+    kind: "scissors",
     level: 2,
     x: 100,
     y: 100,
@@ -107,6 +109,23 @@ describe("spawn", () => {
     const anywhere = spawn(rng, VIEW, SETTINGS, false);
     expect(anywhere.y).toBeGreaterThanOrEqual(0);
     expect(anywhere.y).toBeLessThanOrEqual(VIEW.height);
+  });
+});
+
+describe("ciseaux et flocons", () => {
+  it("environ 40 % de flocons par défaut, réglable de 0 à 1", () => {
+    const share = (flakeShare: number) => {
+      const rng = seeded(11);
+      let flakes = 0;
+      for (let i = 0; i < 2000; i++) {
+        if (spawn(rng, VIEW, { ...SETTINGS, flakeShare }, true).kind === "flake") flakes++;
+      }
+      return flakes / 2000;
+    };
+    expect(share(0.4)).toBeGreaterThan(0.35);
+    expect(share(0.4)).toBeLessThan(0.45);
+    expect(share(0)).toBe(0);
+    expect(share(1)).toBe(1);
   });
 });
 

@@ -4,8 +4,9 @@
  * Adaptée du composant PixelSnow de React Bits (https://reactbits.dev, licence MIT + Commons
  * Clause) : mêmes 5 niveaux de profondeur (les lointains tombent plus lentement et plus pâles),
  * même vent, même balancement, même apparition par le haut et même écart au passage du
- * pointeur. Ce qui change : des ciseaux vectoriels qui tournent sur eux-mêmes au lieu de
- * cristaux en pixels, et beaucoup moins d'éléments (un téléphone en 4G doit rester fluide).
+ * pointeur. Ce qui change : des ciseaux vectoriels mêlés de flocons, qui tournent sur
+ * eux-mêmes, au lieu de cristaux en pixels, et moins d'éléments (un téléphone en 4G doit
+ * rester fluide).
  */
 
 export const LEVELS = 5;
@@ -17,9 +18,9 @@ const LEVEL_FALL = [16, 24, 34, 48, 66];
 export const LEVEL_LIGHT = [0.42, 0.58, 0.76, 0.92, 1];
 /** Taille des ciseaux de chaque niveau, en px (avant `size`). */
 export const LEVEL_SIZE = [9, 11, 14, 17, 21];
-/** Surface d'écran par ciseau à densité 1 (en px²) : ~110 ciseaux sur un écran de 1280×800. */
-const AREA_PER_FLAKE = 9000;
-export const MAX_FLAKES = 160;
+/** Surface d'écran par élément à densité 1 (en px²) : ~170 éléments sur un écran de 1280×800. */
+const AREA_PER_FLAKE = 6000;
+export const MAX_FLAKES = 220;
 export const INTRO_SECONDS = 1.4;
 
 export type SnowSettings = {
@@ -32,9 +33,15 @@ export type SnowSettings = {
   depth: number;
   /** Tours par seconde, au plus. */
   spin: number;
+  /** Part de flocons parmi les ciseaux, de 0 (que des ciseaux) à 1 (que des flocons). */
+  flakeShare: number;
 };
 
+/** Ce qui tombe : une paire de ciseaux ou un flocon de neige. */
+export type FlakeKind = "scissors" | "flake";
+
 export type Flake = {
+  kind: FlakeKind;
   level: number;
   x: number;
   y: number;
@@ -83,7 +90,9 @@ export function pickLevel(r: number, flakeSize: number): number {
 
 export function spawn(rng: () => number, view: View, s: SnowSettings, top: boolean): Flake {
   const level = pickLevel(rng(), s.flakeSize);
+  const kind: FlakeKind = rng() < clamp(s.flakeShare, 0, 1) ? "flake" : "scissors";
   return {
+    kind,
     level,
     x: rng() * (view.width + 40) - 20,
     y: top ? -10 - rng() * 30 : rng() * view.height,
