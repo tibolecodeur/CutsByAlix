@@ -77,8 +77,11 @@ describe("HomePage", () => {
 });
 
 describe("HomePage : bonnet de Noël sur le « C » du logo", () => {
-  it("SHOW_CHRISTMAS_HAT : bonnet décoratif dans la lettre C, nom accessible inchangé", () => {
+  it("en décembre : bonnet décoratif dans la lettre C, nom accessible inchangé", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-12-15T10:00:00+01:00"));
     renderHome();
+    vi.useRealTimers();
     const hat = screen.getByTestId("christmas-hat");
     expect(hat).toHaveAttribute("aria-hidden", "true");
     expect(hat).toHaveClass("pointer-events-none");
@@ -86,5 +89,13 @@ describe("HomePage : bonnet de Noël sur le « C » du logo", () => {
     expect(hat.parentElement).toHaveClass("relative", "inline-block");
     expect(hat.parentElement?.textContent).toBe("C");
     expect(screen.getByRole("heading", { level: 1 })).toHaveAccessibleName("CutsByAlix");
+  });
+
+  it("hors période (25 novembre) : pas de bonnet, comme la neige et la guirlande", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-25T10:00:00+01:00"));
+    renderHome();
+    vi.useRealTimers();
+    expect(screen.queryByTestId("christmas-hat")).not.toBeInTheDocument();
   });
 });

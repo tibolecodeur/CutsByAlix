@@ -9,6 +9,7 @@ import { EmptyMessage, ErrorMessage, LoadingMessage } from "@/components/StatusM
 import { getServices, type Service } from "@/features/booking/data";
 import { getPublishedGallery } from "@/features/gallery/data";
 import { SHOW_CHRISTMAS_HAT } from "@/features/seasonal/christmas";
+import { useChristmasSeason } from "@/features/seasonal/useChristmasSeason";
 import { LOCATION_NOTICE } from "@/lib/contact";
 import { useAsync } from "@/lib/useAsync";
 
@@ -37,6 +38,8 @@ const BOOKING_STEPS = [
  * Sous la vidéo, fond blanc : tarifs, galerie (bande rose pâle), comment réserver.
  */
 export function HomePage() {
+  // Bonnet sur le « C » : pendant la période de Noël, sauf s'il est coupé à la main.
+  const showHat = useChristmasSeason() && SHOW_CHRISTMAS_HAT;
   const services = useAsync("services", getServices);
   const gallery = useAsync("gallery", getPublishedGallery);
 
@@ -64,7 +67,7 @@ export function HomePage() {
           <span className="sr-only">CutsByAlix</span>
           <span aria-hidden="true" className="block">
             {/* Le « C » isolé : le bonnet de Noël se positionne sur cette lettre. */}
-            <span className="relative inline-block">C{SHOW_CHRISTMAS_HAT && <ChristmasHat />}</span>
+            <span className="relative inline-block">C{showHat && <ChristmasHat />}</span>
             uts
           </span>
           <span aria-hidden="true" className="block">

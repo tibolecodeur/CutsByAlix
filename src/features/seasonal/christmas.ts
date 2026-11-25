@@ -11,7 +11,8 @@ export function isChristmasSeason(now: Date): boolean {
 }
 
 /**
- * Bonnet de Noël sur le « C » du logo (accueil). Interrupteur MANUEL, indépendant de la
- * période : mettre `false` pour le retirer après les fêtes.
+ * Bonnet de Noël sur le « C » du logo (accueil). Il suit la période de Noël comme la neige et
+ * la guirlande (1er décembre → 6 janvier) ; cet interrupteur permet en plus de le couper à la
+ * main (`false`) sans attendre la fin de la période.
  */
 export const SHOW_CHRISTMAS_HAT = true;
