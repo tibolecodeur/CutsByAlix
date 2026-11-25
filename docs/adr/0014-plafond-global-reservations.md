@@ -40,6 +40,11 @@ Instagram. » Valeurs dans `private.settings()` (`max_bookings_per_hour`,
   (revue sécurité du 2026-11-25 : compter les annulations aurait permis de bloquer le site
   sans aucun levier pour Alix). Sans plafond, le même attaquant prendrait tous les créneaux
   d'un coup. Parade suivante si ça arrive : Turnstile (V2).
+- **Risque résiduel, antérieur au plafond** : une boucle « réserver puis annuler » peut insérer
+  des lignes annulées sans limite (croissance de la base, quota gratuit de 500 Mo). Elle ne
+  bloque ni créneau ni client, et les notifications ont leur propre limite. Compter ces
+  annulations dans le plafond a été écarté : cela permettrait de bloquer tout le site sans
+  levier pour Alix. Parade si ça arrive : Turnstile (V2), ou une limite d'annulations dédiée.
 - Un soir de forte demande (story Instagram), le 7e client de l'heure doit réessayer plus tard.
   À surveiller avec Alix ; les valeurs se changent par une migration.
 - **Risque accepté** (K-02 b) : réserver 2 RDV avec le numéro d'un tiers bloque ce numéro, et
