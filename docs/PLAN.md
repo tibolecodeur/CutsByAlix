@@ -185,7 +185,7 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       Alix le change ensuite dans « Mon compte ».
 - [ ] **iPhone** : l'application ajoutée à l'écran d'accueil a un stockage séparé de Safari, il
       faut s'y connecter une fois (noté dans `docs/ADMIN-COMPTE.md`, §4).
-- [ ] **Session dans le localStorage** (lisible par un script injecté) : ajouter une
+- [x] **Session dans le localStorage** (lisible par un script injecté) : ajouter une
       Content-Security-Policy stricte à TOUT le site dans `public/_headers`, **bloquant avant la
       mise en ligne de l'admin**. Proposition de la revue (consigne 17), à tester sur le site
       déployé : `default-src 'self'; connect-src 'self' https://<ref>.supabase.co
@@ -194,8 +194,10 @@ frame-ancestors 'none'; base-uri 'self'; form-action 'self'`. Déjà fait : anti
       (`X-Frame-Options` + `frame-ancestors`) sur `/admin*`. **Consigne 22** : CSP posée sur
       tout le site en `Report-Only` (sans `wss:`, aucun temps réel utilisé) ; mesure locale :
       seule l'`eval` de Zod était signalée, supprimée par `z.config({ jitless: true })`
-      (`docs/DEPLOIEMENT.md` §5). Passage en blocage après
-      les tests sur l'aperçu, avec ta validation.
+      (`docs/DEPLOIEMENT.md` §5). **En blocage depuis le 2026-11-25** (demande de Thibault,
+      K-01) : mesure locale wrangler + e2e Chromium sans violation du site ; reste à regarder
+      l'aperçu (WebKit non mesuré, vraies photos signées, PWA, push) avec la case « Déployer le
+      site sur Cloudflare Pages » ci-dessous.
 - [ ] **Changement de mot de passe vérifié côté serveur** : l'ancien mot de passe n'est
       redemandé que par le site ; un jeton volé de moins de 24 h permettrait de le changer via
       l'API. Fermé par le MFA (prévu).

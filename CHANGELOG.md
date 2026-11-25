@@ -13,6 +13,9 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 - Anti-abus (ADR 0014) : au plus 6 réservations par heure et 20 par 24 h sur tout le site.
   Au-delà : « Beaucoup de réservations en ce moment. Réessaie un peu plus tard, ou écris à Alix
   sur Instagram. » Les réservations annulées ne comptent pas.
+- Sécurité : la Content-Security-Policy bloque désormais tout script, style ou appel qui ne
+  vient pas du site ou de Supabase (elle ne faisait que signaler). Protège notamment la session
+  de l'espace admin.
 - Lien d'annulation perdu (ADR 0015) : la confirmation et la page « Lien invalide » renvoient
   vers Alix sur Instagram.
 - Notifications push pour Alix (ADR 0012) : une notification sur son iPhone à chaque nouvelle
