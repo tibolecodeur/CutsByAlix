@@ -81,12 +81,22 @@ describe("Boules de Noël des en-têtes de page", () => {
     return render(<PageHeader title="Réserver" lead="Réserve ta coupe en une minute." />);
   }
 
-  it("en décembre : 3 boules au-dessus du titre, décoratives, sans capter le toucher", () => {
+  it("en décembre : 3 boules accrochées à la guirlande, décoratives, sans capter le toucher", () => {
     renderHeaderOn("2026-12-15T10:00:00+01:00");
     const decor = screen.getByTestId("christmas-baubles");
     expect(decor).toHaveAttribute("aria-hidden", "true");
-    expect(decor).toHaveClass("pointer-events-none", "bottom-full");
-    expect(decor.querySelectorAll(".bauble-swing")).toHaveLength(3);
+    expect(decor).toHaveClass("pointer-events-none");
+    // Le haut du décor est le fil de la guirlande : 23,5 px au-dessus de la page.
+    expect(decor.style.top).toBe("-23.5px");
+    const baubles = decor.querySelectorAll<HTMLElement>(".bauble-swing");
+    expect(baubles).toHaveLength(3);
+    // Chacune a son propre balancement : jamais toutes du même côté au même moment.
+    const delays = new Set(Array.from(baubles, (b) => b.style.getPropertyValue("--swing-delay")));
+    const durations = new Set(
+      Array.from(baubles, (b) => b.style.getPropertyValue("--swing-duration")),
+    );
+    expect(delays.size).toBe(3);
+    expect(durations.size).toBe(3);
     expect(screen.getByRole("heading", { level: 1, name: "Réserver" })).toBeInTheDocument();
   });
 
