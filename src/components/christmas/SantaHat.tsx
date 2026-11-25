@@ -1,39 +1,47 @@
 /**
  * Bonnet de Père Noël posé sur le « C » du logo du hero (Noël). Dessin SVG fixe, décoratif.
- * Sa taille suit celle du logo (em) ; le bord blanc mord sur le haut de la lettre pour que le
- * bonnet paraisse posé dessus, avec une ombre portée dessinée (aucun filtre).
+ * La pointe et le pompon retombent à GAUCHE, hors du logo. Le bonnet suit l'inclinaison du
+ * logo (italique, penché à droite) et son bord en fourrure s'enfonce sur le haut du « C » :
+ * l'ombre portée sur la lettre donne l'impression qu'il est posé dessus. Taille en em : elle
+ * suit celle du logo. Aucun filtre ni flou.
  */
 export function SantaHat() {
   return (
     <svg
       aria-hidden="true"
       data-testid="santa-hat"
-      viewBox="0 0 140 110"
-      className="pointer-events-none absolute -top-[0.36em] -left-[0.16em] z-10 w-[0.78em] -rotate-[14deg]"
+      viewBox="-14 0 160 116"
+      className="pointer-events-none absolute -top-[0.27em] -left-[0.3em] z-10 w-[0.92em] rotate-[9deg]"
     >
-      {/* Ombre du bord sur la lettre. */}
-      <ellipse cx="62" cy="98" rx="54" ry="7" fill="rgb(0 0 0 / 0.28)" />
-      {/* Corps du bonnet, pointe retombant à droite, pli plus sombre. */}
+      {/* Ombre du bord sur le haut de la lettre (posée, pas flottante). */}
+      <ellipse cx="74" cy="101" rx="50" ry="6" fill="rgb(0 0 0 / 0.32)" />
+      {/* Corps du bonnet : la pointe part vers la gauche et retombe. */}
       <path
-        d="M16 86 C 26 40, 62 8, 102 14 C 120 17, 130 30, 128 44 C 112 34, 98 40, 96 60 L 110 86 Z"
+        d="M120 88 C 110 42, 74 10, 34 14 C 16 17, 6 30, 8 46 C 24 36, 38 40, 40 60 L 28 88 Z"
         fill="#c8102e"
       />
+      {/* Pli sous la pointe, plus sombre. */}
       <path
-        d="M70 18 C 88 10, 112 12, 124 28 C 126 34, 128 38, 128 44 C 116 30, 96 26, 80 32 Z"
+        d="M66 18 C 48 10, 24 12, 12 28 C 10 34, 8 40, 8 46 C 20 32, 40 28, 56 34 Z"
         fill="#9e0b24"
       />
+      {/* Reflet sur le tissu. */}
       <path
-        d="M30 80 C 40 50, 60 30, 84 24"
+        d="M106 82 C 96 52, 78 32, 54 26"
         stroke="#e23a4f"
         strokeWidth="4"
         strokeLinecap="round"
         fill="none"
       />
-      {/* Bord en fourrure (posé sur la lettre) et pompon. */}
-      <rect x="6" y="78" width="112" height="22" rx="11" fill="#ffffff" />
-      <path d="M14 84 h96" stroke="#e6e6e6" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="127" cy="48" r="12" fill="#ffffff" />
-      <circle cx="123" cy="45" r="4" fill="#f1f1f1" />
+      {/* Bord en fourrure, légèrement bombé, posé sur la lettre. */}
+      <path
+        d="M20 84 C 46 76, 100 76, 128 84 C 132 86, 132 98, 128 100 C 100 94, 46 94, 20 100 C 15 98, 15 86, 20 84 Z"
+        fill="#ffffff"
+      />
+      <path d="M28 89 C 56 84, 96 84, 120 89" stroke="#e6e6e6" strokeWidth="3" fill="none" />
+      {/* Pompon, à gauche, au bout de la pointe. */}
+      <circle cx="6" cy="52" r="12" fill="#ffffff" />
+      <circle cx="2" cy="48" r="4" fill="#f1f1f1" />
     </svg>
   );
 }

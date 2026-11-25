@@ -1,5 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import { cx } from "@/lib/cx";
+import { ChristmasBaubles } from "@/components/christmas/ChristmasBaubles";
+import { useChristmasSeason } from "@/features/seasonal/useChristmasSeason";
 
 export type SectionVariant = "white" | "blush";
 
@@ -71,9 +73,14 @@ type PageHeaderProps = {
  * condensé, bande de barbier, phrase d'accroche. Même gabarit partout = repères stables.
  */
 export function PageHeader({ title, lead }: PageHeaderProps) {
+  const isChristmas = useChristmasSeason();
   return (
     <Section className="pb-8 md:pb-10">
-      <h1>{title}</h1>
+      {/* Les décorations de Noël se placent au-dessus du titre, dans la marge haute. */}
+      <div className="relative">
+        {isChristmas && <ChristmasBaubles />}
+        <h1>{title}</h1>
+      </div>
       <BarberStripe />
       {lead && <p className="max-w-[60ch] text-lg">{lead}</p>}
     </Section>

@@ -363,3 +363,35 @@
     opacity: 0.5;
   }
 }
+
+/* Boules de Noël des en-têtes de page : balancement depuis le haut du fil (rotation). */
+@utility bauble-swing {
+  transform-origin: 50% 0;
+  animation: bauble-swing var(--swing-duration, 3s) ease-in-out var(--swing-delay, 0s) infinite
+    alternate;
+}
+
+@keyframes bauble-swing {
+  from {
+    transform: rotate(-6deg);
+  }
+  to {
+    transform: rotate(6deg);
+  }
+}
+
+/* Étoiles dorées : scintillement (opacité et légère pulsation en transform). */
+@utility christmas-star {
+  animation: star-twinkle 1.6s ease-in-out var(--twinkle-delay, 0s) infinite alternate;
+}
+
+@keyframes star-twinkle {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+}
