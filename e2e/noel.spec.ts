@@ -11,7 +11,7 @@ test("en décembre : neige, guirlande et bonnet, sans gêner le parcours", async
   await page.goto("/");
 
   await expect(page.getByTestId("christmas-garland")).toBeVisible();
-  await expect(page.getByTestId("santa-hat")).toBeVisible();
+  await expect(page.getByTestId("christmas-hat")).toBeVisible();
   const neige = page.getByTestId("snowfall");
   await expect(neige).toBeAttached();
   await expect(neige).toHaveCSS("pointer-events", "none");
@@ -26,6 +26,13 @@ test("en décembre : neige, guirlande et bonnet, sans gêner le parcours", async
   await page.getByRole("link", { name: "Réserver" }).last().click();
   await expect(page).toHaveURL(/\/reserver$/);
   await expect(page.getByTestId("christmas-garland")).toBeVisible();
+  // Boules au-dessus du titre de la page, sans le recouvrir.
+  const boules = page.getByTestId("christmas-baubles");
+  await expect(boules).toBeVisible();
+  const titre = page.getByRole("heading", { level: 1, name: "Réserver" });
+  const b = (await boules.boundingBox())!;
+  const t = (await titre.boundingBox())!;
+  expect(b.y + b.height).toBeLessThanOrEqual(t.y + 1);
 });
 
 test("animations réduites : pas de neige, guirlande fixe", async ({ page }) => {
@@ -44,11 +51,11 @@ test("hors période (novembre) et dans l'admin : aucune décoration", async ({ p
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByTestId("christmas-garland")).toHaveCount(0);
   await expect(page.getByTestId("snowfall")).toHaveCount(0);
-  await expect(page.getByTestId("santa-hat")).toHaveCount(0);
 
   await page.clock.setFixedTime(new Date("2026-12-15T10:00:00+01:00"));
   await page.goto("/admin/connexion");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByTestId("snowfall")).toHaveCount(0);
   await expect(page.getByTestId("christmas-garland")).toHaveCount(0);
+  await expect(page.getByTestId("christmas-baubles")).toHaveCount(0);
 });

@@ -7,6 +7,9 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Ajouté
 
+- Noël, suite : nouveau bonnet de Père Noël, style dessin, posé sur le « C » du logo (on le
+  retire après les fêtes avec `SHOW_CHRISTMAS_HAT = false`) ; boules de Noël qui se balancent
+  et étoiles qui scintillent en haut des pages réserver, annuler, conditions et pages légales.
 - Noël : du 1er décembre au 6 janvier, la neige tombe sur le site, une guirlande lumineuse
   pend sous l'en-tête et le logo porte un bonnet de Père Noël. Pages publiques seulement, sans
   librairie ; pas de neige si le téléphone demande moins d'animations.
