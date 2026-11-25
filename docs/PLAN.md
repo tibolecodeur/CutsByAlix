@@ -30,7 +30,8 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       « pas d'adresse provisoire sur un lieu actif » ; anon limité aux colonnes d'affichage de
       `services`. Appliqué en local. Ordre pour la base de production : fusionner la PR (le
       front n'utilise plus `.eq("active", true)`), PUIS appliquer la migration (`db push`).
-- [ ] Conservation des données clients (6 mois) à confirmer avec le barber
+- [x] Conservation des données clients : **8 mois** après le RDV (décision de Thibault du
+      2026-11-25), purge codée en phase 8 (ADR 0013)
 
 ## Phase 3 — Identité visuelle
 
@@ -184,7 +185,7 @@ dans Claude Code). Claude coche les cases quand une étape est terminée et vali
       Alix le change ensuite dans « Mon compte ».
 - [ ] **iPhone** : l'application ajoutée à l'écran d'accueil a un stockage séparé de Safari, il
       faut s'y connecter une fois (noté dans `docs/ADMIN-COMPTE.md`, §4).
-- [ ] **Session dans le localStorage** (lisible par un script injecté) : ajouter une
+- [x] **Session dans le localStorage** (lisible par un script injecté) : ajouter une
       Content-Security-Policy stricte à TOUT le site dans `public/_headers`, **bloquant avant la
       mise en ligne de l'admin**. Proposition de la revue (consigne 17), à tester sur le site
       déployé : `default-src 'self'; connect-src 'self' https://<ref>.supabase.co
@@ -193,8 +194,10 @@ frame-ancestors 'none'; base-uri 'self'; form-action 'self'`. Déjà fait : anti
       (`X-Frame-Options` + `frame-ancestors`) sur `/admin*`. **Consigne 22** : CSP posée sur
       tout le site en `Report-Only` (sans `wss:`, aucun temps réel utilisé) ; mesure locale :
       seule l'`eval` de Zod était signalée, supprimée par `z.config({ jitless: true })`
-      (`docs/DEPLOIEMENT.md` §5). Passage en blocage après
-      les tests sur l'aperçu, avec ta validation.
+      (`docs/DEPLOIEMENT.md` §5). **En blocage depuis le 2026-11-25** (demande de Thibault,
+      K-01) : mesure locale wrangler + e2e Chromium sans violation du site ; reste à regarder
+      l'aperçu (WebKit non mesuré, vraies photos signées, PWA, push) avec la case « Déployer le
+      site sur Cloudflare Pages » ci-dessous.
 - [ ] **Changement de mot de passe vérifié côté serveur** : l'ancien mot de passe n'est
       redemandé que par le site ; un jeton volé de moins de 24 h permettrait de le changer via
       l'API. Fermé par le MFA (prévu).
@@ -301,16 +304,21 @@ active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : 
 - [ ] 🟡 **Hacher le jeton d'annulation** : `cancel_token` est stocké en clair dans `bookings`
       (constaté à la consigne 25). Le stocker haché (sha256) limiterait les dégâts d'une fuite de
       la base ; il faudrait alors régénérer le jeton lors d'un rejeu (ADR 0009). À planifier.
-- [ ] **Lien d'annulation : un seul endroit** : pas d'e-mail en V1, le lien n'existe que sur
+- [x] **Lien d'annulation : un seul endroit** : pas d'e-mail en V1, le lien n'existe que sur
       l'écran de confirmation (bouton « Copier le lien » déjà présent, et la confirmation survit
       au rechargement de l'onglet depuis la consigne 25). Un client qui ferme l'onglet sans le
       garder ne peut plus annuler en ligne. **À réévaluer avant la mise en ligne** : e-mail de
       confirmation (nom de domaine vérifié, V2) ou autre moyen de le retrouver.
+      **Tranché le 2026-11-25 (ADR 0015)** : accepté en V1. Lien perdu → le client écrit à Alix
+      sur Instagram, qui annule depuis l'admin ; la confirmation et « Lien invalide » le disent.
 
 - [ ] Version 1.0.0 : tag Git, CHANGELOG, README avec captures
 - [ ] `/check-deploiement` · Données de test supprimées · Compte admin du barber · Domaine
-- [ ] **Purge RGPD codée et planifiée** : suppression des données clients 6 mois après le RDV
-      (`private.settings().data_retention`). **Bloquant pour la mise en ligne** (ADR 0002).
+- [x] **Purge RGPD codée et planifiée** (2026-11-25, ADR 0013) : réservations (confirmées ou
+      annulées) supprimées **8 mois** après la fin du RDV, chaque nuit à 3 h 17 UTC (pg_cron, job
+      `purge-donnees-clients`), migration `…_purge_donnees_clients.sql`, pgTAP 29. **En
+      production** : après le `db push`, vérifier `select * from cron.job`, puis le lendemain
+      `cron.job_run_details`.
 - [x] ~~**Protéger l'adresse privée**~~ (K-04 de l'audit) : **résolu par décision le 2026-10-12
       (source : Alix)**. Le site ne stocke et n'affiche aucune adresse : la colonne
       `private_address` est supprimée (migration `…_lieux_sans_adresse.sql`, consigne 24,
@@ -325,7 +333,7 @@ active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : 
       recopient `error.message` de Supabase dans l'`Error` levée. Ce texte brut (détails SQL,
       noms de colonnes ou de fonctions) ne doit plus en sortir : message fixe en français, comme
       les codes stables des autres fonctions. _Plus bloquant_ (décision de Thibault).
-- [ ] **Anti-abus des réservations** (revue sécurité de la consigne 15, décision 2026-10-10 :
+- [x] **Anti-abus des réservations** (revue sécurité de la consigne 15, décision 2026-10-10 :
       pas maintenant, mais **bloquant pour la mise en ligne**). Deux risques :
   - **Créneaux saturés** : un script qui appelle `create_booking` directement (le honeypot ne
     le gêne pas) avec des numéros inventés peut réserver tous les créneaux des 4 semaines.
@@ -337,6 +345,11 @@ active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : 
   - **Fait (consigne 19)** : Alix peut annuler une fausse réservation ou débloquer le numéro
     d'un tiers depuis l'admin (le créneau et la limite sont libérés). Cela nettoie après coup,
     sans empêcher un script de saturer les créneaux : le plafond global reste à décider.
+  - **Fait le 2026-11-25 (ADR 0014)** : plafond global de **6 réservations par heure et 20 par
+    24 h** (fenêtres glissantes, sous le verrou global de `create_booking_at`, réservations
+    annulées exclues), clé `rate_limited`, migration `…_plafond_global_reservations.sql`, pgTAP 30.
+    Blocage du numéro d'un tiers : risque accepté (Alix annule depuis l'admin). Turnstile : V2
+    si le plafond ne suffit pas.
 
 ## Backlog (non planifié)
 

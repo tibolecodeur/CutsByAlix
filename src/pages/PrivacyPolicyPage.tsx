@@ -4,8 +4,11 @@ import { PageMeta } from "@/components/PageMeta";
 import { PageHeader, Section } from "@/components/Section";
 import { BOOKING_RULES } from "@/lib/bookingRules";
 
-/** Durée de conservation des données clients (docs/SPEC.md, « Règles de gestion »). */
-const RETENTION_MONTHS = 6;
+/**
+ * Durée de conservation des données clients (docs/SPEC.md, « Règles de gestion »). COPIE de
+ * `private.settings().data_retention`, appliquée chaque nuit par la purge (ADR 0013).
+ */
+const RETENTION_MONTHS = 8;
 
 /**
  * Politique de confidentialité (RGPD, art. 13). Décrit ce que le site fait RÉELLEMENT :
@@ -75,7 +78,8 @@ export function PrivacyPolicyPage() {
         <LegalSection title="Durée de conservation">
           <p>
             Tes données sont supprimées {RETENTION_MONTHS} mois après la date du rendez-vous, qu'il
-            ait eu lieu ou qu'il ait été annulé.
+            ait eu lieu ou qu'il ait été annulé. Une copie de sauvegarde chiffrée du site peut
+            encore les contenir quelques semaines (6 au plus), puis elle est effacée.
           </p>
         </LegalSection>
 

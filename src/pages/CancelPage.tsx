@@ -212,6 +212,10 @@ function InvalidLink() {
         Ce lien d'annulation n'est pas valide ou n'est plus actif. Vérifie que tu as bien copié le
         lien en entier, tel qu'il s'est affiché après ta réservation.
       </p>
+      <p>Lien perdu ? Écris à Alix sur Instagram : le rendez-vous pourra être annulé pour toi.</p>
+      <p>
+        <InstagramLink />
+      </p>
       <BookAgain />
     </StateBlock>
   );

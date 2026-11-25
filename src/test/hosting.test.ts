@@ -145,18 +145,28 @@ describe("public/_headers : en-têtes effectifs", () => {
     expect(header(`${PREVIEW}/annuler`, "Referrer-Policy")).toBe("no-referrer");
   });
 
-  it("/admin : frame-ancestors en blocage ; manifeste servi avec son type", () => {
-    expect(header(`${SITE}/admin`, "Content-Security-Policy")).toBe("frame-ancestors 'none'");
+  it("/admin : même CSP en blocage que le reste du site ; manifeste servi avec son type", () => {
+    expect(header(`${SITE}/admin`, "Content-Security-Policy")).toBe(
+      header(`${SITE}/`, "Content-Security-Policy"),
+    );
     expect(header(`${SITE}/admin.webmanifest`, "Content-Type")).toBe("application/manifest+json");
     // Service worker des notifications : jamais servi depuis un cache périmé, jamais indexé.
     expect(header(`${SITE}/admin-sw.js`, "Cache-Control")).toBe("no-cache");
     expect(header(`${SITE}/admin-sw.js`, "X-Robots-Tag")).toBe("noindex, nofollow");
-    // Hors admin, aucune CSP en blocage : seulement la version Report-Only.
-    expect(effectiveHeaders(`${SITE}/`).has("content-security-policy")).toBe(false);
   });
 
-  it("CSP Report-Only : tout en 'self', Supabase seul autorisé, ni inline ni eval", () => {
-    const csp = header(`${SITE}/`, "Content-Security-Policy-Report-Only");
+  it("CSP en blocage partout (aperçus, service worker et manifeste compris), sans Report-Only", () => {
+    // Même politique, une seule fois, sur chaque URL testée.
+    const csp = header(`${SITE}/`, "Content-Security-Policy");
+    for (const url of URLS) {
+      expect(header(url, "Content-Security-Policy"), url).toBe(csp);
+      expect(header(url, "Content-Security-Policy")).toContain("frame-ancestors 'none'");
+      expect(effectiveHeaders(url).has("content-security-policy-report-only")).toBe(false);
+    }
+  });
+
+  it("CSP : tout en 'self', Supabase seul autorisé, ni inline ni eval", () => {
+    const csp = header(`${SITE}/`, "Content-Security-Policy");
     const supabase = "https://ffamilzutmiukspofcmf.supabase.co";
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("script-src 'self';");

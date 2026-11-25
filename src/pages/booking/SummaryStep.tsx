@@ -34,6 +34,9 @@ const SLOT_ERRORS: Partial<Record<BookingErrorCode, string>> = {
 const OTHER_ERRORS: Partial<Record<BookingErrorCode, string>> = {
   limit_reached:
     "Réservation impossible avec ces coordonnées pour le moment. Si tu as déjà des rendez-vous à venir, garde ton lien d'annulation à portée de main.",
+  // Plafond global de réservations du site (ADR 0014) : rien à corriger côté client.
+  rate_limited:
+    "Beaucoup de réservations en ce moment. Réessaie un peu plus tard, ou écris à Alix sur Instagram.",
   invalid_input:
     "Certaines informations ne sont pas acceptées. Reviens à l'étape précédente pour vérifier tes coordonnées.",
   // Même clé, autre réservation (ou trop tard pour rejouer) : une nouvelle clé est tirée, le

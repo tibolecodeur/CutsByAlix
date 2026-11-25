@@ -350,6 +350,8 @@ describe("BookingPage : envoi de la réservation", () => {
     expect(screen.getByText("14:00 – 15:00")).toBeVisible();
     expect(screen.getByText("Saint-Christophe-du-Bois")).toBeVisible();
     expect(screen.getByText(/Tu ne recevras pas d'e-mail de confirmation/)).toBeVisible();
+    // Lien perdu : recours par Instagram (ADR 0015).
+    expect(screen.getByText(/Lien perdu \? Écris à Alix sur Instagram/)).toBeVisible();
     expect(screen.getByText(new RegExp(`/annuler#${TOKEN}`))).toBeVisible();
     expect(screen.queryByText("Adresse")).not.toBeInTheDocument();
 

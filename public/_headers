@@ -13,17 +13,19 @@
 # --- Tout le site ------------------------------------------------------------------------------
 # · noindex, nofollow : le site n'est pas encore public. À RETIRER de cette règle à la mise en
 #   ligne (les aperçus *.pages.dev, /annuler et /admin gardent leur propre noindex plus bas).
-# · CSP en mode « Report-Only » : elle ne bloque rien, elle signale dans la console du
-#   navigateur ce qu'elle bloquerait. Passage en blocage après validation sur l'aperçu
-#   (docs/DEPLOIEMENT.md). Pas de « frame-ancestors » ici : ignoré en Report-Only (posé en
-#   blocage sur /admin*, et X-Frame-Options couvre le reste).
+# · CSP en BLOCAGE (depuis le 2026-11-25, K-01 de l'audit) : tout vient de notre domaine, sauf
+#   l'API et les photos signées de Supabase ; ni script inline ni eval. Protège notamment la
+#   session admin (localStorage) d'un script injecté. frame-ancestors 'none' : jamais dans le
+#   cadre (iframe) d'un autre site, sur tout le site (X-Frame-Options pour les anciens
+#   navigateurs). UNE seule CSP par URL : aucune autre règle n'en pose (cumul Cloudflare).
+#   Mesures et vérifications : docs/DEPLOIEMENT.md §5.
 /*
   X-Robots-Tag: noindex, nofollow
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: accelerometer=(), bluetooth=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), hid=(), magnetometer=(), microphone=(), midi=(), payment=(), serial=(), usb=()
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://ffamilzutmiukspofcmf.supabase.co; media-src 'self'; font-src 'self'; connect-src 'self' https://ffamilzutmiukspofcmf.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https://ffamilzutmiukspofcmf.supabase.co; media-src 'self'; font-src 'self'; connect-src 'self' https://ffamilzutmiukspofcmf.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 
 # --- Aperçus *.pages.dev : jamais indexés, même après la mise en ligne du domaine ---------------
 https://:project.pages.dev/*
@@ -45,13 +47,11 @@ https://:version.:project.pages.dev/*
   X-Robots-Tag: noindex, nofollow
 
 # --- Espace admin (et ses fichiers : manifeste, icônes) ----------------------------------------
-# Jamais indexé, jamais affiché dans le cadre (iframe) d'un autre site : X-Frame-Options vient de
-# /*, et frame-ancestors (en blocage) le double pour les navigateurs récents. Les pages posent
-# aussi <meta name="robots" content="noindex">.
+# Jamais indexé. Anti-iframe : X-Frame-Options et la CSP (frame-ancestors 'none') viennent de /*.
+# Les pages posent aussi <meta name="robots" content="noindex">.
 /admin*
   ! X-Robots-Tag
   X-Robots-Tag: noindex, nofollow
-  Content-Security-Policy: frame-ancestors 'none'
 
 # --- Photos de la vitrine (source de l'import admin, consigne 27) ---------------------------------
 # Servies telles quelles par le site : jamais indexées par un moteur, même après la mise en ligne.

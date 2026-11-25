@@ -22,6 +22,20 @@ end $$;
 
 select plan(39);
 
+-- Plafond global (ADR 0014, testé dans 30_plafond_global_test.sql) : ce fichier réserve plus de
+-- 6 RDV à la même heure fixe pour tester d'AUTRES règles. Chaque réservation est datée de 2020,
+-- loin avant le « maintenant » fixe du test, donc hors des fenêtres du plafond (ce fichier
+-- n'utilise pas le rejeu, seul autre usage de created_at). Annulé à la fin du test (rollback).
+create function pg_temp.hors_plafond() returns trigger
+language plpgsql as $$
+begin
+  new.created_at := timestamptz '2020-01-01 00:00 UTC';
+  return new;
+end;
+$$;
+create trigger zz_test_hors_plafond before insert on public.bookings
+  for each row execute function pg_temp.hors_plafond();
+
 truncate public.bookings, public.availabilities, public.locations, public.services,
          public.gallery_items, public.admins;
 
