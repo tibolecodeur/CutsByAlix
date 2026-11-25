@@ -18,7 +18,7 @@ begin
   end loop;
 end $$;
 
-select plan(11);
+select plan(13);
 
 truncate public.bookings, public.availabilities, public.locations, public.services,
          public.gallery_items, public.admins;
@@ -83,6 +83,18 @@ select lives_ok($$select pg_temp.book('2030-05-31 11:00:01 Europe/Paris', 6)$$,
 select throws_ok(
   $$select pg_temp.book('2030-05-31 11:00:02 Europe/Paris', 7)$$,
   'P0001', 'rate_limited', 'et la suivante, dans la même heure glissante, refusée');
+
+-- Alix annule de fausses réservations depuis l'admin : elles ne comptent plus, le plafond
+-- se libère aussitôt (sinon un script pourrait bloquer les vrais clients pendant 24 h).
+update public.bookings set status = 'cancelled', cancelled_by = 'barber'
+ where phone in ('0700000001', '0700000002');
+select lives_ok($$
+  select pg_temp.book('2030-05-31 11:00:03 Europe/Paris', 7),
+         pg_temp.book('2030-05-31 11:00:04 Europe/Paris', 8)
+$$, '2 réservations annulées par Alix : hors plafond, 2 nouvelles acceptées');
+select throws_ok(
+  $$select pg_temp.book('2030-05-31 11:00:05 Europe/Paris', 9)$$,
+  'P0001', 'rate_limited', 'et pas une de plus');
 
 -- ---------------------------------------------------------------------------
 -- 3. Rejeu : la même réservation renvoyée (même clé) ne compte pas une 2e fois et n'est pas
