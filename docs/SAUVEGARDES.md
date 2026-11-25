@@ -18,8 +18,9 @@ sauvegarde : il ne copie rien. Cette page décrit un export **manuel**.
   fichiers » cochée), mot de passe dans un gestionnaire de mots de passe.
 - Deux endroits : le PC, plus un stockage personnel (clé USB, ou cloud perso) qui ne contient
   que l'archive chiffrée.
-- Garder les **3 dernières** archives, supprimer les plus anciennes : rien ne doit survivre aux
-  6 mois de conservation des données clients (SPEC, « Règles de gestion »).
+- Garder les **3 dernières** archives (6 semaines au plus), supprimer les plus anciennes : une
+  donnée purgée de la base (8 mois après le RDV, ADR 0013) ne survit pas plus de 6 semaines
+  dans une archive. La politique de confidentialité le dit : ne pas allonger sans la modifier.
 
 ## Fréquence proposée
 

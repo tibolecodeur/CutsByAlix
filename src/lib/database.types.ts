@@ -95,7 +95,8 @@ type GetAvailableDaysFunction = {
 /**
  * RPC `create_booking` (migrations …_reservation_reelle.sql et …_reservation_idempotente.sql).
  * Erreurs : exceptions P0001 dont le message est une clé stable (invalid_input,
- * slot_unavailable, too_soon, too_far, limit_reached, request_conflict). Le récap ne contient
+ * slot_unavailable, too_soon, too_far, limit_reached, rate_limited, request_conflict). Le récap
+ * ne contient
  * que la localité du lieu (ADR 0008). Réponse validée par Zod (lib/schemas.ts).
  */
 type CreateBookingFunction = {

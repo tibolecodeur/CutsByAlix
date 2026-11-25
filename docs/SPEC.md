@@ -86,7 +86,7 @@ Détail et justification : `docs/adr/0002-modele-de-donnees-et-securite.md`.
 
 ## Règles de gestion
 
-Valeurs confirmées par le barber le 2026-10-10 (sauf conservation des données ; délai minimum passé de 48 h à 5 h le 2026-10-11 (consigne 21), puis à 2 h le 2026-10-12 (consigne 28)),
+Valeurs confirmées par le barber le 2026-10-10 (sauf conservation des données, fixée à 8 mois par Thibault le 2026-11-25 ; délai minimum passé de 48 h à 5 h le 2026-10-11 (consigne 21), puis à 2 h le 2026-10-12 (consigne 28)),
 centralisées
 dans `private.settings()` (une migration suffit pour les changer) :
 
@@ -100,8 +100,9 @@ dans `private.settings()` (une migration suffit pour les changer) :
   n'est donc pas annulable en ligne : l'écran de confirmation et la page `/annuler` le disent et
   renvoient vers Alix directement, par le lien de son compte Instagram.
 - Limite anti-abus : **2 RDV futurs** max par téléphone ou par email, + champ honeypot.
-- Conservation des données clients : suppression **6 mois** après le RDV (purge à coder avant la
-  mise en ligne).
+- Conservation des données clients : suppression **8 mois** après la fin du RDV (confirmé ou
+  annulé), par une purge automatique chaque nuit (pg_cron, ADR 0013). Décision de Thibault du
+  2026-11-25 (6 mois auparavant).
 
 ## À confirmer avec le barber
 

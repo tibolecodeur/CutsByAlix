@@ -10,6 +10,17 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 - Noël : du 1er décembre au 6 janvier, la neige tombe sur le site, une guirlande lumineuse
   pend sous l'en-tête et le logo porte un bonnet de Père Noël. Pages publiques seulement, sans
   librairie ; pas de neige si le téléphone demande moins d'animations.
+- Purge RGPD (ADR 0013) : les réservations sont supprimées automatiquement 8 mois après la
+  date du rendez-vous (confirmé ou annulé), chaque nuit, dans la base. La politique de
+  confidentialité dit 8 mois (au lieu de 6).
+- Anti-abus (ADR 0014) : au plus 6 réservations par heure et 20 par 24 h sur tout le site.
+  Au-delà : « Beaucoup de réservations en ce moment. Réessaie un peu plus tard, ou écris à Alix
+  sur Instagram. » Les réservations annulées ne comptent pas.
+- Sécurité : la Content-Security-Policy bloque désormais tout script, style ou appel qui ne
+  vient pas du site ou de Supabase (elle ne faisait que signaler). Protège notamment la session
+  de l'espace admin.
+- Lien d'annulation perdu (ADR 0015) : la confirmation et la page « Lien invalide » renvoient
+  vers Alix sur Instagram.
 - Notifications push pour Alix (ADR 0012) : une notification sur son iPhone à chaque nouvelle
   réservation (« Nouvelle réservation », date et heure, prénom et prestation) et à chaque
   annulation par un client ; le toucher ouvre la fiche du rendez-vous. Activation, test et

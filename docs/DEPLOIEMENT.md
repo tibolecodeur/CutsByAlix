@@ -98,33 +98,34 @@ curl -sI https://<hash>.site-barber.pages.dev/annuler
 Attendu : `referrer-policy: no-referrer`, `x-robots-tag: noindex, nofollow`, chaque en-tête une
 seule fois.
 
-## 5. CSP : de « Report-Only » au blocage
+## 5. CSP en blocage
 
-La CSP est d'abord en `Content-Security-Policy-Report-Only` : elle ne bloque rien, elle écrit
-dans la **console du navigateur** chaque chargement qu'elle aurait bloqué (« [Report Only]
-Refused to… »). Aucun service de collecte n'est branché.
+**Depuis le 2026-11-25** (K-01 de l'audit), la CSP est en blocage
+(`Content-Security-Policy`) sur tout le site, une seule fois par URL, avec
+`frame-ancestors 'none'` (la règle `/admin*` n'en pose plus). Le test
+`src/test/hosting.test.ts` vérifie la même politique sur chaque URL testée (aperçus, service
+worker et manifeste compris). Aucun rapport n'est collecté en production (ni `report-uri` ni
+`report-to`) : une violation n'apparaît que dans la console du navigateur.
 
-**Mesure faite en local (2026-10-11)** : build de production servi par wrangler avec le vrai
-`_headers`, toute la suite e2e rejouée (Android, iPhone, desktop), violations collectées :
+**Mesure du 2026-11-25, en blocage** : build de production servi par
+`npx wrangler@4.141.0 pages dev dist`, avec le vrai `_headers` (hôte Supabase remplacé par celui
+des tests e2e, `report-uri` ajouté vers un collecteur local, sur la copie de mesure seulement),
+puis toute la suite e2e contre ce serveur :
 
-1. `script-src` / `eval` sur toutes les pages : **Zod 4** teste au démarrage s'il peut compiler
-   ses validations (`new Function("")`). **En blocage, rien ne casserait** (il se rabat sur un
-   mode sans compilation), mais chaque page afficherait cette fausse alerte. **Corrigé** :
-   `z.config({ jitless: true })` en tête de `src/lib/schemas.ts` (seul fichier qui importe Zod),
-   avec un test qui simule une CSP interdisant `Function`. La mesure ci-dessus date d'avant cette
-   correction : sur l'aperçu, la console doit être **vide**.
-2. Rien d'autre côté site : polices, styles, scripts, images `blob:` (aperçu de photo) et
-   appels Supabase passent. (Les seuls autres rapports venaient d'un test e2e qui lit l'aperçu
-   par `fetch(blob:…)`, pas du site.)
+- Chromium (Android et desktop) : **aucune violation venant du site**. Les 2 seuls rapports
+  (`connect-src blob:` sur `/admin/galerie`) viennent du test qui lit l'aperçu de la photo par
+  `fetch(blob:…)` (`lireBlob`, `e2e/admin-galerie.spec.ts`), pas du site. Les autres échecs de
+  cette passe viennent du port : 10 tests attendent `localhost:5173`.
+- **WebKit (Safari) : non mesuré** (navigateur absent du conteneur de travail). À regarder sur
+  l'aperçu avec un iPhone, console Safari ouverte.
+- Historique : la mesure en `Report-Only` du 2026-10-11 ne signalait que l'`eval` de Zod,
+  supprimée par `z.config({ jitless: true })` dans `src/lib/schemas.ts`.
 
-Non couvert par cette mesure (à regarder sur l'aperçu, console ouverte) : vraies photos signées
-de Supabase, vraie connexion admin et rafraîchissement de session, vidéo du hero (pas encore
-fournie), installation de la PWA.
-
-**Passer en blocage** (après validation) : renommer l'en-tête
-`Content-Security-Policy-Report-Only` en `Content-Security-Policy` dans la règle `/*`, en y
-ajoutant `frame-ancestors 'none'`, et retirer de `/admin*` la ligne
-`Content-Security-Policy: frame-ancestors 'none'` (sinon deux CSP seraient envoyées).
+**À vérifier sur l'aperçu** (console ouverte, Chrome Android et Safari iOS) : vraies photos
+signées de Supabase, connexion admin réelle et rafraîchissement de session, vidéo du hero,
+installation de la PWA, activation des notifications push. En cas de blocage : corriger la
+politique dans `public/_headers` (jamais `unsafe-inline` ni `unsafe-eval`), ou repasser
+temporairement en `Content-Security-Policy-Report-Only` le temps de comprendre.
 
 ## 6. Mise en ligne publique (plus tard)
 

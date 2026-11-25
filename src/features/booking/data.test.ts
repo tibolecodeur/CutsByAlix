@@ -282,6 +282,7 @@ describe("createBooking", () => {
     "too_soon",
     "too_far",
     "limit_reached",
+    "rate_limited",
     "request_conflict",
   ])("traduit l'erreur métier %s de la base", async (code) => {
     mockSupabase({ data: null, error: { code: "P0001", message: code } });

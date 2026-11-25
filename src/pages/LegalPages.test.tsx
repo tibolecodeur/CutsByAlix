@@ -47,7 +47,8 @@ describe("politique de confidentialité", () => {
       "Cookies et stockage local",
       "Contact",
     ]);
-    expect(screen.getByText(/supprimées 6 mois après la date du rendez-vous/)).toBeInTheDocument();
+    expect(screen.getByText(/supprimées 8 mois après la date du rendez-vous/)).toBeInTheDocument();
+    expect(screen.getByText(/sauvegarde chiffrée du site peut encore/)).toBeInTheDocument();
     expect(screen.getByText(/au plus 2 rendez-vous à venir/)).toBeInTheDocument();
     expect(screen.getByText(/n'utilise aucun cookie/)).toBeInTheDocument();
     expect(screen.getAllByText(/^\[À COMPLÉTER : /).length).toBeGreaterThan(0);

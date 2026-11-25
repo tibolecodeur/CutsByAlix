@@ -102,6 +102,7 @@ export type BookingErrorCode =
   | "too_soon"
   | "too_far"
   | "limit_reached"
+  | "rate_limited"
   | "too_late"
   | "request_conflict"
   | "invalid_response"
@@ -113,6 +114,7 @@ const RPC_ERROR_CODES: readonly BookingErrorCode[] = [
   "too_soon",
   "too_far",
   "limit_reached",
+  "rate_limited",
   "too_late",
   "request_conflict",
 ];

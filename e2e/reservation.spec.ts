@@ -466,6 +466,20 @@ test("limite atteinte : message sobre ; réseau coupé : on peut réessayer", as
   await expect(confirmer).toBeEnabled();
 });
 
+test("plafond global atteint : message d'attente, renvoi vers Instagram", async ({ page }) => {
+  await mockSlots(page);
+  await mockRpc(page, "create_booking", () => rpcError("rate_limited"));
+  await allerAuRecap(page);
+
+  const confirmer = page.getByRole("button", { name: "Confirmer la réservation" });
+  await confirmer.click();
+  const alerte = page.getByRole("alert");
+  await expect(alerte).toContainText("Beaucoup de réservations en ce moment");
+  await expect(alerte).toContainText("Instagram");
+  // On reste sur le récapitulatif : le client peut réessayer plus tard.
+  await expect(confirmer).toBeEnabled();
+});
+
 test("coordonnées : champs à 16 px, zones tactiles de 44 px, honeypot hors écran", async ({
   page,
 }) => {
