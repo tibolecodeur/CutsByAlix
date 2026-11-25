@@ -5,10 +5,10 @@ import type { CSSProperties } from "react";
  * teinte de l'ampoule, reflet clair, et décalage du scintillement de chaque couleur.
  */
 const COLORS = [
-  { base: "#d62828", light: "#ff9c8f", delay: 0 },
-  { base: "#f2b705", light: "#fff1b0", delay: -0.45 },
-  { base: "#1e8e3e", light: "#9be3a8", delay: -0.9 },
-  { base: "#1f6feb", light: "#a9cbff", delay: -1.35 },
+  { base: "#d62828", light: "#ff9c8f", delay: 0, blink: 2.4 },
+  { base: "#f2b705", light: "#fff1b0", delay: -0.9, blink: 3.2 },
+  { base: "#1e8e3e", light: "#9be3a8", delay: -1.8, blink: 2.8 },
+  { base: "#1f6feb", light: "#a9cbff", delay: -0.5, blink: 3.6 },
 ] as const;
 
 /** Un feston : le fil pend entre deux attaches, deux ampoules accrochées dessus. */
@@ -44,7 +44,8 @@ const SVG_PROPS = {
 
 /**
  * Guirlande de Noël sous l'en-tête : un fil vert foncé en festons et des ampoules brillantes
- * (reflet, douille, halo dessinés en dégradés, sans flou).
+ * (reflet, douille, halo dessinés en dégradés, sans flou), qui s'allument et s'éteignent,
+ * chaque couleur à son rythme.
  *
  * Performance mobile (revue design du 2026-11-25) : le dessin est FIXE. Un calque porte le fil
  * et les douilles ; chaque couleur a son propre calque, et seule l'OPACITÉ de ces 4 calques
@@ -94,7 +95,12 @@ export function ChristmasGarland() {
         <div
           key={colorIndex}
           className="garland-layer absolute inset-0"
-          style={{ "--twinkle-delay": `${color.delay}s` } as CSSProperties}
+          style={
+            {
+              "--twinkle-delay": `${color.delay}s`,
+              "--blink-duration": `${color.blink}s`,
+            } as CSSProperties
+          }
         >
           <svg {...SVG_PROPS}>
             <defs>
