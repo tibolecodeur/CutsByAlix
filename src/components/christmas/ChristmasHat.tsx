@@ -4,7 +4,7 @@
  * Utilisation : à placer DANS le `<span>` de la lettre « C » (position relative,
  * inline-block). Le bonnet est en `position: absolute`, avec une taille et une position en
  * `em` : elles suivent la taille de police du logo, donc il reste calé sur la lettre à toutes
- * les tailles d'écran. Incliné d'environ -15°, décoratif (aria-hidden), il ne capte ni clic ni
+ * les tailles d'écran. Incliné d'environ -9°, décoratif (aria-hidden), il ne capte ni clic ni
  * doigt (pointer-events: none). Dessin SVG fixe, sans animation ni filtre.
  *
  * Volume : dégradés sur le tissu rouge (côté éclairé à droite, ombre à gauche et dans le pli),
@@ -17,8 +17,9 @@ export function ChristmasHat() {
       aria-hidden="true"
       data-testid="christmas-hat"
       viewBox="0 0 200 170"
-      // Taille et position en em (voir plus haut) ; -15° pour un rendu naturel.
-      className="pointer-events-none absolute -top-[0.48em] left-[0.02em] w-[0.72em] -rotate-[15deg]"
+      // Taille et position en em (voir plus haut). left décalé à droite : compense l'italique
+      // du logo pour centrer le bonnet sur le sommet du « C ». -9° : épouse la courbe.
+      className="pointer-events-none absolute -top-[0.27em] left-[0.1em] w-[0.6em] -rotate-[9deg]"
     >
       <defs>
         {/* Tissu : clair à droite (lumière), foncé à gauche. */}
