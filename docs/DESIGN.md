@@ -179,6 +179,22 @@ décoratif).
   fixes (seule l'opacité du calque s'anime). _(validé le 2026-10-13, consigne 27 ; vue agrandie
   ajoutée le 2026-10-28)_
 
+- **Noël** _(validé le 2026-11-25 sur captures)_ : du **1er décembre au 6 janvier** inclus
+  (heure de Paris), **pages publiques seulement** (pas l'admin). Activation automatique
+  (`src/features/seasonal/christmas.ts`), composants isolés dans `src/components/christmas/`.
+  - **Neige** : flocons blancs qui tombent sur tout le site (30 sur mobile, 56 à partir de md),
+    un sur trois en cristal à six branches qui tourne, les autres en neige fine ; balancement
+    en tombant. Contour gris fixe pour rester visibles sur le blanc. Au-dessus de l'en-tête,
+    ne capte ni clic ni doigt.
+  - **Guirlande** : classique, sous l'en-tête : fil vert foncé en festons, ampoules en verre
+    rouge, or, vert, bleu (reflet, douille, halo en dégradé, sans flou) qui scintillent.
+    **Exception saisonnière à la palette** (décoratif, aucun texte). Hors accueil, le contenu
+    descend de la hauteur de la guirlande.
+  - **Bonnet** de Père Noël posé sur le « C » du logo du hero (fixe).
+  - Mouvements réduits : pas de neige, guirlande allumée et fixe, bonnet gardé.
+  - Performance : une seule animation `transform` par flocon, scintillement en `opacity` sur
+    4 calques (un par couleur), dessin SVG fixe.
+
 _Aucune librairie d'animation installée pour l'instant._
 
 ## Historique des décisions
@@ -191,3 +207,4 @@ _Aucune librairie d'animation installée pour l'instant._
 | 2026-10-08 | Vidéo du hero (consigne 11 bis) : boucle de 14,6 s tirée du reel, 360×640 (résolution de la source), WebM AV1 0,71 Mo + MP4 H.264 1,13 Mo + poster 20 Ko. Remplace « 6 s max, ~1,5 Mo ».                                                                                                                               |
 | 2026-10-13 | Design v1 (consigne 27), version blanche : fond blanc sur tout le site (admin compris), orange et rose en couleurs principales, signature « poteau de barbier », carte des tarifs façon enseigne, en-tête commun des pages. Remplace les versions précédentes de la consigne 27 (dégradé, fonds unis, vitrine sombre). |
 | 2026-10-28 | Galerie : vue agrandie en couleur, zoom depuis la vignette, fond flouté fixe en fondu, photo suivante sans refermer. Le flou est autorisé à un deuxième endroit (vue agrandie).                                                                                                                                        |
+| 2026-11-25 | Noël (1er déc. → 6 janv., vitrine) : neige blanche, guirlande classique rouge / or / vert / bleu sous l'en-tête (exception saisonnière à la palette), bonnet sur le logo. CSS et SVG, sans librairie.                                                                                                                  |

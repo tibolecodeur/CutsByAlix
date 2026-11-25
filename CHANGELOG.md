@@ -7,6 +7,9 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Ajouté
 
+- Noël : du 1er décembre au 6 janvier, la neige tombe sur le site, une guirlande lumineuse
+  pend sous l'en-tête et le logo porte un bonnet de Père Noël. Pages publiques seulement, sans
+  librairie ; pas de neige si le téléphone demande moins d'animations.
 - Purge RGPD (ADR 0013) : les réservations sont supprimées automatiquement 8 mois après la
   date du rendez-vous (confirmé ou annulé), chaque nuit, dans la base. La politique de
   confidentialité dit 8 mois (au lieu de 6).

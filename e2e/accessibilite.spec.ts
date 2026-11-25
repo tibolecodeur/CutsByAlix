@@ -137,9 +137,13 @@ test("axe : galerie, puis photo ouverte en grand", async ({ page }) => {
   const vue = page.getByRole("dialog", { name: "Galerie, photo agrandie" });
   await expect(vue.getByRole("img", { name: "Dégradé court" })).toBeVisible();
   // Fin du zoom et du fondu d'ouverture : pendant l'animation, la transparence fausse la mesure
-  // des contrastes (axe lit des couleurs à moitié transparentes).
+  // des contrastes (axe lit des couleurs à moitié transparentes). Les animations sans fin (neige
+  // et guirlande de Noël, décembre) sont ignorées : elles ne s'arrêtent jamais.
   await page.waitForFunction(() =>
-    document.getAnimations().every((animation) => animation.playState !== "running"),
+    document
+      .getAnimations()
+      .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+      .every((animation) => animation.playState !== "running"),
   );
   await expectNoViolation(page);
 });

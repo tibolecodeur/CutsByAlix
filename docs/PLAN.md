@@ -273,6 +273,8 @@ active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : 
 
 ## Phase 7 — Animations et effets
 
+- [x] **Décorations de Noël** (2026-11-25) : neige, guirlande, bonnet sur le logo, du 1er déc.
+      au 6 janv. sur la vitrine (docs/DESIGN.md, « Noël »). CSS et SVG, sans librairie.
 - [ ] Choix des librairies et des effets (docs/DESIGN.md) · Mise en place
 - [ ] **Carrousel WebGL de la galerie (si retenu)** : les photos chargées comme **textures**
       exigent l'en-tête CORS côté Storage (`Access-Control-Allow-Origin` pour notre domaine)
