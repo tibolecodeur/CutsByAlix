@@ -1,7 +1,10 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
+import { ChristmasGarland } from "@/components/christmas/ChristmasGarland";
+import { Snowfall } from "@/components/christmas/Snowfall";
 import { NavMenu } from "@/components/NavMenu";
 import { useScrollToHash } from "@/components/useScrollToHash";
+import { useChristmasSeason } from "@/features/seasonal/useChristmasSeason";
 import { cx } from "@/lib/cx";
 import { useScrolledPast } from "@/lib/useScrolledPast";
 
@@ -23,6 +26,7 @@ const BAR_CLASS = "absolute left-0 h-0.5 w-5 bg-current";
  */
 export function Layout() {
   useScrollToHash();
+  const isChristmas = useChristmasSeason();
   const location = useLocation();
   const isHome = location.pathname === "/";
   const isPastHero = useScrolledPast(() => window.innerHeight - HEADER_HEIGHT_PX);
@@ -105,7 +109,9 @@ export function Layout() {
             <NavMenu />
           </div>
         </div>
+        {isChristmas && <ChristmasGarland />}
       </header>
+      {isChristmas && <Snowfall />}
 
       {/* tabIndex -1 : le lien d'évitement peut y placer le focus, sans l'ajouter au parcours
           Tab. Hors accueil, on réserve la hauteur de l'en-tête fixe ; sur l'accueil, le hero
