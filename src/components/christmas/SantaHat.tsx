@@ -1,9 +1,9 @@
 /**
  * Bonnet de Père Noël posé sur le « C » du logo du hero (Noël). Dessin SVG fixe, décoratif.
- * La pointe et le pompon retombent à GAUCHE, hors du logo. Le bonnet suit l'inclinaison du
- * logo (italique, penché à droite) et son bord en fourrure s'enfonce sur le haut du « C » :
- * l'ombre portée sur la lettre donne l'impression qu'il est posé dessus. Taille en em : elle
- * suit celle du logo. Aucun filtre ni flou.
+ * La pointe et le pompon retombent à GAUCHE. Le bord en fourrure, centré sur le « C », repose
+ * sur le haut de la lettre : contour gris pour le détacher du blanc, ombre serrée juste
+ * dessous. Position et taille en em : elles suivent la taille du logo (choisies sur captures
+ * le 2026-11-25). Aucun filtre ni flou.
  */
 export function SantaHat() {
   return (
@@ -11,10 +11,10 @@ export function SantaHat() {
       aria-hidden="true"
       data-testid="santa-hat"
       viewBox="-14 0 160 116"
-      className="pointer-events-none absolute -top-[0.27em] -left-[0.3em] z-10 w-[0.92em] rotate-[9deg]"
+      className="pointer-events-none absolute -top-[0.22em] left-[0.06em] z-10 w-[0.64em] -rotate-[6deg]"
     >
       {/* Ombre du bord sur le haut de la lettre (posée, pas flottante). */}
-      <ellipse cx="74" cy="101" rx="50" ry="6" fill="rgb(0 0 0 / 0.32)" />
+      <ellipse cx="74" cy="98" rx="54" ry="4" fill="rgb(0 0 0 / 0.45)" />
       {/* Corps du bonnet : la pointe part vers la gauche et retombe. */}
       <path
         d="M120 88 C 110 42, 74 10, 34 14 C 16 17, 6 30, 8 46 C 24 36, 38 40, 40 60 L 28 88 Z"
@@ -37,6 +37,9 @@ export function SantaHat() {
       <path
         d="M20 84 C 46 76, 100 76, 128 84 C 132 86, 132 98, 128 100 C 100 94, 46 94, 20 100 C 15 98, 15 86, 20 84 Z"
         fill="#ffffff"
+        // Fin contour gris : la fourrure blanche se détache de la lettre blanche.
+        stroke="#c9c9c9"
+        strokeWidth="2.5"
       />
       <path d="M28 89 C 56 84, 96 84, 120 89" stroke="#e6e6e6" strokeWidth="3" fill="none" />
       {/* Pompon, à gauche, au bout de la pointe. */}
