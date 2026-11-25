@@ -18,7 +18,7 @@ export function ChristmasHat() {
       data-testid="christmas-hat"
       viewBox="0 0 210 130"
       // Position et taille en em (voir plus haut), réglées sur captures.
-      className="pointer-events-none absolute -top-[0.18em] -left-[0.06em] w-[0.68em] -rotate-[8deg]"
+      className="pointer-events-none absolute -top-[0.14em] -left-[0.1em] w-[0.68em] -rotate-[8deg]"
       stroke="#3b1d1d"
       strokeWidth="2.5"
       strokeLinejoin="round"

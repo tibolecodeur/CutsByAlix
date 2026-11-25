@@ -194,7 +194,7 @@ décoratif).
     d'après l'image fournie par Thibault, redessinée en SVG et retournée : pointe et pompon à
     gauche)_ : rouge lisse, pli plus sombre, bord en fourrure crème en croissant, pompon
     crème, fin contour sombre. Dans un `<span>` isolé de la lettre « C »
-    (`relative inline-block`) : `top: -0.18em`, `left: -0.06em`, `width: 0.68em`, rotation
+    (`relative inline-block`) : `top: -0.14em`, `left: -0.1em`, `width: 0.68em`, rotation
     `-8deg`, calculés sur la mesure du sommet du « C » (centré à 0,325 em à cause de
     l'italique) ; en em, il suit la taille du logo. `pointer-events: none`. Interrupteur
     manuel `SHOW_CHRISTMAS_HAT` (`src/features/seasonal/christmas.ts`), indépendant de la
