@@ -136,12 +136,27 @@ select is((select count(*) from public.push_subscriptions), 1::bigint,
   'un seul abonnement pour un appareil enregistré deux fois');
 
 -- 6 appareils de plus (dates croissantes) : seuls les 5 plus récents restent.
-set local role authenticated;
-set local request.jwt.claims = '{"sub": "30000000-0000-4000-8000-000000000001", "role": "authenticated"}';
-select public.admin_save_push_subscription('https://web.push.apple.com/' || n,
-         (select p256dh from k), (select auth from k))
-  from generate_series(1, 6) n;
-reset role;
+-- Tout le test est UNE transaction : now() est le même pour chaque enregistrement, et à date
+-- égale l'appareil oublié serait tiré au hasard (départage par id). Chaque appareil reçoit
+-- donc une date distincte, dans le passé, juste après son enregistrement ; le suivant,
+-- enregistré à now(), est toujours le plus récent. (Échec intermittent constaté en CI le
+-- 2026-11-25 : tests 30, 49 et 52.)
+update public.push_subscriptions set created_at = timestamptz '2020-01-01 00:00 UTC'
+ where endpoint = 'https://web.push.apple.com/a';
+do $$
+begin
+  for n in 1..6 loop
+    set local role authenticated;
+    perform set_config('request.jwt.claims',
+      '{"sub": "30000000-0000-4000-8000-000000000001", "role": "authenticated"}', true);
+    perform public.admin_save_push_subscription('https://web.push.apple.com/' || n,
+      (select p256dh from k), (select auth from k));
+    reset role;
+    update public.push_subscriptions
+       set created_at = timestamptz '2020-01-01 00:00 UTC' + n * interval '1 minute'
+     where endpoint = 'https://web.push.apple.com/' || n;
+  end loop;
+end $$;
 -- Toutes les lignes ont le même now() (même transaction) : on date à la main pour l'ordre.
 update public.push_subscriptions set created_at = now() - interval '1 hour'
  where endpoint = 'https://web.push.apple.com/a';
