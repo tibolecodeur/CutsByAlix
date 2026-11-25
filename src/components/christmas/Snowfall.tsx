@@ -30,12 +30,13 @@ function makeFlakes(): Flake[] {
     const crystal = index % 3 === 0;
     return {
       left: Math.round(next() * 1000) / 10,
-      size: crystal ? 12 + Math.round(next() * 10) : 3 + Math.round(next() * 4),
+      // Cristaux de 18 px au plus : ils passent devant le texte (revue design).
+      size: crystal ? 12 + Math.round(next() * 6) : 3 + Math.round(next() * 4),
       duration: 9 + Math.round(next() * 9),
       delay: -Math.round(next() * 18),
       sway: 12 + Math.round(next() * 26),
       crystal,
-      opacity: 0.7 + Math.round(next() * 30) / 100,
+      opacity: 0.65 + Math.round(next() * 25) / 100,
     };
   });
 }
@@ -67,10 +68,10 @@ function Crystal() {
 
 /**
  * Neige qui tombe sur les pages publiques (Noël). Calque fixe, décoratif : invisible pour les
- * lecteurs d'écran, il ne capte ni les clics ni le doigt. Trois mouvements indépendants, tous
- * en `transform` (index.css) : la chute (élément extérieur), le balancement (milieu) et la
- * rotation des cristaux (intérieur). Rien du tout si l'utilisateur a demandé moins
- * d'animations.
+ * lecteurs d'écran, il ne capte ni les clics ni le doigt. UNE seule animation `transform` par
+ * flocon (index.css, `snow-fall`) : chute, balancement et rotation des cristaux ensemble.
+ * Au-dessus de l'en-tête (z-45) : sinon son verre dépoli serait recalculé à chaque image tant
+ * qu'un flocon passe derrière. Rien du tout si l'utilisateur a demandé moins d'animations.
  */
 export function Snowfall() {
   const reducedMotion = usePrefersReducedMotion();
@@ -80,7 +81,9 @@ export function Snowfall() {
     <div
       aria-hidden="true"
       data-testid="snowfall"
-      className="pointer-events-none fixed inset-0 z-30 overflow-hidden"
+      // h-lvh : la plus grande hauteur d'écran (barre d'adresse rentrée) ; la chute n'est
+      // pas recalculée quand la barre d'adresse du téléphone apparaît ou disparaît.
+      className="pointer-events-none fixed inset-x-0 top-0 z-[45] h-lvh overflow-hidden [contain:strict]"
     >
       {FLAKES.map((flake, index) => (
         <span
@@ -97,18 +100,11 @@ export function Snowfall() {
               "--snow-duration": `${flake.duration}s`,
               "--snow-delay": `${flake.delay}s`,
               "--snow-sway": `${flake.sway}px`,
+              "--snow-spin": flake.crystal ? "360deg" : "0deg",
             } as CSSProperties
           }
         >
-          <span className="snowflake-sway">
-            {flake.crystal ? (
-              <span className="snowflake-spin">
-                <Crystal />
-              </span>
-            ) : (
-              <span className="snowflake-dot" />
-            )}
-          </span>
+          {flake.crystal ? <Crystal /> : <span className="snowflake-dot" />}
         </span>
       ))}
     </div>

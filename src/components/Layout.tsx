@@ -121,7 +121,11 @@ export function Layout() {
         tabIndex={-1}
         className={cx(
           "w-full flex-1",
-          !isHome && "pt-[calc(var(--spacing-header)+env(safe-area-inset-top))]",
+          !isHome &&
+            (isChristmas
+              ? // Noël : la guirlande (2,25 rem) pend sous l'en-tête, on réserve sa hauteur aussi.
+                "pt-[calc(var(--spacing-header)+env(safe-area-inset-top)+2.25rem)]"
+              : "pt-[calc(var(--spacing-header)+env(safe-area-inset-top))]"),
         )}
       >
         <Outlet />

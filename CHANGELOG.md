@@ -7,6 +7,9 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ### Ajouté
 
+- Noël : du 1er décembre au 6 janvier, la neige tombe sur le site, une guirlande lumineuse
+  pend sous l'en-tête et le logo porte un bonnet de Père Noël. Pages publiques seulement, sans
+  librairie ; pas de neige si le téléphone demande moins d'animations.
 - Notifications push pour Alix (ADR 0012) : une notification sur son iPhone à chaque nouvelle
   réservation (« Nouvelle réservation », date et heure, prénom et prestation) et à chaque
   annulation par un client ; le toucher ouvre la fiche du rendez-vous. Activation, test et

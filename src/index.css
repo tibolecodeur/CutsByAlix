@@ -294,29 +294,12 @@
  * exception saisonnière à la palette (décoratives, aucun texte). Mouvements réduits : pas de
  * neige (composant non rendu), ampoules fixes (règle globale plus haut). */
 
-/* Chute : l'élément extérieur descend tout l'écran. */
+/* Un flocon = une seule animation : chute, balancement (sinus approché en 8 étapes) et
+ * rotation des cristaux (--snow-spin vaut 0 pour la neige fine). */
 @utility snowflake {
   position: absolute;
   top: -32px;
-  will-change: transform;
   animation: snow-fall var(--snow-duration, 12s) linear var(--snow-delay, 0s) infinite;
-}
-
-/* Balancement de gauche à droite, indépendant de la chute. */
-@utility snowflake-sway {
-  display: block;
-  width: 100%;
-  height: 100%;
-  animation: snow-sway calc(var(--snow-duration, 12s) / 3) ease-in-out var(--snow-delay, 0s)
-    infinite alternate;
-}
-
-/* Rotation lente des cristaux. */
-@utility snowflake-spin {
-  display: block;
-  width: 100%;
-  height: 100%;
-  animation: snow-spin calc(var(--snow-duration, 12s) * 0.8) linear infinite;
 }
 
 /* Neige fine : point blanc, bord gris fixe pour rester visible sur le blanc. */
@@ -330,32 +313,46 @@
 }
 
 @keyframes snow-fall {
-  from {
-    transform: translate3d(0, 0, 0);
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
   }
-  to {
-    transform: translate3d(0, calc(100dvh + 64px), 0);
+  12.5% {
+    transform: translate3d(calc(var(--snow-sway) * 0.71), 12.5lvh, 0)
+      rotate(calc(var(--snow-spin) * 0.125));
+  }
+  25% {
+    transform: translate3d(var(--snow-sway), 25lvh, 0) rotate(calc(var(--snow-spin) * 0.25));
+  }
+  37.5% {
+    transform: translate3d(calc(var(--snow-sway) * 0.71), 37.5lvh, 0)
+      rotate(calc(var(--snow-spin) * 0.375));
+  }
+  50% {
+    transform: translate3d(0, 50lvh, 0) rotate(calc(var(--snow-spin) * 0.5));
+  }
+  62.5% {
+    transform: translate3d(calc(var(--snow-sway) * -0.71), 62.5lvh, 0)
+      rotate(calc(var(--snow-spin) * 0.625));
+  }
+  75% {
+    transform: translate3d(calc(var(--snow-sway) * -1), 75lvh, 0)
+      rotate(calc(var(--snow-spin) * 0.75));
+  }
+  87.5% {
+    transform: translate3d(calc(var(--snow-sway) * -0.71), 87.5lvh, 0)
+      rotate(calc(var(--snow-spin) * 0.875));
+  }
+  100% {
+    transform: translate3d(0, calc(100lvh + 64px), 0) rotate(var(--snow-spin));
   }
 }
 
-@keyframes snow-sway {
-  from {
-    transform: translateX(calc(var(--snow-sway, 20px) * -1));
-  }
-  to {
-    transform: translateX(var(--snow-sway, 20px));
-  }
-}
-
-@keyframes snow-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Ampoules : scintillement en opacité, décalé d'une ampoule à l'autre. */
-@utility garland-bulb {
-  animation: bulb-twinkle 1.8s ease-in-out infinite alternate;
+/* Ampoules : un calque par couleur, seule son opacité est animée (carte graphique), décalée
+ * d'une couleur à l'autre. Mouvements réduits : la règle globale arrête l'animation, qui
+ * revient à l'opacité 1 (ampoules allumées, fixes). */
+@utility garland-layer {
+  will-change: opacity;
+  animation: bulb-twinkle 1.8s ease-in-out var(--twinkle-delay, 0s) infinite alternate;
 }
 
 @keyframes bulb-twinkle {
