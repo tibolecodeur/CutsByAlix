@@ -4,8 +4,11 @@ import { PageMeta } from "@/components/PageMeta";
 import { PageHeader, Section } from "@/components/Section";
 import { BOOKING_RULES } from "@/lib/bookingRules";
 
-/** Durée de conservation des données clients (docs/SPEC.md, « Règles de gestion »). */
-const RETENTION_MONTHS = 6;
+/**
+ * Durée de conservation des données clients (docs/SPEC.md, « Règles de gestion »). COPIE de
+ * `private.settings().data_retention`, appliquée chaque nuit par la purge (ADR 0013).
+ */
+const RETENTION_MONTHS = 8;
 
 /**
  * Politique de confidentialité (RGPD, art. 13). Décrit ce que le site fait RÉELLEMENT :

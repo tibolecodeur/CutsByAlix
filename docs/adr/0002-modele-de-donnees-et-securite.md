@@ -67,7 +67,7 @@ utilise des adresses factices, et les vraies se saisissent directement sur la ba
 
 **Règles centralisées.** La fonction `private.settings()` est l'unique endroit qui contient :
 pas de 60 min, réservation au moins 2 h à l'avance et au plus 4 semaines, annulation jusqu'à
-2 h avant, 2 RDV futurs maximum, conservation 6 mois. Changer une valeur demande une seule
+2 h avant, 2 RDV futurs maximum, conservation 6 mois (8 mois depuis le 2026-11-25, ADR 0013). Changer une valeur demande une seule
 migration (`create or replace function`). L'horizon de 4 semaines est calculé en heure de Paris,
 pour qu'il ne dépende ni du changement d'heure ni du fuseau de la session.
 
@@ -120,7 +120,8 @@ pour qu'il ne dépende ni du changement d'heure ni du fuseau de la session.
    stockée._
 2. **La purge RGPD n'est pas codée.** Les données clients doivent être supprimées 6 mois après le
    RDV, et `private.settings().data_retention` documente cette durée. **La purge DOIT être codée
-   avant la mise en ligne** (case dédiée en phase 8 de `docs/PLAN.md`).
+   avant la mise en ligne** (case dédiée en phase 8 de `docs/PLAN.md`). _Résolu le 2026-11-25
+   (ADR 0013) : purge codée et planifiée chaque nuit, durée portée à 8 mois._
 3. **Une photo masquée reste accessible par son URL.** Le bucket `gallery` est public, et
    `published = false` masque seulement la ligne. Parades : en phase 6, nommer les fichiers avec
    un uuid aléatoire, et supprimer le fichier, pas seulement la ligne.
