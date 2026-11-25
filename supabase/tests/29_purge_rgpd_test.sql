@@ -19,7 +19,7 @@ end $$;
 
 set local timezone = 'UTC';
 
-select plan(14);
+select plan(15);
 
 truncate public.bookings, public.availabilities, public.locations, public.services,
          public.gallery_items, public.admins;
@@ -96,6 +96,8 @@ select results_eq(
   $$select schedule, command, active from cron.job where jobname = 'purge-donnees-clients'$$,
   $$values ('17 3 * * *'::text, 'select private.purge_expired_bookings()'::text, true)$$,
   'job pg_cron « purge-donnees-clients » chaque nuit à 3 h 17 UTC');
+select is((select schedule from cron.job where jobname = 'nettoyage-journal-cron'), '23 3 * * 0',
+  'journal de pg_cron nettoyé chaque dimanche (30 jours gardés)');
 
 -- ---------------------------------------------------------------------------
 -- 4. Aucun accès depuis l'API.

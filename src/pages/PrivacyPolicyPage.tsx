@@ -78,7 +78,8 @@ export function PrivacyPolicyPage() {
         <LegalSection title="Durée de conservation">
           <p>
             Tes données sont supprimées {RETENTION_MONTHS} mois après la date du rendez-vous, qu'il
-            ait eu lieu ou qu'il ait été annulé.
+            ait eu lieu ou qu'il ait été annulé. Une copie de sauvegarde chiffrée du site peut
+            encore les contenir quelques semaines (6 au plus), puis elle est effacée.
           </p>
         </LegalSection>
 

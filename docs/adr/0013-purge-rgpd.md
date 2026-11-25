@@ -33,7 +33,11 @@ vraie base.
 ## Conséquences
 
 - Alix ne voit plus un RDV de plus de 8 mois dans l'admin (historique court, voulu).
-- La politique de confidentialité affiche 8 mois (`RETENTION_MONTHS`, copie de la base).
+- La politique de confidentialité affiche 8 mois (`RETENTION_MONTHS`, copie de la base), et
+  dit qu'une sauvegarde chiffrée peut garder les données 6 semaines de plus (3 archives toutes
+  les 2 semaines, `docs/SAUVEGARDES.md`).
+- Le journal de pg_cron (`cron.job_run_details`, sans donnée client) est nettoyé chaque
+  dimanche (30 jours gardés, job `nettoyage-journal-cron`).
 - En production : vérifier après le `db push` que le job existe
   (`select * from cron.job`) et, le lendemain, qu'il a tourné (`select * from
 cron.job_run_details order by start_time desc limit 5`).

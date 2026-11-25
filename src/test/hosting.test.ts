@@ -155,13 +155,11 @@ describe("public/_headers : en-têtes effectifs", () => {
     expect(header(`${SITE}/admin-sw.js`, "X-Robots-Tag")).toBe("noindex, nofollow");
   });
 
-  it("CSP en blocage partout, plus aucune version Report-Only", () => {
-    for (const url of [
-      `${SITE}/`,
-      `${SITE}/reserver`,
-      `${SITE}/annuler`,
-      `${SITE}/admin/galerie`,
-    ]) {
+  it("CSP en blocage partout (aperçus, service worker et manifeste compris), sans Report-Only", () => {
+    // Même politique, une seule fois, sur chaque URL testée.
+    const csp = header(`${SITE}/`, "Content-Security-Policy");
+    for (const url of URLS) {
+      expect(header(url, "Content-Security-Policy"), url).toBe(csp);
       expect(header(url, "Content-Security-Policy")).toContain("frame-ancestors 'none'");
       expect(effectiveHeaders(url).has("content-security-policy-report-only")).toBe(false);
     }

@@ -11,6 +11,7 @@
 --      « Maintenant » en paramètre : testable à date fixe (comme create_booking_at).
 --   3. private.purge_expired_bookings() : la même à now(), appelée par pg_cron.
 --   4. pg_cron : chaque nuit à 3 h 17 UTC. Rejouable : même nom de job = remplacement.
+--      + nettoyage hebdomadaire du journal de pg_cron (30 jours gardés).
 --
 -- Seule la table bookings contient des données clients (prénom, nom, téléphone, e-mail,
 -- jeton). Aucune table ne la référence (pas de clé étrangère vers bookings). private.notify_log
@@ -99,4 +100,12 @@ select cron.schedule(
   'purge-donnees-clients',
   '17 3 * * *',
   'select private.purge_expired_bookings()'
+);
+
+-- Hygiène : pg_cron garde une ligne par exécution dans cron.job_run_details (aucune donnée
+-- client, seulement l'état du job). On n'en garde que 30 jours, chaque dimanche à 3 h 23 UTC.
+select cron.schedule(
+  'nettoyage-journal-cron',
+  '23 3 * * 0',
+  $$delete from cron.job_run_details where end_time < now() - interval '30 days'$$
 );
