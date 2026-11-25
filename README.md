@@ -117,13 +117,15 @@ Fonctions RPC publiques (`security definer`, validation complète en SQL) :
 | `cancel_booking(cancel_token)`          | annule si le délai le permet                                                              |
 
 Erreurs renvoyées au front (message de l'exception) : `invalid_input`, `slot_unavailable`,
-`too_soon`, `too_far`, `limit_reached`, `too_late`, `request_conflict`. Côté front, toute réponse
+`too_soon`, `too_far`, `limit_reached`, `rate_limited` (plafond global, ADR 0014), `too_late`,
+`request_conflict`. Côté front, toute réponse
 est validée par Zod (`src/lib/schemas.ts`) et aucun message brut de Supabase n'est recopié.
 
 Règles centralisées dans `private.settings()` (une migration suffit pour les changer) : grille
 de créneaux de 70 min (durée de fin de tous les RDV : la durée affichée d'une prestation ne sert qu'à l'affichage), réservation au plus tard 2 h avant et au plus 4 semaines à l'avance,
-annulation jusqu'à 24 h avant, 2 RDV futurs max par téléphone ou email, conservation des données
-clients 6 mois, rejeu d'une réservation (même clé) accepté 30 min, 5 appareils abonnés aux
+annulation jusqu'à 24 h avant, 2 RDV futurs max par téléphone ou email, au plus 6 réservations
+par heure et 20 par 24 h sur tout le site, conservation des données
+clients 8 mois (purge automatique chaque nuit, ADR 0013), rejeu d'une réservation (même clé) accepté 30 min, 5 appareils abonnés aux
 notifications par admin. Le front en garde une copie pour ses textes (`src/lib/bookingRules.ts`).
 
 Durcissements : le public (anon) ne lit sur `services` que `id`, `name`, `duration_min`,
