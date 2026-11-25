@@ -35,7 +35,7 @@ Instagram. » Valeurs dans `private.settings()` (`max_bookings_per_hour`,
 - Un script ne peut plus saturer le planning d'un coup : il lui faut des jours, et Alix reçoit
   une notification à chaque réservation (ADR 0012). Elle annule les fausses depuis l'admin.
 - **Plafond rempli exprès** : un attaquant peut faire 6 réservations par heure pour bloquer
-  les vrais clients. Alix est notifiée de chacune ; en les annulant depuis l'admin, il libère
+  les vrais clients. Alix reçoit une notification pour chacune ; les annuler depuis l'admin libère
   aussitôt le plafond (ses annulations ne comptent pas). Sans plafond, le même attaquant
   prendrait tous les créneaux d'un coup. Parade suivante si ça arrive : Turnstile (V2).
 - Un soir de forte demande (story Instagram), le 7e client de l'heure doit réessayer plus tard.

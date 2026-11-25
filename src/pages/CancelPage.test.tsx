@@ -278,6 +278,17 @@ describe("CancelPage : trop tard et déjà annulé", () => {
 describe("CancelPage : lien invalide", () => {
   const INVALID = "Lien invalide";
 
+  it("lien perdu ou invalide : renvoie vers Alix sur Instagram (ADR 0015)", async () => {
+    mockRpc({ get_booking: () => ok([]) });
+    renderPage();
+    await screen.findByRole("heading", { name: INVALID });
+    expect(screen.getByText(/Lien perdu \? Écris à Alix sur Instagram/)).toBeVisible();
+    expect(screen.getByRole("link", { name: /instagram/i })).toHaveAttribute(
+      "href",
+      expect.stringContaining("instagram.com"),
+    );
+  });
+
   it("affiche le même écran pour un jeton inconnu ou expiré (la base renvoie 0 ligne)", async () => {
     mockRpc({ get_booking: () => ok([]) });
     const { container, unmount } = renderPage();

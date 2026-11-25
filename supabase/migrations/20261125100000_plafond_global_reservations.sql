@@ -211,8 +211,8 @@ begin
 
   -- 5 bis. Plafond global (K-02, ADR 0014) : au plus N réservations créées par heure et par
   --    24 h, sur tout le site. Les annulations du CLIENT comptent (une boucle « réserver puis
-  --    annuler » ne contourne rien) ; celles d'ALIX non : en annulant de fausses réservations
-  --    depuis l'admin, il libère aussitôt le plafond pour les vrais clients.
+  --    annuler » ne contourne rien) ; celles d'ALIX non : annuler de fausses réservations
+  --    depuis l'admin libère aussitôt le plafond pour les vrais clients.
   --    Sous le verrou global : deux envois simultanés ne peuvent pas dépasser le plafond.
   --    Le rejeu (3 bis) est traité avant : le MÊME rendez-vous ne compte qu'une fois.
   if (select count(*) from public.bookings b

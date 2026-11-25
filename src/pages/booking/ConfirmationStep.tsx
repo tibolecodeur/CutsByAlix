@@ -57,7 +57,8 @@ export function ConfirmationStep({ receipt, focusOnMount }: ConfirmationStepProp
         </p>
         <p>
           C'est le seul moyen d'annuler en ligne, jusqu'à {BOOKING_RULES.cancelNoticeHours} h avant
-          le rendez-vous. Ne le partage pas.
+          le rendez-vous. Ne le partage pas. Lien perdu ? Écris à Alix sur Instagram (lien plus bas)
+          : le rendez-vous pourra être annulé pour toi.
         </p>
         <p
           id="cancel-link-url"
