@@ -24,12 +24,15 @@ type SectionProps = ComponentProps<"section"> & {
    * pour la galerie et les grands titres. Formulaires, pages légales et admin restent serrés.
    */
   roomy?: boolean;
+  /** Décor posé sur toute la largeur de la bande, hors de la colonne (ex. boules de Noël). */
+  decor?: ReactNode;
 };
 
 /** Bande pleine largeur ; le contenu est centré et borné en largeur. */
 export function Section({
   variant = "white",
   roomy = false,
+  decor,
   className,
   children,
   ...props
@@ -43,6 +46,7 @@ export function Section({
       )}
       {...props}
     >
+      {decor}
       <div
         className={cx(
           "mx-auto flex w-full flex-col gap-6 px-safe",
@@ -75,12 +79,10 @@ type PageHeaderProps = {
 export function PageHeader({ title, lead }: PageHeaderProps) {
   const isChristmas = useChristmasSeason();
   return (
-    <Section className="pb-8 md:pb-10">
-      {/* Les décorations de Noël se placent au-dessus du titre, dans la marge haute. */}
-      <div className="relative">
-        {isChristmas && <ChristmasBaubles />}
-        <h1>{title}</h1>
-      </div>
+    // relative : les boules de Noël (décor) se placent par rapport à la bande, accrochées à la
+    // guirlande de l'en-tête, dans la marge haute, au-dessus du titre.
+    <Section className="relative pb-8 md:pb-10" decor={isChristmas && <ChristmasBaubles />}>
+      <h1>{title}</h1>
       <BarberStripe />
       {lead && <p className="max-w-[60ch] text-lg">{lead}</p>}
     </Section>

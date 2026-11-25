@@ -347,36 +347,46 @@
   }
 }
 
-/* Ampoules : un calque par couleur, seule son opacité est animée (carte graphique), décalée
- * d'une couleur à l'autre. Mouvements réduits : la règle globale arrête l'animation, qui
- * revient à l'opacité 1 (ampoules allumées, fixes). */
+/* Ampoules : un calque par couleur, seule son opacité est animée (carte graphique). Chaque
+ * couleur s'allume et s'éteint à son propre rythme (--blink-duration, --twinkle-delay) :
+ * les couleurs se relaient comme sur une vraie guirlande. Allumage et extinction rapides,
+ * puis l'ampoule reste allumée (ou éteinte) un moment. Mouvements réduits : la règle globale
+ * arrête l'animation, qui revient à l'opacité 1 (ampoules allumées, fixes). */
 @utility garland-layer {
   will-change: opacity;
-  animation: bulb-twinkle 1.8s ease-in-out var(--twinkle-delay, 0s) infinite alternate;
+  animation: bulb-blink var(--blink-duration, 2.8s) ease-in-out var(--twinkle-delay, 0s) infinite;
 }
 
-@keyframes bulb-twinkle {
-  from {
+@keyframes bulb-blink {
+  0%,
+  42% {
     opacity: 1;
   }
-  to {
-    opacity: 0.5;
+  50%,
+  92% {
+    opacity: 0.22;
+  }
+  100% {
+    opacity: 1;
   }
 }
 
-/* Boules de Noël des en-têtes de page : balancement depuis le haut du fil (rotation). */
+/* Boules de Noël des en-têtes de page : balancier depuis le crochet (haut du fil). Chaque
+ * boule a son amplitude, sa durée et son décalage (variables posées par le composant) : elles
+ * ne partent jamais toutes du même côté. ease-in-out : ralentit aux extrémités, comme un vrai
+ * pendule. */
 @utility bauble-swing {
   transform-origin: 50% 0;
-  animation: bauble-swing var(--swing-duration, 3s) ease-in-out var(--swing-delay, 0s) infinite
-    alternate;
+  animation: bauble-swing var(--swing-duration, 3s) ease-in-out var(--swing-delay, 0s) infinite;
 }
 
 @keyframes bauble-swing {
-  from {
-    transform: rotate(-6deg);
+  0%,
+  100% {
+    transform: rotate(var(--swing-amp, 6deg));
   }
-  to {
-    transform: rotate(6deg);
+  50% {
+    transform: rotate(calc(var(--swing-amp, 6deg) * -1));
   }
 }
 

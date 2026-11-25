@@ -187,7 +187,8 @@ décoratif).
     en tombant. Contour gris fixe pour rester visibles sur le blanc. Au-dessus de l'en-tête,
     ne capte ni clic ni doigt.
   - **Guirlande** : classique, sous l'en-tête : fil vert foncé en festons, ampoules en verre
-    rouge, or, vert, bleu (reflet, douille, halo en dégradé, sans flou) qui scintillent.
+    rouge, or, vert, bleu (reflet, douille, halo en dégradé, sans flou) qui s'allument et
+    s'éteignent, chaque couleur à son rythme.
     **Exception saisonnière à la palette** (décoratif, aucun texte). Hors accueil, le contenu
     descend de la hauteur de la guirlande.
   - **Bonnet** de Père Noël posé sur le « C » du logo du hero _(validé le 2026-11-25,
@@ -200,9 +201,11 @@ décoratif).
     manuel `SHOW_CHRISTMAS_HAT` (`src/features/seasonal/christmas.ts`), indépendant de la
     période : le passer à `false` après les fêtes.
   - **Boules et étoiles** sur les en-têtes des pages hors accueil (réserver, annuler,
-    conditions, pages légales, 404) : 3 boules rouge, or, verte suspendues à des fils, qui se
-    balancent (rotation), et 3 étoiles dorées qui scintillent (opacité). Dans la marge haute,
-    au-dessus du titre, alignées sur le bord droit de la colonne : jamais sur le titre.
+    conditions, pages légales, 404) : 3 boules rouge, or, verte **accrochées à la guirlande**
+    (crochet sur le point bas d'un feston, entre deux ampoules), qui pendent dans la marge
+    haute au-dessus du titre, jamais dessus, et 3 étoiles dorées qui scintillent. Balancier
+    naturel : chaque boule a son amplitude, sa durée et son décalage, elles ne vont jamais
+    toutes du même côté.
   - Mouvements réduits : pas de neige, guirlande allumée et fixe, boules immobiles, bonnet gardé.
   - Performance : une seule animation `transform` par flocon, scintillement en `opacity` sur
     4 calques (un par couleur), dessin SVG fixe.
