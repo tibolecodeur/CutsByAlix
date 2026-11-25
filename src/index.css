@@ -290,18 +290,43 @@
 }
 
 /* --- Noël (du 1er décembre au 6 janvier, docs/DESIGN.md) ------------------------------------
- * Uniquement transform et opacity. Couleurs de la guirlande : exception saisonnière à la
- * palette (décoratives, aucun texte). Mouvements réduits : pas de neige (composant non rendu),
- * ampoules fixes (règle globale plus haut). */
+ * Uniquement transform et opacity, aucun flou. Couleurs de la guirlande et du bonnet :
+ * exception saisonnière à la palette (décoratives, aucun texte). Mouvements réduits : pas de
+ * neige (composant non rendu), ampoules fixes (règle globale plus haut). */
+
+/* Chute : l'élément extérieur descend tout l'écran. */
 @utility snowflake {
   position: absolute;
-  top: -12px;
-  border-radius: 9999px;
-  background-color: var(--color-white);
-  /* Contour gris fixe (jamais animé) : sinon un flocon blanc disparaît sur le fond blanc. */
-  box-shadow: 0 0 0 1px rgb(17 17 17 / 0.14);
+  top: -32px;
   will-change: transform;
   animation: snow-fall var(--snow-duration, 12s) linear var(--snow-delay, 0s) infinite;
+}
+
+/* Balancement de gauche à droite, indépendant de la chute. */
+@utility snowflake-sway {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: snow-sway calc(var(--snow-duration, 12s) / 3) ease-in-out var(--snow-delay, 0s)
+    infinite alternate;
+}
+
+/* Rotation lente des cristaux. */
+@utility snowflake-spin {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: snow-spin calc(var(--snow-duration, 12s) * 0.8) linear infinite;
+}
+
+/* Neige fine : point blanc, bord gris fixe pour rester visible sur le blanc. */
+@utility snowflake-dot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  background-color: var(--color-white);
+  box-shadow: 0 0 0 1px rgb(17 17 17 / 0.12);
 }
 
 @keyframes snow-fall {
@@ -309,53 +334,28 @@
     transform: translate3d(0, 0, 0);
   }
   to {
-    transform: translate3d(var(--snow-drift, 0), calc(100dvh + 24px), 0);
+    transform: translate3d(0, calc(100dvh + 64px), 0);
   }
 }
 
-@utility garland-wire {
-  position: absolute;
-  inset-inline: 0;
-  top: 2px;
-  height: 1px;
-  background-color: rgb(17 17 17 / 0.45);
+@keyframes snow-sway {
+  from {
+    transform: translateX(calc(var(--snow-sway, 20px) * -1));
+  }
+  to {
+    transform: translateX(var(--snow-sway, 20px));
+  }
 }
 
+@keyframes snow-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Ampoules : scintillement en opacité, décalé d'une ampoule à l'autre. */
 @utility garland-bulb {
-  position: relative;
-  flex: none;
-  margin-top: 2px;
-  width: 8px;
-  height: 12px;
-  border-radius: 50% 50% 45% 45% / 40% 40% 60% 60%;
-  animation: bulb-twinkle 1.6s ease-in-out infinite alternate;
-  /* Douille grise au-dessus de l'ampoule. */
-  &::before {
-    content: "";
-    position: absolute;
-    top: -2px;
-    left: 2px;
-    width: 4px;
-    height: 3px;
-    border-radius: 1px;
-    background-color: #6b6b6b;
-  }
-  &:nth-child(2n) {
-    animation-delay: -0.8s;
-  }
-  &:nth-child(3n) {
-    animation-delay: -0.4s;
-  }
-}
-
-@utility bulb-red {
-  background-color: #d62828;
-}
-@utility bulb-green {
-  background-color: #1e8e3e;
-}
-@utility bulb-gold {
-  background-color: #f2b705;
+  animation: bulb-twinkle 1.8s ease-in-out infinite alternate;
 }
 
 @keyframes bulb-twinkle {
@@ -363,6 +363,6 @@
     opacity: 1;
   }
   to {
-    opacity: 0.45;
+    opacity: 0.5;
   }
 }
