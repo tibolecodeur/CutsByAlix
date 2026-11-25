@@ -190,8 +190,20 @@ décoratif).
     rouge, or, vert, bleu (reflet, douille, halo en dégradé, sans flou) qui scintillent.
     **Exception saisonnière à la palette** (décoratif, aucun texte). Hors accueil, le contenu
     descend de la hauteur de la guirlande.
-  - **Bonnet** de Père Noël posé sur le « C » du logo du hero (fixe).
-  - Mouvements réduits : pas de neige, guirlande allumée et fixe, bonnet gardé.
+  - **Bonnet** de Père Noël posé sur le « C » du logo du hero _(validé le 2026-11-25,
+    d'après l'image fournie par Thibault, redessinée en SVG et retournée : pointe et pompon à
+    gauche)_ : rouge lisse, pli plus sombre, bord en fourrure crème en croissant, pompon
+    crème, fin contour sombre. Dans un `<span>` isolé de la lettre « C »
+    (`relative inline-block`) : `top: -0.18em`, `left: -0.06em`, `width: 0.68em`, rotation
+    `-8deg`, calculés sur la mesure du sommet du « C » (centré à 0,325 em à cause de
+    l'italique) ; en em, il suit la taille du logo. `pointer-events: none`. Interrupteur
+    manuel `SHOW_CHRISTMAS_HAT` (`src/features/seasonal/christmas.ts`), indépendant de la
+    période : le passer à `false` après les fêtes.
+  - **Boules et étoiles** sur les en-têtes des pages hors accueil (réserver, annuler,
+    conditions, pages légales, 404) : 3 boules rouge, or, verte suspendues à des fils, qui se
+    balancent (rotation), et 3 étoiles dorées qui scintillent (opacité). Dans la marge haute,
+    au-dessus du titre, alignées sur le bord droit de la colonne : jamais sur le titre.
+  - Mouvements réduits : pas de neige, guirlande allumée et fixe, boules immobiles, bonnet gardé.
   - Performance : une seule animation `transform` par flocon, scintillement en `opacity` sur
     4 calques (un par couleur), dessin SVG fixe.
 
@@ -208,3 +220,4 @@ _Aucune librairie d'animation installée pour l'instant._
 | 2026-10-13 | Design v1 (consigne 27), version blanche : fond blanc sur tout le site (admin compris), orange et rose en couleurs principales, signature « poteau de barbier », carte des tarifs façon enseigne, en-tête commun des pages. Remplace les versions précédentes de la consigne 27 (dégradé, fonds unis, vitrine sombre). |
 | 2026-10-28 | Galerie : vue agrandie en couleur, zoom depuis la vignette, fond flouté fixe en fondu, photo suivante sans refermer. Le flou est autorisé à un deuxième endroit (vue agrandie).                                                                                                                                        |
 | 2026-11-25 | Noël (1er déc. → 6 janv., vitrine) : neige blanche, guirlande classique rouge / or / vert / bleu sous l'en-tête (exception saisonnière à la palette), bonnet sur le logo. CSS et SVG, sans librairie.                                                                                                                  |
+| 2026-11-25 | Noël, suite : bonnet refait (SVG détaillé, posé sur le « C », interrupteur `SHOW_CHRISTMAS_HAT`), boules suspendues et étoiles sur les en-têtes des pages hors accueil.                                                                                                                                                |

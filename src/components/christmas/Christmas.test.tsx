@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { Snowfall } from "@/components/christmas/Snowfall";
 import { Layout } from "@/components/Layout";
+import { PageHeader } from "@/components/Section";
 
 // jsdom ne fait pas défiler la page : on neutralise les appels de useScrollToHash.
 beforeAll(() => {
@@ -70,5 +71,27 @@ describe("Snowfall", () => {
     const flakes = layer.querySelectorAll(".snowflake");
     expect(flakes).toHaveLength(56);
     expect(layer.querySelectorAll(".snowflake.hidden")).toHaveLength(26);
+  });
+});
+
+describe("Boules de Noël des en-têtes de page", () => {
+  function renderHeaderOn(isoDate: string) {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(isoDate));
+    return render(<PageHeader title="Réserver" lead="Réserve ta coupe en une minute." />);
+  }
+
+  it("en décembre : 3 boules au-dessus du titre, décoratives, sans capter le toucher", () => {
+    renderHeaderOn("2026-12-15T10:00:00+01:00");
+    const decor = screen.getByTestId("christmas-baubles");
+    expect(decor).toHaveAttribute("aria-hidden", "true");
+    expect(decor).toHaveClass("pointer-events-none", "bottom-full");
+    expect(decor.querySelectorAll(".bauble-swing")).toHaveLength(3);
+    expect(screen.getByRole("heading", { level: 1, name: "Réserver" })).toBeInTheDocument();
+  });
+
+  it("en novembre : aucune boule", () => {
+    renderHeaderOn("2026-11-25T10:00:00+01:00");
+    expect(screen.queryByTestId("christmas-baubles")).not.toBeInTheDocument();
   });
 });
