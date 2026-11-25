@@ -18,7 +18,7 @@ begin
   end loop;
 end $$;
 
-select plan(13);
+select plan(16);
 
 truncate public.bookings, public.availabilities, public.locations, public.services,
          public.gallery_items, public.admins;
@@ -70,31 +70,31 @@ select throws_ok(
   'P0001', 'rate_limited', '7e réservation dans l''heure : refusée (rate_limited)');
 select is((select count(*) from public.bookings), 6::bigint, 'le refus n''a rien enregistré');
 
--- Annuler ne libère pas le plafond (sinon une boucle réserver / annuler le contournerait).
+-- Une réservation annulée ne compte plus, qu'elle le soit par le client ou par Alix : une
+-- boucle « réserver puis annuler » ne bloque aucun créneau, elle ne doit donc pas pouvoir
+-- remplir le plafond et bloquer les vrais clients (revue sécurité du 2026-11-25).
 update public.bookings set status = 'cancelled', cancelled_by = 'client'
  where phone = '0700000000';
+select lives_ok($$select pg_temp.book('2030-05-31 10:30 Europe/Paris', 6)$$,
+  'annulée par le client : hors plafond, une place se libère');
 select throws_ok(
-  $$select pg_temp.book('2030-05-31 10:30 Europe/Paris', 6)$$,
-  'P0001', 'rate_limited', 'une annulation ne libère pas le plafond horaire');
+  $$select pg_temp.book('2030-05-31 10:31 Europe/Paris', 7)$$,
+  'P0001', 'rate_limited', 'et une seule');
 
--- Une heure après la 1re (10 h 00), elle sort de la fenêtre : une place se libère.
-select lives_ok($$select pg_temp.book('2030-05-31 11:00:01 Europe/Paris', 6)$$,
-  'plus d''une heure après la 1re : de nouveau acceptée');
-select throws_ok(
-  $$select pg_temp.book('2030-05-31 11:00:02 Europe/Paris', 7)$$,
-  'P0001', 'rate_limited', 'et la suivante, dans la même heure glissante, refusée');
-
--- Alix annule de fausses réservations depuis l'admin : elles ne comptent plus, le plafond
--- se libère aussitôt (sinon un script pourrait bloquer les vrais clients pendant 24 h).
+-- Alix annule de fausses réservations depuis l'admin : le plafond se libère aussitôt.
 update public.bookings set status = 'cancelled', cancelled_by = 'barber'
  where phone in ('0700000001', '0700000002');
 select lives_ok($$
-  select pg_temp.book('2030-05-31 11:00:03 Europe/Paris', 7),
-         pg_temp.book('2030-05-31 11:00:04 Europe/Paris', 8)
-$$, '2 réservations annulées par Alix : hors plafond, 2 nouvelles acceptées');
+  select pg_temp.book('2030-05-31 10:32 Europe/Paris', 7),
+         pg_temp.book('2030-05-31 10:33 Europe/Paris', 8)
+$$, '2 réservations annulées par Alix : 2 nouvelles acceptées');
 select throws_ok(
-  $$select pg_temp.book('2030-05-31 11:00:05 Europe/Paris', 9)$$,
+  $$select pg_temp.book('2030-05-31 10:34 Europe/Paris', 9)$$,
   'P0001', 'rate_limited', 'et pas une de plus');
+
+-- Fenêtre glissante : à 11 h 20, les réservations de 10 h 15 et 10 h 20 sont sorties de l'heure.
+select lives_ok($$select pg_temp.book('2030-05-31 11:20 Europe/Paris', 9)$$,
+  'plus d''une heure après : de nouveau acceptée');
 
 -- ---------------------------------------------------------------------------
 -- 3. Rejeu : la même réservation renvoyée (même clé) ne compte pas une 2e fois et n'est pas
@@ -122,6 +122,38 @@ select pg_temp.book('2030-05-31 08:00 Europe/Paris'::timestamptz + n * interval 
 select throws_ok(
   $$select pg_temp.book('2030-05-31 13:15 Europe/Paris', 20)$$,
   'P0001', 'rate_limited', '21e réservation en 24 h (4 dans l''heure) : refusée');
+
+-- ---------------------------------------------------------------------------
+-- 5. Par l'API publique, en anonyme, à l'heure réelle : public.create_booking renvoie
+--    rate_limited. 6 réservations confirmées créées « maintenant » (insérées directement),
+--    sur une dispo d'après-demain (dans la fenêtre 2 h – 4 semaines).
+-- ---------------------------------------------------------------------------
+truncate public.bookings, public.availabilities;
+insert into public.availabilities (location_id, starts_at, ends_at) values
+  ('20000000-0000-4000-8000-000000000001',
+   ((now() at time zone 'Europe/Paris')::date + 2 + time '08:00') at time zone 'Europe/Paris',
+   ((now() at time zone 'Europe/Paris')::date + 2 + time '23:10') at time zone 'Europe/Paris');
+insert into public.bookings (service_id, location_id, starts_at, first_name, last_name, phone)
+select '10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001',
+       ((now() at time zone 'Europe/Paris')::date + 2 + time '08:00') at time zone 'Europe/Paris'
+         + n * interval '70 minutes',
+       'Léa', 'Martin', '07' || lpad(n::text, 8, '0')
+  from generate_series(0, 5) n;
+
+set local role anon;
+select throws_ok(
+  $$select * from public.create_booking(
+      '10000000-0000-4000-8000-000000000001',
+      ((now() at time zone 'Europe/Paris')::date + 2 + time '08:00') at time zone 'Europe/Paris'
+        + 6 * interval '70 minutes',
+      '20000000-0000-4000-8000-000000000001', 'Noé', 'Roux', '0799999999')$$,
+  'P0001', 'rate_limited', 'anon, par public.create_booking : 7e de l''heure refusée');
+reset role;
+
+select ok(not has_function_privilege('anon', 'private.settings()', 'execute'),
+  'anon ne lit pas private.settings()');
+select ok(not has_function_privilege('authenticated', 'private.settings()', 'execute'),
+  'authenticated ne lit pas private.settings()');
 
 select * from finish();
 rollback;

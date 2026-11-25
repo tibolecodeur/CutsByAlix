@@ -14,8 +14,8 @@ bloquant pour la mise en ligne). Contraintes : 0 €, pas de compte client, quel
 
 Plafond **global**, vérifié dans `private.create_booking_at` sous le verrou consultatif global
 (étape 5 bis) : au plus **6 réservations créées par heure** et **20 par 24 h** (fenêtres
-glissantes), sur tout le site. Les annulations du client comptent (une boucle « réserver
-puis annuler » ne contourne rien) ; celles d'Alix non. Au-delà : exception `rate_limited`, message
+glissantes), sur tout le site. Seules les réservations **confirmées** comptent : une
+réservation annulée (par le client ou par Alix) ne bloque aucun créneau et sort du plafond. Au-delà : exception `rate_limited`, message
 « Beaucoup de réservations en ce moment. Réessaie un peu plus tard, ou écris à Alix sur
 Instagram. » Valeurs dans `private.settings()` (`max_bookings_per_hour`,
 `max_bookings_per_day`). Le rejeu d'une même réservation (ADR 0009) ne compte pas.
@@ -34,10 +34,12 @@ Instagram. » Valeurs dans `private.settings()` (`max_bookings_per_hour`,
 
 - Un script ne peut plus saturer le planning d'un coup : il lui faut des jours, et Alix reçoit
   une notification à chaque réservation (ADR 0012). Elle annule les fausses depuis l'admin.
-- **Plafond rempli exprès** : un attaquant peut faire 6 réservations par heure pour bloquer
-  les vrais clients. Alix reçoit une notification pour chacune ; les annuler depuis l'admin libère
-  aussitôt le plafond (ses annulations ne comptent pas). Sans plafond, le même attaquant
-  prendrait tous les créneaux d'un coup. Parade suivante si ça arrive : Turnstile (V2).
+- **Plafond rempli exprès** : un attaquant peut faire 6 vraies réservations par heure pour
+  bloquer les vrais clients. Alix reçoit une notification pour chacune ; les annuler depuis
+  l'admin libère aussitôt le plafond. Une boucle « réserver puis annuler » ne remplit rien
+  (revue sécurité du 2026-11-25 : compter les annulations aurait permis de bloquer le site
+  sans aucun levier pour Alix). Sans plafond, le même attaquant prendrait tous les créneaux
+  d'un coup. Parade suivante si ça arrive : Turnstile (V2).
 - Un soir de forte demande (story Instagram), le 7e client de l'heure doit réessayer plus tard.
   À surveiller avec Alix ; les valeurs se changent par une migration.
 - **Risque accepté** (K-02 b) : réserver 2 RDV avec le numéro d'un tiers bloque ce numéro, et

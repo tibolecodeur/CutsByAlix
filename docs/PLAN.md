@@ -344,8 +344,8 @@ active` sur `locations` et n'écrit plus ni lieux ni plages en direct. Écran : 
     d'un tiers depuis l'admin (le créneau et la limite sont libérés). Cela nettoie après coup,
     sans empêcher un script de saturer les créneaux : le plafond global reste à décider.
   - **Fait le 2026-11-25 (ADR 0014)** : plafond global de **6 réservations par heure et 20 par
-    24 h** (fenêtres glissantes, sous le verrou global de `create_booking_at`, annulations
-    d'Alix exclues), clé `rate_limited`, migration `…_plafond_global_reservations.sql`, pgTAP 30.
+    24 h** (fenêtres glissantes, sous le verrou global de `create_booking_at`, réservations
+    annulées exclues), clé `rate_limited`, migration `…_plafond_global_reservations.sql`, pgTAP 30.
     Blocage du numéro d'un tiers : risque accepté (Alix annule depuis l'admin). Turnstile : V2
     si le plafond ne suffit pas.
 

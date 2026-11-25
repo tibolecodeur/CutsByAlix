@@ -12,7 +12,7 @@ Ce projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
   confidentialité dit 8 mois (au lieu de 6).
 - Anti-abus (ADR 0014) : au plus 6 réservations par heure et 20 par 24 h sur tout le site.
   Au-delà : « Beaucoup de réservations en ce moment. Réessaie un peu plus tard, ou écris à Alix
-  sur Instagram. » Les réservations annulées par Alix ne comptent pas.
+  sur Instagram. » Les réservations annulées ne comptent pas.
 - Lien d'annulation perdu (ADR 0015) : la confirmation et la page « Lien invalide » renvoient
   vers Alix sur Instagram.
 - Notifications push pour Alix (ADR 0012) : une notification sur son iPhone à chaque nouvelle

@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Plafond global de réservations (K-02 a de l'audit, bloquant pour la mise en ligne).
 -- Décision de Thibault du 2026-11-25 : au plus 6 réservations créées par heure et 20 par 24 h,
--- sur tout le site (ADR 0014), sans compter celles qu'Alix a annulées. Au-delà, create_booking refuse avec la clé stable
+-- sur tout le site (ADR 0014), sans compter les réservations annulées. Au-delà, create_booking refuse avec la clé stable
 -- `rate_limited`. Un script qui invente des numéros ne peut donc plus prendre tous les
 -- créneaux des 4 semaines d'un coup, et Alix est notifiée de chaque réservation (ADR 0012).
 --
@@ -209,18 +209,19 @@ begin
   --    Un seul verrou pour tout le site : quelques réservations par jour, attente nulle.
   perform pg_advisory_xact_lock(hashtextextended('booking:slots', 0));
 
-  -- 5 bis. Plafond global (K-02, ADR 0014) : au plus N réservations créées par heure et par
-  --    24 h, sur tout le site. Les annulations du CLIENT comptent (une boucle « réserver puis
-  --    annuler » ne contourne rien) ; celles d'ALIX non : annuler de fausses réservations
-  --    depuis l'admin libère aussitôt le plafond pour les vrais clients.
+  -- 5 bis. Plafond global (K-02, ADR 0014) : au plus N réservations CONFIRMÉES créées par
+  --    heure et par 24 h, sur tout le site. Une réservation annulée (par le client ou par Alix)
+  --    ne compte plus : une boucle « réserver puis annuler » ne bloque aucun créneau et ne
+  --    peut donc pas remplir le plafond pour bloquer les vrais clients ; Alix libère le plafond
+  --    en annulant de fausses réservations depuis l'admin.
   --    Sous le verrou global : deux envois simultanés ne peuvent pas dépasser le plafond.
   --    Le rejeu (3 bis) est traité avant : le MÊME rendez-vous ne compte qu'une fois.
   if (select count(*) from public.bookings b
        where b.created_at > p_now - interval '1 hour'
-         and b.cancelled_by is distinct from 'barber') >= v_cfg.max_bookings_per_hour
+         and b.status = 'confirmed') >= v_cfg.max_bookings_per_hour
      or (select count(*) from public.bookings b
           where b.created_at > p_now - interval '24 hours'
-            and b.cancelled_by is distinct from 'barber') >= v_cfg.max_bookings_per_day
+            and b.status = 'confirmed') >= v_cfg.max_bookings_per_day
   then
     raise exception 'rate_limited' using errcode = 'P0001';
   end if;
