@@ -1,5 +1,5 @@
 import { ButtonLink } from "@/components/Button";
-import { SantaHat } from "@/components/christmas/SantaHat";
+import { ChristmasHat } from "@/components/christmas/ChristmasHat";
 import { GalleryCarousel } from "@/components/GalleryCarousel";
 import { HeroVideo } from "@/components/HeroVideo";
 import { InstagramLink } from "@/components/InstagramLink";
@@ -8,7 +8,7 @@ import { BarberStripe, Section } from "@/components/Section";
 import { EmptyMessage, ErrorMessage, LoadingMessage } from "@/components/StatusMessage";
 import { getServices, type Service } from "@/features/booking/data";
 import { getPublishedGallery } from "@/features/gallery/data";
-import { useChristmasSeason } from "@/features/seasonal/useChristmasSeason";
+import { SHOW_CHRISTMAS_HAT } from "@/features/seasonal/christmas";
 import { LOCATION_NOTICE } from "@/lib/contact";
 import { useAsync } from "@/lib/useAsync";
 
@@ -39,7 +39,6 @@ const BOOKING_STEPS = [
 export function HomePage() {
   const services = useAsync("services", getServices);
   const gallery = useAsync("gallery", getPublishedGallery);
-  const isChristmas = useChristmasSeason();
 
   return (
     <>
@@ -63,9 +62,10 @@ export function HomePage() {
           className="title-display text-[clamp(5rem,min(26vw,24svh),11rem)] leading-[0.8] uppercase"
         >
           <span className="sr-only">CutsByAlix</span>
-          <span aria-hidden="true" className="relative block">
-            {isChristmas && <SantaHat />}
-            Cuts
+          <span aria-hidden="true" className="block">
+            {/* Le « C » isolé : le bonnet de Noël se positionne sur cette lettre. */}
+            <span className="relative inline-block">C{SHOW_CHRISTMAS_HAT && <ChristmasHat />}</span>
+            uts
           </span>
           <span aria-hidden="true" className="block">
             By
