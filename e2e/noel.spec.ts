@@ -51,6 +51,7 @@ test("hors période (novembre) et dans l'admin : aucune décoration", async ({ p
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByTestId("christmas-garland")).toHaveCount(0);
   await expect(page.getByTestId("snowfall")).toHaveCount(0);
+  await expect(page.getByTestId("christmas-hat")).toHaveCount(0);
 
   await page.clock.setFixedTime(new Date("2026-12-15T10:00:00+01:00"));
   await page.goto("/admin/connexion");

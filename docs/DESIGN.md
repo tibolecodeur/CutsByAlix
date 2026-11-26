@@ -197,9 +197,10 @@ décoratif).
     crème, fin contour sombre. Dans un `<span>` isolé de la lettre « C »
     (`relative inline-block`) : `top: -0.12em`, `left: -0.1em`, `width: 0.68em`, rotation
     `-8deg`, calculés sur la mesure du sommet du « C » (centré à 0,325 em à cause de
-    l'italique) ; en em, il suit la taille du logo. `pointer-events: none`. Interrupteur
-    manuel `SHOW_CHRISTMAS_HAT` (`src/features/seasonal/christmas.ts`), indépendant de la
-    période : le passer à `false` après les fêtes.
+    l'italique) ; en em, il suit la taille du logo. `pointer-events: none`. Suit la période
+    de Noël comme la neige et la guirlande (depuis le 2026-11-25, demande de Thibault) ;
+    l'interrupteur `SHOW_CHRISTMAS_HAT` (`src/features/seasonal/christmas.ts`) permet en plus
+    de le couper à la main.
   - **Boules et étoiles** sur les en-têtes des pages hors accueil (réserver, annuler,
     conditions, pages légales, 404) : 3 boules rouge, or, verte **accrochées à la guirlande**
     (crochet sur le point bas d'un feston, entre deux ampoules), qui pendent dans la marge
